@@ -2,11 +2,11 @@
 
 ## Resultado
 
-El dashboard se entrega como una capa de presentación independiente del backend. En esta etapa no se agregan endpoints ni dependencias al backend porque el repositorio todavía no contiene un proyecto Spring Boot ejecutable.
+El dashboard se entrega como una capa de presentación independiente del backend. La rama `Braian` ahora contiene un scaffold Spring Boot y un endpoint técnico de salud, pero todavía no expone contratos de negocio.
 
 ## Contrato actual
 
-Las vistas del dashboard son placeholders y no deben asumir datos reales. Las siguientes capacidades quedan pendientes de sus historias y tareas propias:
+Las vistas del dashboard siguen siendo placeholders y no deben asumir datos reales. Las siguientes capacidades quedan pendientes de sus historias y tareas propias:
 
 - Usuarios, roles y permisos.
 - Pacientes y odontólogos.
@@ -14,11 +14,11 @@ Las vistas del dashboard son placeholders y no deben asumir datos reales. Las si
 - Historias clínicas.
 - Informes, caja e inventario.
 
-No se inventan rutas REST, nombres de entidades ni formatos JSON hasta que el scaffold backend y sus decisiones de persistencia estén aprobados.
+El único endpoint disponible actualmente es `GET /api/health`, destinado a verificar que el servicio está activo. No se deben inventar rutas REST, entidades ni formatos JSON de negocio.
 
 ## Punto de integración esperado
 
-Cuando exista el backend Spring Boot, cada página podrá consumir servicios mediante una capa cliente aislada. El layout no debe conocer detalles de persistencia; solamente las páginas de módulo o sus hooks deben depender de contratos API versionados.
+Cuando se aprueben los contratos OpenAPI/Swagger, cada página podrá consumir servicios mediante una capa cliente aislada. El layout no debe conocer detalles de persistencia; solamente las páginas de módulo o sus hooks deben depender de contratos API versionados.
 
 ```text
 DashboardLayout
@@ -36,11 +36,9 @@ DashboardLayout
 - Modelar estados de carga, vacío y error antes de reemplazar un placeholder.
 - Coordinar cambios de API con la HU/TR del módulo correspondiente.
 
-## Próximo paso backend
+## Relación con el scaffold
 
-La implementación del scaffold Spring Boot corresponde a `TR-00.5 — Preparar el esqueleto inicial del backend`. Hasta que esa tarea se complete, este documento funciona como límite explícito de integración y evita crear contratos ficticios.
-
-## Relación con frontend
+La implementación y la verificación del scaffold están documentadas en [`backend-scaffold.md`](backend-scaffold.md).
 
 - Frontend: `frontend-odonto/docs/braian-dashboard.md`
 - Rama de trabajo: `Braian`
