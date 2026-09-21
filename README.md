@@ -1,53 +1,108 @@
 # Novadent — Backend
 
-Backend del sistema de gestión odontológica. Este repositorio se encuentra en la etapa de preparación del proyecto: actualmente contiene la documentación inicial y todavía no incluye un scaffold ejecutable de Spring Boot.
+Backend del sistema de gestión odontológica **Novadent**.
 
-## Stack objetivo
+El proyecto se encuentra construido sobre Spring Boot y está preparado para incorporar progresivamente los módulos de negocio definidos mediante Historias de Usuario (HU) y Tareas (TR).
 
-La implementación prevista para el backend utilizará:
+## Stack tecnológico
 
-- Java
-- Spring Boot
-- Spring Web para la API REST
-- Spring Data JPA para persistencia
-- Bean Validation para validaciones
-- Maven para dependencias y build
-- OpenAPI/Swagger para documentar la API
-- Git y GitHub para colaboración
-
-> Las versiones de Java, Spring Boot, la base de datos y la estrategia de autenticación se confirmarán antes de crear el proyecto ejecutable. No se deben asumir endpoints, entidades ni dependencias que todavía no estén implementados.
+* Java 17
+* Spring Boot 3.5.6
+* Maven
+* Spring Web
+* Bean Validation
+* Spring Data JPA
+* Base de datos relacional
+* Git y GitHub
+* OpenAPI/Swagger, previsto para la documentación de la API
 
 ## Estado actual
 
-- Rama base de integración: `develop`
-- Rama de trabajo de este bloque: `Braian`
-- El repositorio aún no contiene `pom.xml`, `src/` ni una aplicación Spring Boot.
-- El dashboard frontend usa vistas placeholder y no consume una API real todavía.
+El proyecto cuenta con el scaffold inicial de Spring Boot.
 
-La frontera de integración está documentada en [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md).
+Actualmente incluye:
 
-## Próximo paso
+* Configuración base de Spring Boot.
+* Maven Wrapper (`mvnw` / `mvnw.cmd`).
+* Spring Web.
+* Bean Validation.
+* Configuración inicial de pruebas.
+* Estructura preparada para incorporar los módulos de negocio.
 
-Completar `TR-00.5 — Preparar el esqueleto inicial del backend`:
+La implementación de las entidades, persistencia, autenticación, roles y demás funcionalidades se realizará progresivamente mediante las HU/TR correspondientes.
 
-1. Crear el proyecto Spring Boot.
-2. Confirmar versiones y dependencias.
-3. Configurar perfiles por ambiente sin credenciales en Git.
-4. Añadir una verificación mínima de arranque.
-5. Definir el contrato OpenAPI antes de conectar módulos del frontend.
+## Inicio rápido
 
-Cuando esa tarea esté terminada, esta sección deberá incorporar los comandos reales de instalación, ejecución y pruebas.
+### Windows
+
+```powershell
+git clone https://github.com/Proyecto-Houssay/backend-odonto.git
+cd backend-odonto
+.\mvnw.cmd test
+.\mvnw.cmd spring-boot:run
+```
+
+### macOS / Linux
+
+```bash
+./mvnw test
+./mvnw spring-boot:run
+```
+
+## Estructura inicial
+
+```text
+src/
+├── main/
+│   ├── java/
+│   │   └── com/proyectohoussay/odonto/
+│   │       └── BackendOdontoApplication.java
+│   │
+│   └── resources/
+│       └── application.properties
+│
+└── test/
+    └── java/
+        └── com/proyectohoussay/odonto/
+            └── BackendOdontoApplicationTests.java
+
+docs/
+├── backend-scaffold.md
+└── braian-dashboard-integration.md
+```
+
+La estructura crecerá a medida que se incorporen los módulos funcionales del sistema.
 
 ## Flujo de trabajo
 
-- `develop` es la base de integración.
-- Las ramas de trabajo son `Mateo`, `Kevin`, `Braian`, `Josue` e `Iris`.
-- Los Pull Requests deben apuntar a `develop` y vincular su HU/TR.
-- Mantener commits pequeños, descriptivos y sin secretos.
+* `develop` es la rama base de integración.
+* Las ramas de trabajo se utilizan para desarrollar las HU/TR asignadas.
+* Los Pull Requests deben apuntar a `develop`.
+* Cada Pull Request debe vincular la HU/TR correspondiente.
+* Mantener commits pequeños y descriptivos.
+* No publicar credenciales, contraseñas ni archivos de configuración sensibles.
+
+## Próximos pasos
+
+1. Incorporar las entidades del dominio.
+2. Configurar persistencia con Spring Data JPA.
+3. Implementar las relaciones entre entidades.
+4. Incorporar validaciones mediante Bean Validation.
+5. Crear repositorios y pruebas de persistencia.
+6. Implementar progresivamente las HU/TR del proyecto.
+7. Definir y documentar la API mediante OpenAPI/Swagger.
+8. Incorporar autenticación y autorización.
+9. Integrar los módulos del backend con el frontend.
 
 ## Documentación
 
-- [Wiki del proyecto](https://github.com/Proyecto-Houssay/backend-odonto/wiki)
-- [Sprint 0](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Sprint-0)
-- [Stack tecnológico objetivo](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Stack-tecnologico)
-- [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md)
+* `docs/backend-scaffold.md`
+* `docs/braian-dashboard-integration.md`
+* Wiki del proyecto:
+  https://github.com/Proyecto-Houssay/backend-odonto/wiki
+
+## Proyecto
+
+Repositorio:
+
+https://github.com/Proyecto-Houssay/backend-odonto
