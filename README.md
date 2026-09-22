@@ -1,46 +1,79 @@
 # Novadent — Backend
 
-Backend del sistema de gestión odontológica. Este repositorio se encuentra en la etapa de preparación del proyecto: actualmente contiene la documentación inicial y todavía no incluye un scaffold ejecutable de Spring Boot.
-
-## Stack objetivo
-
-La implementación prevista para el backend utilizará:
-
-- Java
-- Spring Boot
-- Spring Web para la API REST
-- Spring Data JPA para persistencia
-- Bean Validation para validaciones
-- Maven para dependencias y build
-- OpenAPI/Swagger para documentar la API
-- Git y GitHub para colaboración
-
-> Las versiones de Java, Spring Boot, la base de datos y la estrategia de autenticación se confirmarán antes de crear el proyecto ejecutable. No se deben asumir endpoints, entidades ni dependencias que todavía no estén implementados.
+Backend del sistema de gestión odontológica. La rama `Braian` contiene ahora el scaffold mínimo de Spring Boot y un endpoint técnico de salud; todavía no incluye módulos de negocio.
 
 ## Estado actual
 
-- Rama base de integración: `develop`
-- Rama de trabajo de este bloque: `Braian`
-- El repositorio aún no contiene `pom.xml`, `src/` ni una aplicación Spring Boot.
-- El dashboard frontend usa vistas placeholder y no consume una API real todavía.
+- Java 17
+- Spring Boot 3.5.6
+- Maven Wrapper (`mvnw` / `mvnw.cmd`)
+- Spring Web
+- Bean Validation
+- Pruebas Spring Boot
+- Endpoint `GET /api/health`
 
-La frontera de integración está documentada en [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md).
+La base de datos, JPA, autenticación, roles y OpenAPI/Swagger quedan para cambios posteriores con HU/TR definidos.
 
-## Próximo paso
+## Inicio rápido
 
-Completar `TR-00.5 — Preparar el esqueleto inicial del backend`:
+En Windows:
 
-1. Crear el proyecto Spring Boot.
-2. Confirmar versiones y dependencias.
-3. Configurar perfiles por ambiente sin credenciales en Git.
-4. Añadir una verificación mínima de arranque.
-5. Definir el contrato OpenAPI antes de conectar módulos del frontend.
+```powershell
+git clone https://github.com/Proyecto-Houssay/backend-odonto.git
+cd backend-odonto
+.\mvnw.cmd test
+.\mvnw.cmd spring-boot:run
+```
 
-Cuando esa tarea esté terminada, esta sección deberá incorporar los comandos reales de instalación, ejecución y pruebas.
+En macOS/Linux:
+
+```bash
+./mvnw test
+./mvnw spring-boot:run
+```
+
+El endpoint técnico queda disponible en:
+
+```text
+GET http://localhost:8080/api/health
+```
+
+Respuesta esperada:
+
+```json
+{"status":"ok"}
+```
+
+## Estructura inicial
+
+```text
+src/
+├── main/
+│   ├── java/com/proyectohoussay/odonto/
+│   │   ├── BackendOdontoApplication.java
+│   │   └── health/HealthController.java
+│   └── resources/application.properties
+└── test/
+    ├── java/com/proyectohoussay/odonto/BackendOdontoApplicationTests.java
+    └── java/com/proyectohoussay/odonto/health/HealthControllerTest.java
+docs/
+├── backend-scaffold.md
+└── braian-dashboard-integration.md
+```
+
+## Comandos
+
+| Comando | Uso |
+|---|---|
+| `.\mvnw.cmd test` | Compila y ejecuta las pruebas en Windows |
+| `.\mvnw.cmd spring-boot:run` | Inicia la aplicación en Windows |
+| `./mvnw test` | Compila y ejecuta las pruebas en macOS/Linux |
+| `./mvnw spring-boot:run` | Inicia la aplicación en macOS/Linux |
 
 ## Flujo de trabajo
 
 - `develop` es la base de integración.
+<<<<<<< HEAD
 - Las ramas de trabajo son `Mateo`, `Kevin`, `Braian`, `Josue` e `Iris`.
 - Los Pull Requests deben apuntar a `develop` y vincular su HU/TR.
 - Mantener commits pequeños, descriptivos y sin secretos.
@@ -51,3 +84,21 @@ Cuando esa tarea esté terminada, esta sección deberá incorporar los comandos 
 - [Sprint 0](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Sprint-0)
 - [Stack tecnológico objetivo](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Stack-tecnologico)
 - [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md)
+=======
+- La rama de este bloque es `Braian`.
+- Los Pull Requests deben apuntar a `develop` y vincular `TR-00.5`.
+- No publicar secretos ni archivos de entorno.
+
+## Próximos pasos
+
+1. Confirmar motor de base de datos con el equipo.
+2. Agregar JPA y el driver correspondiente.
+3. Definir contratos OpenAPI/Swagger.
+4. Implementar módulos de negocio mediante sus HU/TR, sin mezclar responsabilidades.
+
+## Documentación
+
+- [`docs/backend-scaffold.md`](docs/backend-scaffold.md)
+- [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md)
+- [Wiki del proyecto](https://github.com/Proyecto-Houssay/backend-odonto/wiki)
+>>>>>>> origin/Braian
