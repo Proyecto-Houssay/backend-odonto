@@ -7,10 +7,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -69,17 +73,47 @@ class PacientePersistenceIntegrationTest {
         assertThat(persistedPatient.getFechaNacimiento()).isEqualTo(LocalDate.of(1990, 1, 1));
     }
 
-    @Test
-    void invalidPostReturnsBadRequestWithoutPersistingPatient() throws Exception {
-        String invalidRequest = VALID_PATIENT_REQUEST.replace("\"nombre\": \"Ana\"", "\"nombre\": \"\"");
-
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("invalidPatientRequests")
+    void invalidPostReturnsBadRequestWithoutPersistingPatient(
+            String scenario, String invalidRequest, String expectedMessage) throws Exception {
         mockMvc.perform(post("/api/pacientes")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidRequest))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().string("El nombre es obligatorio"));
+                .andExpect(content().string(expectedMessage));
 
         assertThat(pacienteRepository.count()).isZero();
+    }
+
+    private static Stream<Arguments> invalidPatientRequests() {
+        return Stream.of(
+                Arguments.of(
+                        "blank name",
+                        VALID_PATIENT_REQUEST.replace("\"nombre\": \"Ana\"", "\"nombre\": \"\""),
+                        "El nombre es obligatorio"),
+                Arguments.of(
+                        "blank surname",
+                        VALID_PATIENT_REQUEST.replace("\"apellido\": \"Pérez\"", "\"apellido\": \"\""),
+                        "El apellido es obligatorio"),
+                Arguments.of(
+                        "blank DNI",
+                        VALID_PATIENT_REQUEST.replace("\"dni\": \"12345678\"", "\"dni\": \"\""),
+                        "El DNI es obligatorio"),
+                Arguments.of(
+                        "blank email",
+                        VALID_PATIENT_REQUEST.replace("\"email\": \"ana@example.com\"", "\"email\": \"\""),
+                        "El correo electrónico es obligatorio"),
+                Arguments.of(
+                        "missing birth date",
+                        VALID_PATIENT_REQUEST.replace(
+                                ",\n  \"fechaNacimiento\": \"1990-01-01\"", ""),
+                        "La fecha de nacimiento es obligatoria"),
+                Arguments.of(
+                        "malformed email",
+                        VALID_PATIENT_REQUEST.replace(
+                                "\"email\": \"ana@example.com\"", "\"email\": \"not-an-email\""),
+                        "El correo electrónico no tiene un formato válido"));
     }
 
     @Test
