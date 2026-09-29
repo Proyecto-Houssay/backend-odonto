@@ -28,8 +28,13 @@ public class TurnoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Turno> obtenerTurno(@PathVariable Long id) {
-        return ResponseEntity.ok(turnoService.obtenerTurno(id));
+    public ResponseEntity<?> obtenerTurno(@PathVariable Long id) {
+        try {
+            Turno turno = turnoService.obtenerTurno(id);
+            return ResponseEntity.ok(turno);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
     }
 
     @GetMapping("/fecha/{fecha}")
@@ -40,6 +45,11 @@ public class TurnoController {
     @GetMapping("/odontologo/{odontologoId}")
     public List<Turno> listarPorOdontologo(@PathVariable Long odontologoId) {
         return turnoService.listarPorOdontologo(odontologoId);
+    }
+
+    @GetMapping("/paciente/{pacienteId}")
+    public List<Turno> listarPorPaciente(@PathVariable Long pacienteId) {
+        return turnoService.listarPorPaciente(pacienteId);
     }
 
     @GetMapping("/disponibilidad")
@@ -56,19 +66,30 @@ public class TurnoController {
         try {
             Turno nuevo = turnoService.crearTurno(turno);
             return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Turno> actualizarTurno(@PathVariable Long id, @RequestBody Turno turno) {
-        return ResponseEntity.ok(turnoService.actualizarTurno(id, turno));
+    public ResponseEntity<?> actualizarTurno(@PathVariable Long id, @RequestBody Turno turno) {
+        try {
+            Turno actualizado = turnoService.actualizarTurno(id, turno);
+            return ResponseEntity.ok(actualizado);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> cancelarTurno(@PathVariable Long id) {
-        turnoService.cancelarTurno(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<?> cancelarTurno(@PathVariable Long id) {
+        try {
+            turnoService.cancelarTurno(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
     }
 }
