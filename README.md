@@ -73,6 +73,18 @@ docs/
 ## Flujo de trabajo
 
 - `develop` es la base de integración.
+<<<<<<< HEAD
+- Las ramas de trabajo son `Mateo`, `Kevin`, `Braian`, `Josue` e `Iris`.
+- Los Pull Requests deben apuntar a `develop` y vincular su HU/TR.
+- Mantener commits pequeños, descriptivos y sin secretos.
+
+## Documentación
+
+- [Wiki del proyecto](https://github.com/Proyecto-Houssay/backend-odonto/wiki)
+- [Sprint 0](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Sprint-0)
+- [Stack tecnológico objetivo](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Stack-tecnologico)
+- [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md)
+=======
 - La rama de este bloque es `Braian`.
 - Los Pull Requests deben apuntar a `develop` y vincular `TR-00.5`.
 - No publicar secretos ni archivos de entorno.
@@ -89,3 +101,4 @@ docs/
 - [`docs/backend-scaffold.md`](docs/backend-scaffold.md)
 - [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md)
 - [Wiki del proyecto](https://github.com/Proyecto-Houssay/backend-odonto/wiki)
+>>>>>>> origin/Braian
