@@ -1,5 +1,6 @@
 package com.proyectohoussay.odonto.patient;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -24,7 +25,10 @@ public class Paciente {
     private String apellido;
 
     @NotBlank(message = "El DNI es obligatorio")
+    @Column(nullable = false, unique = true)
     private String dni;
+
+    private String telefono;
 
     @NotBlank(message = "El correo electrónico es obligatorio")
     @Email(message = "El correo electrónico no tiene un formato válido")
@@ -62,6 +66,14 @@ public class Paciente {
 
     public void setDni(String dni) {
         this.dni = dni;
+    }
+
+    public String getTelefono() {
+        return telefono;
+    }
+
+    public void setTelefono(String telefono) {
+        this.telefono = telefono;
     }
 
     public String getEmail() {
