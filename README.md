@@ -1,46 +1,63 @@
 # Novadent — Backend
 
-API REST para la gestión de un consultorio odontológico. El backend utiliza Java 17, Spring Boot 3.5.6, Spring Web, Bean Validation, Spring Data JPA y H2.
+API REST para la gestión de un consultorio odontológico. El backend utiliza Java 17, Spring Boot 3.5.6, Spring Web, Bean Validation, Spring Data JPA y base de datos H2 en memoria.
 
-## Ejecutar y probar
+## Stack tecnológico
 
-Se requiere Java 17. El Maven Wrapper evita tener que instalar Maven globalmente.
+- **Java:** 17
+- **Framework:** Spring Boot 3.5.6
+- **Capa Web:** Spring Web (REST)
+- **Persistencia:** Spring Data JPA / Hibernate
+- **Validaciones:** Jakarta Bean Validation
+- **Base de datos (Dev & Test):** H2 en memoria (`jdbc:h2:mem:odontodb`)
+- **Build tool:** Maven Wrapper (`mvnw` / `mvnw.cmd`)
 
-En Windows:
+## Ejecución y pruebas
+
+Se requiere JDK 17 configurado en el entorno. El Maven Wrapper evita instalar Maven globalmente.
+
+### En Windows (PowerShell)
 
 ```powershell
+# Ejecutar todas las pruebas unitarias y de integración
 .\mvnw.cmd test
+
+# Iniciar el servidor de desarrollo
 .\mvnw.cmd spring-boot:run
 ```
 
-En macOS/Linux:
+### En macOS / Linux (Bash)
 
 ```bash
+# Ejecutar todas las pruebas unitarias y de integración
 ./mvnw test
+
+# Iniciar el servidor de desarrollo
 ./mvnw spring-boot:run
 ```
 
-La base configurada es H2 en memoria (`jdbc:h2:mem:odontodb`): los datos se pierden al detener la aplicación. Durante el desarrollo está habilitada la consola en `/h2-console`.
+El servidor queda disponible en `http://localhost:8080`.
+- Verificación técnica: `GET http://localhost:8080/api/health`
+- Consola de base de datos H2: `http://localhost:8080/h2-console`
 
-## API disponible
+## Módulos y API disponible (Sprint 1)
 
-| Módulo | Rutas |
-| --- | --- |
-| Salud | `GET /api/health` |
-| Pacientes | `POST /api/pacientes` |
-| Odontólogos | `GET /api/odontologos`, `GET /api/odontologos/{id}`, `GET /api/odontologos/matricula/{matricula}`, `POST /api/odontologos`, `PUT /api/odontologos/{id}`, `DELETE /api/odontologos/{id}` |
-| Especialidades | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` |
-| Usuarios | `GET /api/usuarios`, `GET /api/usuarios/{id}`, `POST /api/usuarios`, `PUT /api/usuarios/{id}`, `DELETE /api/usuarios/{id}` |
-| Autenticación | `POST /api/auth/login` |
-| Turnos | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` |
+| Módulo | Tipo / Rutas | Descripción |
+|---|---|---|
+| **Salud** | `GET /api/health` | Healthcheck técnico de la aplicación. |
+| **Pacientes** | `POST /api/pacientes` | Registro y validación de pacientes con DNI único. |
+| **Historias Clínicas** | `HistoriaClinica`, `Diagnostico`, `Tratamiento` | Entidades, enum `EstadoTratamiento` y repositorios JPA para ficha clínica y evolución odontológica. |
+| **Odontólogos** | `GET /api/odontologos`, `GET /api/odontologos/{id}`, `GET /api/odontologos/matricula/{matricula}`, `POST /api/odontologos`, `PUT /api/odontologos/{id}`, `DELETE /api/odontologos/{id}` | Gestión de staff profesional y matrícula única. |
+| **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
+| **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
+| **Usuarios y Seguridad** | `GET /api/usuarios`, `POST /api/usuarios`, `POST /api/auth/login` | Gestión de cuentas y autenticación base. |
 
-`DELETE /api/turnos/{id}` cancela el turno cambiando su estado a `CANCELADO`; no elimina el registro. La ruta de disponibilidad recibe `odontologoId`, `fecha` y `hora` como parámetros de consulta.
+> `DELETE /api/turnos/{id}` cancela el turno modificando su estado a `CANCELADO`; no elimina el registro de la base de datos.
+> La autenticación actual utiliza credenciales fijas en el servicio como implementación base para desarrollo.
 
-El login es una implementación provisional con credenciales fijas en el servicio. No debe considerarse autenticación segura ni usarse en producción.
+### Payload para registrar o actualizar turnos
 
-### Crear o actualizar un turno
-
-El paciente y el odontólogo deben existir previamente. Para `POST /api/turnos` y `PUT /api/turnos/{id}`, el cuerpo acepta estos campos (`estado` es opcional):
+Para `POST /api/turnos` y `PUT /api/turnos/{id}`, el paciente y el odontólogo deben existir previamente (`estado` es opcional):
 
 ```json
 {
@@ -53,11 +70,31 @@ El paciente y el odontólogo deben existir previamente. Para `POST /api/turnos` 
 }
 ```
 
+## Estructura del proyecto
+
+```text
+src/main/java/com/proyectohoussay/odonto/
+├── BackendOdontoApplication.java
+├── auth/              # Controladores, servicios y DTOs de login
+├── clinicalhistory/   # Historia clínica, diagnósticos y tratamientos (entidades y repositorios)
+├── controller/        # Controladores REST de turnos, odontólogos, especialidades y usuarios
+├── dto/               # Objetos de transferencia de datos (DTOs)
+├── exception/         # Manejo centralizado de excepciones
+├── health/            # Controladores de verificación de estado
+├── model/             # Entidades JPA de turnos, odontólogos, especialidades y usuarios
+├── patient/           # Modelo, repositorio, servicio y controlador de pacientes
+├── repository/        # Repositorios JPA
+└── service/           # Servicios con lógica de negocio
+docs/
+├── backend-scaffold.md
+└── braian-dashboard-integration.md
+```
+
 ## Flujo de integración
 
-- `develop` es la rama de integración.
-- Los pull requests se dirigen a `develop` y mencionan las HU/TR relacionadas.
-- Ejecutar `test` antes de enviar cambios.
+- `develop` es la rama de integración continua.
+- Las ramas de trabajo individuales son `Mateo`, `Kevin`, `Braian`, `Josue` e `Iris`.
+- Todo Pull Request debe dirigirse a `develop`, compilar limpiamente y aprobar `mvn test` antes de su integración.
 - Mantener commits descriptivos y no publicar secretos ni archivos de entorno.
 
 ## Documentación
@@ -65,5 +102,5 @@ El paciente y el odontólogo deben existir previamente. Para `POST /api/turnos` 
 - [Wiki del proyecto](https://github.com/Proyecto-Houssay/backend-odonto/wiki)
 - [Sprint 0](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Sprint-0)
 - [Stack tecnológico](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Stack-tecnologico)
-- [`docs/backend-scaffold.md`](docs/backend-scaffold.md): decisiones del scaffold inicial; refleja el alcance de esa etapa, no el estado actual de la API.
-- [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md): pautas para integrar el dashboard con la API.
+- [`docs/backend-scaffold.md`](docs/backend-scaffold.md)
+- [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md)
