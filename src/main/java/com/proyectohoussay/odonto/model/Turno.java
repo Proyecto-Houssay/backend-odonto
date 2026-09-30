@@ -1,6 +1,8 @@
 package com.proyectohoussay.odonto.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import com.proyectohoussay.odonto.patient.Paciente;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -12,27 +14,32 @@ public class Turno {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotNull(message = "La fecha del turno es obligatoria.")
     @Column(nullable = false)
     private LocalDate fecha;
 
+    @NotNull(message = "El horario del turno es obligatorio.")
     @Column(nullable = false)
     private LocalTime hora;
 
     private String motivo;
     private String estado = "PENDIENTE";
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "paciente_id")
-    private Usuario paciente;
+    @NotNull(message = "El paciente es obligatorio.")
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "paciente_id", nullable = false)
+    private Paciente paciente;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "odontologo_id")
+    @NotNull(message = "El odontólogo es obligatorio.")
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "odontologo_id", nullable = false)
     private Odontologo odontologo;
 
     public Turno() {
     }
 
-    public Turno(LocalDate fecha, LocalTime hora, String motivo, String estado, Usuario paciente, Odontologo odontologo) {
+    public Turno(LocalDate fecha, LocalTime hora, String motivo, String estado,
+                 Paciente paciente, Odontologo odontologo) {
         this.fecha = fecha;
         this.hora = hora;
         this.motivo = motivo;
@@ -81,11 +88,11 @@ public class Turno {
         this.estado = estado;
     }
 
-    public Usuario getPaciente() {
+    public Paciente getPaciente() {
         return paciente;
     }
 
-    public void setPaciente(Usuario paciente) {
+    public void setPaciente(Paciente paciente) {
         this.paciente = paciente;
     }
 

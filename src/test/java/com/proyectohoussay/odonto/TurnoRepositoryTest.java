@@ -3,11 +3,11 @@ package com.proyectohoussay.odonto;
 import com.proyectohoussay.odonto.model.Especialidad;
 import com.proyectohoussay.odonto.model.Odontologo;
 import com.proyectohoussay.odonto.model.Turno;
-import com.proyectohoussay.odonto.model.Usuario;
+import com.proyectohoussay.odonto.patient.Paciente;
+import com.proyectohoussay.odonto.patient.PacienteRepository;
 import com.proyectohoussay.odonto.repository.EspecialidadRepository;
 import com.proyectohoussay.odonto.repository.OdontologoRepository;
 import com.proyectohoussay.odonto.repository.TurnoRepository;
-import com.proyectohoussay.odonto.repository.UsuarioRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -25,7 +25,7 @@ public class TurnoRepositoryTest {
     private TurnoRepository turnoRepository;
 
     @Autowired
-    private UsuarioRepository usuarioRepository;
+    private PacienteRepository pacienteRepository;
 
     @Autowired
     private OdontologoRepository odontologoRepository;
@@ -35,7 +35,13 @@ public class TurnoRepositoryTest {
 
     @Test
     void testGuardarYConsultarTurnosYDisponibilidad() {
-        Usuario paciente = usuarioRepository.save(new Usuario("Ana", "Lopez", "ana.lopez@example.com", "PACIENTE", true));
+        Paciente paciente = new Paciente();
+        paciente.setNombre("Ana");
+        paciente.setApellido("Lopez");
+        paciente.setDni("30111222");
+        paciente.setEmail("ana.lopez@example.com");
+        paciente.setFechaNacimiento(LocalDate.of(1990, 1, 1));
+        paciente = pacienteRepository.save(paciente);
         Especialidad esp = especialidadRepository.save(new Especialidad("Odontopediatría", "Atención dental a niños"));
         Odontologo odonto = odontologoRepository.save(new Odontologo("Laura", "Rios", "MN-9999", "laura@odonto.com", "1188776655", esp));
 
@@ -45,9 +51,15 @@ public class TurnoRepositoryTest {
         Turno turno = new Turno(fecha, hora, "Limpieza dental", "PENDIENTE", paciente, odonto);
         turnoRepository.save(turno);
 
+        assertThat(turno.getId()).isNotNull();
+        assertThat(turno.getPaciente().getId()).isEqualTo(paciente.getId());
+        assertThat(turno.getOdontologo().getId()).isEqualTo(odonto.getId());
+
         List<Turno> turnosFecha = turnoRepository.findByFecha(fecha);
         assertThat(turnosFecha).hasSize(1);
         assertThat(turnosFecha.get(0).getMotivo()).isEqualTo("Limpieza dental");
+        assertThat(turnoRepository.findByPacienteId(paciente.getId())).hasSize(1);
+        assertThat(turnoRepository.findByOdontologoId(odonto.getId())).hasSize(1);
 
         boolean ocupado = turnoRepository.existsByOdontologoIdAndFechaAndHora(odonto.getId(), fecha, hora);
         assertThat(ocupado).isTrue();

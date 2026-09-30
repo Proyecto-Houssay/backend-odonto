@@ -2,6 +2,7 @@ package com.proyectohoussay.odonto.controller;
 
 import com.proyectohoussay.odonto.model.Odontologo;
 import com.proyectohoussay.odonto.service.OdontologoService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -37,7 +38,7 @@ public class OdontologoController {
     }
 
     @PostMapping
-    public ResponseEntity<?> crearOdontologo(@RequestBody Odontologo odontologo) {
+    public ResponseEntity<?> crearOdontologo(@Valid @RequestBody Odontologo odontologo) {
         try {
             Odontologo nuevo = odontologoService.crearOdontologo(odontologo);
             return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
@@ -49,7 +50,7 @@ public class OdontologoController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> actualizarOdontologo(@PathVariable Long id, @RequestBody Odontologo odontologo) {
+    public ResponseEntity<?> actualizarOdontologo(@PathVariable Long id, @Valid @RequestBody Odontologo odontologo) {
         try {
             Odontologo actualizado = odontologoService.actualizarOdontologo(id, odontologo);
             return ResponseEntity.ok(actualizado);

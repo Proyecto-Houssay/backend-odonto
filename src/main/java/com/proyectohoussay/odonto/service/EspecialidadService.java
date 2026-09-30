@@ -25,6 +25,14 @@ public class EspecialidadService {
     }
 
     public Especialidad crearEspecialidad(Especialidad especialidad) {
+        if (especialidad.getNombre() == null || especialidad.getNombre().isBlank()) {
+            throw new IllegalArgumentException("El nombre de la especialidad es obligatorio.");
+        }
+        String nombre = especialidad.getNombre().trim();
+        if (especialidadRepository.existsByNombre(nombre)) {
+            throw new IllegalStateException("Ya existe una especialidad con el nombre: " + nombre);
+        }
+        especialidad.setNombre(nombre);
         return especialidadRepository.save(especialidad);
     }
 
