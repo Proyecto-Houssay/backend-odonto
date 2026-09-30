@@ -1,6 +1,7 @@
 package com.proyectohoussay.odonto.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 
 @Entity
 @Table(name = "especialidades")
@@ -10,6 +11,7 @@ public class Especialidad {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "El nombre de la especialidad es obligatorio.")
     @Column(nullable = false, unique = true)
     private String nombre;
 

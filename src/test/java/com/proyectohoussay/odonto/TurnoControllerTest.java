@@ -1,6 +1,7 @@
 package com.proyectohoussay.odonto;
 
 import com.proyectohoussay.odonto.controller.TurnoController;
+import com.proyectohoussay.odonto.dto.TurnoRequest;
 import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.service.TurnoService;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,8 @@ import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -55,9 +58,9 @@ public class TurnoControllerTest {
         Turno turnoGuardado = new Turno(LocalDate.of(2026, 10, 1), LocalTime.of(9, 0), "Consulta general", "PENDIENTE", null, null);
         turnoGuardado.setId(1L);
 
-        given(turnoService.crearTurno(any(Turno.class))).willReturn(turnoGuardado);
+        given(turnoService.crearTurno(any(TurnoRequest.class))).willReturn(turnoGuardado);
 
-        String jsonBody = "{\"fecha\":\"2026-10-01\",\"hora\":\"09:00:00\",\"motivo\":\"Consulta general\",\"estado\":\"PENDIENTE\"}";
+        String jsonBody = "{\"fecha\":\"2026-10-01\",\"hora\":\"09:00:00\",\"motivo\":\"Consulta general\",\"estado\":\"PENDIENTE\",\"pacienteId\":1,\"odontologoId\":1}";
 
         mockMvc.perform(post("/api/turnos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -65,5 +68,15 @@ public class TurnoControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.motivo").value("Consulta general"));
+    }
+
+    @Test
+    void testCrearTurnoSinCamposObligatoriosReturnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/turnos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        verify(turnoService, never()).crearTurno(any(TurnoRequest.class));
     }
 }

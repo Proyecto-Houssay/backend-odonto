@@ -1,6 +1,7 @@
 package com.proyectohoussay.odonto.service;
 
 import com.proyectohoussay.odonto.model.Odontologo;
+import com.proyectohoussay.odonto.repository.EspecialidadRepository;
 import com.proyectohoussay.odonto.repository.OdontologoRepository;
 import org.springframework.stereotype.Service;
 
@@ -11,9 +12,11 @@ import java.util.Optional;
 public class OdontologoService {
 
     private final OdontologoRepository odontologoRepository;
+    private final EspecialidadRepository especialidadRepository;
 
-    public OdontologoService(OdontologoRepository odontologoRepository) {
+    public OdontologoService(OdontologoRepository odontologoRepository, EspecialidadRepository especialidadRepository) {
         this.odontologoRepository = odontologoRepository;
+        this.especialidadRepository = especialidadRepository;
     }
 
     public List<Odontologo> listarOdontologos() {
@@ -30,9 +33,8 @@ public class OdontologoService {
     }
 
     public Odontologo crearOdontologo(Odontologo odontologo) {
-        if (odontologo.getMatricula() == null || odontologo.getMatricula().trim().isEmpty()) {
-            throw new IllegalArgumentException("La matrícula profesional es obligatoria.");
-        }
+        validarEspecialidad(odontologo);
+        validarMatricula(odontologo.getMatricula());
         if (odontologoRepository.existsByMatricula(odontologo.getMatricula())) {
             throw new IllegalStateException("Ya existe un odontólogo registrado con la matrícula: " + odontologo.getMatricula());
         }
@@ -41,8 +43,10 @@ public class OdontologoService {
 
     public Odontologo actualizarOdontologo(Long id, Odontologo details) {
         Odontologo odontologo = obtenerOdontologo(id);
+        validarEspecialidad(details);
+        validarMatricula(details.getMatricula());
 
-        if (!odontologo.getMatricula().equals(details.getMatricula()) &&
+        if (!details.getMatricula().equals(odontologo.getMatricula()) &&
                 odontologoRepository.existsByMatricula(details.getMatricula())) {
             throw new IllegalStateException("La matrícula " + details.getMatricula() + " ya está registrada para otro odontólogo.");
         }
@@ -61,5 +65,18 @@ public class OdontologoService {
     public void eliminarOdontologo(Long id) {
         Odontologo odontologo = obtenerOdontologo(id);
         odontologoRepository.delete(odontologo);
+    }
+
+    private void validarEspecialidad(Odontologo odontologo) {
+        if (odontologo.getEspecialidad() == null || odontologo.getEspecialidad().getId() == null
+                || !especialidadRepository.existsById(odontologo.getEspecialidad().getId())) {
+            throw new IllegalArgumentException("La especialidad indicada no existe.");
+        }
+    }
+
+    private void validarMatricula(String matricula) {
+        if (matricula == null || matricula.isBlank()) {
+            throw new IllegalArgumentException("La matrícula profesional es obligatoria.");
+        }
     }
 }

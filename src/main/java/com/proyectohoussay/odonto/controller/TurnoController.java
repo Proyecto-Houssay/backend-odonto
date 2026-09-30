@@ -1,7 +1,9 @@
 package com.proyectohoussay.odonto.controller;
 
 import com.proyectohoussay.odonto.model.Turno;
+import com.proyectohoussay.odonto.dto.TurnoRequest;
 import com.proyectohoussay.odonto.service.TurnoService;
+import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -62,7 +64,7 @@ public class TurnoController {
     }
 
     @PostMapping
-    public ResponseEntity<?> crearTurno(@RequestBody Turno turno) {
+    public ResponseEntity<?> crearTurno(@Valid @RequestBody TurnoRequest turno) {
         try {
             Turno nuevo = turnoService.crearTurno(turno);
             return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
@@ -74,7 +76,7 @@ public class TurnoController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> actualizarTurno(@PathVariable Long id, @RequestBody Turno turno) {
+    public ResponseEntity<?> actualizarTurno(@PathVariable Long id, @Valid @RequestBody TurnoRequest turno) {
         try {
             Turno actualizado = turnoService.actualizarTurno(id, turno);
             return ResponseEntity.ok(actualizado);

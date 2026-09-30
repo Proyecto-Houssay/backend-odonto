@@ -1,6 +1,8 @@
 package com.proyectohoussay.odonto.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 @Entity
 @Table(name = "odontologos")
@@ -16,6 +18,7 @@ public class Odontologo {
     @Column(nullable = false)
     private String apellido;
 
+    @NotBlank(message = "La matrícula profesional es obligatoria.")
     @Column(nullable = false, unique = true)
     private String matricula;
 
@@ -23,8 +26,9 @@ public class Odontologo {
     private String telefono;
     private boolean activo = true;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "especialidad_id")
+    @NotNull(message = "La especialidad es obligatoria.")
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "especialidad_id", nullable = false)
     private Especialidad especialidad;
 
     public Odontologo() {
