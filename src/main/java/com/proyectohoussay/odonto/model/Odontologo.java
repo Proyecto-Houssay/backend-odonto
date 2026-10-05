@@ -52,8 +52,8 @@ public class Odontologo {
         this.matricula = matricula;
         this.email = email;
         this.telefono = telefono;
-        this.especialidad = especialidad;
         this.activo = true;
+        setEspecialidad(especialidad);
     }
 
     public Long getId() {
@@ -117,6 +117,16 @@ public class Odontologo {
     }
 
     public void setEspecialidad(Especialidad especialidad) {
+        if (this.especialidad == especialidad) {
+            return;
+        }
+        Especialidad anterior = this.especialidad;
         this.especialidad = especialidad;
+        if (anterior != null) {
+            anterior.removeOdontologo(this);
+        }
+        if (especialidad != null) {
+            especialidad.addOdontologo(this);
+        }
     }
 }

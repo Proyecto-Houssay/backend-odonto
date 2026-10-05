@@ -113,7 +113,12 @@ class PacientePersistenceIntegrationTest {
                         "malformed email",
                         VALID_PATIENT_REQUEST.replace(
                                 "\"email\": \"ana@example.com\"", "\"email\": \"not-an-email\""),
-                        "El correo electrónico no tiene un formato válido"));
+                        "El correo electrónico no tiene un formato válido"),
+                Arguments.of(
+                        "future birth date",
+                        VALID_PATIENT_REQUEST.replace(
+                                "\"fechaNacimiento\": \"1990-01-01\"", "\"fechaNacimiento\": \"2099-01-01\""),
+                        "La fecha de nacimiento no puede ser futura"));
     }
 
     @Test

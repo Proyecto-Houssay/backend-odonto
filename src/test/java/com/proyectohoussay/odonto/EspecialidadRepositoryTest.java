@@ -71,4 +71,15 @@ class EspecialidadRepositoryTest {
         assertThatThrownBy(() -> odontologoRepository.saveAndFlush(new Odontologo("Pedro", " ", "MN-402", null, null, especialidad)))
                 .isInstanceOf(ConstraintViolationException.class);
     }
+
+    @Test
+    void especialidadValidaLimitesDeLongitud() {
+        String nombreLargo = "E".repeat(101);
+        assertThatThrownBy(() -> especialidadRepository.saveAndFlush(new Especialidad(nombreLargo, "Valida longitud")))
+                .isInstanceOf(ConstraintViolationException.class);
+
+        String descripcionLarga = "D".repeat(256);
+        assertThatThrownBy(() -> especialidadRepository.saveAndFlush(new Especialidad("Ortopedia", descripcionLarga)))
+                .isInstanceOf(ConstraintViolationException.class);
+    }
 }
