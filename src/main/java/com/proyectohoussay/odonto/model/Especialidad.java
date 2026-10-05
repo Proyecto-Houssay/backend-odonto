@@ -67,18 +67,20 @@ public class Especialidad {
     }
 
     public void addOdontologo(Odontologo odontologo) {
-        if (odontologo != null) {
+        if (odontologo == null) return;
+        if (!this.odontologos.contains(odontologo)) {
             this.odontologos.add(odontologo);
+        }
+        if (odontologo.getEspecialidad() != this) {
             odontologo.setEspecialidad(this);
         }
     }
 
     public void removeOdontologo(Odontologo odontologo) {
-        if (odontologo != null) {
-            this.odontologos.remove(odontologo);
-            if (odontologo.getEspecialidad() == this) {
-                odontologo.setEspecialidad(null);
-            }
+        if (odontologo == null) return;
+        this.odontologos.remove(odontologo);
+        if (odontologo.getEspecialidad() == this) {
+            odontologo.setEspecialidad(null);
         }
     }
 }

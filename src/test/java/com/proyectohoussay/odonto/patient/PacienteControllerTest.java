@@ -87,4 +87,63 @@ class PacienteControllerTest {
 
         verifyNoInteractions(pacienteService);
     }
+
+    @Test
+    void postReturnsValidationMessageForInvalidEmail() throws Exception {
+        mockMvc.perform(post("/api/pacientes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Ana",
+                                  "apellido": "Pérez",
+                                  "dni": "12345678",
+                                  "telefono": "1123456789",
+                                  "email": "correo-no-valido",
+                                  "fechaNacimiento": "1990-01-01"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("El correo electrónico no tiene un formato válido"));
+
+        verifyNoInteractions(pacienteService);
+    }
+
+    @Test
+    void postReturnsValidationMessageForFutureBirthDate() throws Exception {
+        mockMvc.perform(post("/api/pacientes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Ana",
+                                  "apellido": "Pérez",
+                                  "dni": "12345678",
+                                  "telefono": "1123456789",
+                                  "email": "ana@example.com",
+                                  "fechaNacimiento": "2099-12-31"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("La fecha de nacimiento no puede ser futura"));
+
+        verifyNoInteractions(pacienteService);
+    }
+
+    @Test
+    void postReturnsValidationMessageForMissingBirthDate() throws Exception {
+        mockMvc.perform(post("/api/pacientes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Ana",
+                                  "apellido": "Pérez",
+                                  "dni": "12345678",
+                                  "telefono": "1123456789",
+                                  "email": "ana@example.com"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("La fecha de nacimiento es obligatoria"));
+
+        verifyNoInteractions(pacienteService);
+    }
 }
