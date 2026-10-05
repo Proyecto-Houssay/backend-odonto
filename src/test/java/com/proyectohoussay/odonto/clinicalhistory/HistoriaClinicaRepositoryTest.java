@@ -89,4 +89,26 @@ class HistoriaClinicaRepositoryTest {
         assertNotNull(saved.getId());
         assertEquals(5L, saved.getPacienteId());
     }
+
+    @Test
+    @DisplayName("should cover relationship with Diagnostico and cascade persistence")
+    void shouldCoverRelationshipWithDiagnostico() {
+        HistoriaClinica historia = new HistoriaClinica(
+                LocalDate.now(), 77L, "Historial de ortodoncia"
+        );
+        Diagnostico diagnostico = new Diagnostico(
+                LocalDate.now(), "Maloclusion clase II"
+        );
+        historia.agregarDiagnostico(diagnostico);
+
+        HistoriaClinica saved = repository.save(historia);
+        entityManager.flush();
+        entityManager.clear();
+
+        Optional<HistoriaClinica> found = repository.findById(saved.getId());
+        assertTrue(found.isPresent());
+        assertEquals(1, found.get().getDiagnosticos().size());
+        assertEquals("Maloclusion clase II", found.get().getDiagnosticos().get(0).getDescripcion());
+        assertEquals(saved.getId(), found.get().getDiagnosticos().get(0).getHistoriaClinica().getId());
+    }
 }
