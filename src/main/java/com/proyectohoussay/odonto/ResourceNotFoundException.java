@@ -1,4 +1,4 @@
-﻿package com.proyectohoussay.odonto;
+package com.proyectohoussay.odonto;
 
 public class ResourceNotFoundException extends RuntimeException {
 
@@ -6,3 +6,4 @@ public class ResourceNotFoundException extends RuntimeException {
         super(message);
     }
 }
+
