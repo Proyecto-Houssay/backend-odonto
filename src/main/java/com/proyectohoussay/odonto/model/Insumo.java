@@ -61,6 +61,12 @@ public class Insumo {
         }
     }
 
+    @PrePersist
+    @PreUpdate
+    private void actualizarEstado() {
+        this.estado = calcularEstado(cantidadDisponible, stockMinimo);
+    }
+
     public Long getId() {
         return id;
     }

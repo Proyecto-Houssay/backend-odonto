@@ -47,6 +47,16 @@ class ReportPersistenceIntegrationTest {
     }
 
     @Test
+    void getInventarioVacioRetornaListaVacia() throws Exception {
+        insumoRepository.deleteAll();
+
+        mockMvc.perform(get("/api/reports/inventario")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
     void getResumenReflejaCantidadDeItemsPersistidos() throws Exception {
         mockMvc.perform(get("/api/reports")
                         .contentType(MediaType.APPLICATION_JSON))

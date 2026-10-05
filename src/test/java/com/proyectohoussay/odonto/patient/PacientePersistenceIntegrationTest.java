@@ -117,8 +117,24 @@ class PacientePersistenceIntegrationTest {
                 Arguments.of(
                         "future birth date",
                         VALID_PATIENT_REQUEST.replace(
-                                "\"fechaNacimiento\": \"1990-01-01\"", "\"fechaNacimiento\": \"2099-01-01\""),
+                                "\"fechaNacimiento\": \"1990-01-01\"",
+                                "\"fechaNacimiento\": \"" + LocalDate.now().plusDays(1) + "\""),
                         "La fecha de nacimiento no puede ser futura"));
+    }
+
+    @Test
+    void postAcceptsBirthDateToday() throws Exception {
+        String request = VALID_PATIENT_REQUEST.replace(
+                "\"fechaNacimiento\": \"1990-01-01\"",
+                "\"fechaNacimiento\": \"" + LocalDate.now() + "\"");
+
+        mockMvc.perform(post("/api/pacientes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Paciente registrado correctamente"));
+
+        assertThat(pacienteRepository.count()).isEqualTo(1);
     }
 
     @Test

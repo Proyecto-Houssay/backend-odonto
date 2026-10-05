@@ -82,4 +82,12 @@ class EspecialidadRepositoryTest {
         assertThatThrownBy(() -> especialidadRepository.saveAndFlush(new Especialidad("Ortopedia", descripcionLarga)))
                 .isInstanceOf(ConstraintViolationException.class);
     }
+
+    @Test
+    void nombreDeEspecialidadEsUnico() {
+        especialidadRepository.saveAndFlush(new Especialidad("Endodoncia", "Conductos"));
+
+        assertThatThrownBy(() -> especialidadRepository.saveAndFlush(new Especialidad("Endodoncia", "Otra descripción")))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    }
 }
