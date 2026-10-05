@@ -3,6 +3,7 @@ package com.proyectohoussay.odonto.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "odontologos")
@@ -12,18 +13,29 @@ public class Odontologo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @NotBlank(message = "El nombre es obligatorio.")
+    @Size(max = 100, message = "El nombre no puede superar los 100 caracteres.")
+    @Column(nullable = false, length = 100)
     private String nombre;
 
-    @Column(nullable = false)
+    @NotBlank(message = "El apellido es obligatorio.")
+    @Size(max = 100, message = "El apellido no puede superar los 100 caracteres.")
+    @Column(nullable = false, length = 100)
     private String apellido;
 
     @NotBlank(message = "La matrícula profesional es obligatoria.")
-    @Column(nullable = false, unique = true)
+    @Size(max = 50, message = "La matrícula no puede superar los 50 caracteres.")
+    @Column(nullable = false, unique = true, length = 50)
     private String matricula;
 
+    @Size(max = 100, message = "El email no puede superar los 100 caracteres.")
+    @Column(length = 100)
     private String email;
+
+    @Size(max = 20, message = "El teléfono no puede superar los 20 caracteres.")
+    @Column(length = 20)
     private String telefono;
+
     private boolean activo = true;
 
     @NotNull(message = "La especialidad es obligatoria.")

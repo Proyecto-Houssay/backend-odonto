@@ -37,4 +37,38 @@ class EspecialidadRepositoryTest {
                 .extracting(odontologo -> odontologo.getEspecialidad().getId())
                 .containsOnly(especialidad.getId());
     }
+
+    @Test
+    void coleccionDeOdontologosNoSeExponeComoReferenciaMutable() {
+        Especialidad especialidad = new Especialidad("Endodoncia", "Tratamiento de conductos");
+        Odontologo odontologo = new Odontologo("Carlos", "Gomez", "MN-201", null, null, especialidad);
+
+        assertThatThrownBy(() -> especialidad.getOdontologos().add(odontologo))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void helperMethodsMantienenConsistenciaDeLaRelacionBidireccional() {
+        Especialidad especialidad = new Especialidad("Periodoncia", "Tratamiento de encías");
+        Odontologo odontologo = new Odontologo("Marta", "Rios", "MN-301", null, null, null);
+
+        especialidad.addOdontologo(odontologo);
+        assertThat(especialidad.getOdontologos()).contains(odontologo);
+        assertThat(odontologo.getEspecialidad()).isEqualTo(especialidad);
+
+        especialidad.removeOdontologo(odontologo);
+        assertThat(especialidad.getOdontologos()).doesNotContain(odontologo);
+        assertThat(odontologo.getEspecialidad()).isNull();
+    }
+
+    @Test
+    void odontologoRequiereNombreYApellido() {
+        Especialidad especialidad = especialidadRepository.save(new Especialidad("Cirugía", "Cirugía maxilofacial"));
+
+        assertThatThrownBy(() -> odontologoRepository.saveAndFlush(new Odontologo(" ", "Perez", "MN-401", null, null, especialidad)))
+                .isInstanceOf(ConstraintViolationException.class);
+
+        assertThatThrownBy(() -> odontologoRepository.saveAndFlush(new Odontologo("Pedro", " ", "MN-402", null, null, especialidad)))
+                .isInstanceOf(ConstraintViolationException.class);
+    }
 }
