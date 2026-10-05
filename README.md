@@ -9,7 +9,7 @@ API REST para la gestión de un consultorio odontológico. El backend utiliza Ja
 - **Capa Web:** Spring Web (REST)
 - **Persistencia:** Spring Data JPA / Hibernate
 - **Validaciones:** Jakarta Bean Validation
-- **Base de datos (Dev & Test):** H2 en memoria (`jdbc:h2:mem:odontodb`)
+- **Base de datos (configuración actual):** H2 en memoria (`jdbc:h2:mem:odontodb`). No hay perfiles ni una base de datos de producción configurados todavía.
 - **Build tool:** Maven Wrapper (`mvnw` / `mvnw.cmd`)
 
 ## Ejecución y pruebas
@@ -40,7 +40,7 @@ El servidor queda disponible en `http://localhost:8080`.
 - Verificación técnica: `GET http://localhost:8080/api/health`
 - Consola de base de datos H2: `http://localhost:8080/h2-console`
 
-## Módulos y API disponible (Sprint 1)
+## API disponible
 
 | Módulo | Tipo / Rutas | Descripción |
 |---|---|---|
@@ -50,8 +50,9 @@ El servidor queda disponible en `http://localhost:8080`.
 | **Odontólogos** | `GET /api/odontologos`, `GET /api/odontologos/{id}`, `GET /api/odontologos/matricula/{matricula}`, `POST /api/odontologos`, `PUT /api/odontologos/{id}`, `DELETE /api/odontologos/{id}` | Gestión de staff profesional y matrícula única. |
 | **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
-| **Usuarios y Seguridad** | `GET /api/usuarios`, `POST /api/usuarios`, `POST /api/auth/login` | Gestión de cuentas y autenticación base. |
-| **Informes** | `GET /api/reports`, `GET /api/reports/inventario`, `GET /api/reports/atenciones` | Reportes de inventario de insumos, atenciones y resumen clínico. |
+| **Usuarios** | `GET /api/usuarios`, `GET /api/usuarios/{id}`, `POST /api/usuarios`, `PUT /api/usuarios/{id}`, `DELETE /api/usuarios/{id}` | Gestión de cuentas de usuario. |
+| **Autenticación** | `POST /api/auth/login` | Inicio de sesión base. |
+| **Informes** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones` | Resumen e informes de inventario persistido y atenciones. |
 
 > `DELETE /api/turnos/{id}` cancela el turno modificando su estado a `CANCELADO`; no elimina el registro de la base de datos.
 > La autenticación actual utiliza credenciales fijas en el servicio como implementación base para desarrollo.
