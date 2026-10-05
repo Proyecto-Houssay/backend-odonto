@@ -1,4 +1,4 @@
-package com.proyectohoussay.odonto.diagnostico;
+package com.proyectohoussay.odonto.clinicalhistory;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

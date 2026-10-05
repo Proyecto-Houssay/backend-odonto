@@ -1,108 +1,106 @@
 # Novadent — Backend
 
-Backend del sistema de gestión odontológica **Novadent**.
-
-El proyecto se encuentra construido sobre Spring Boot y está preparado para incorporar progresivamente los módulos de negocio definidos mediante Historias de Usuario (HU) y Tareas (TR).
+API REST para la gestión de un consultorio odontológico. El backend utiliza Java 17, Spring Boot 3.5.6, Spring Web, Bean Validation, Spring Data JPA y base de datos H2 en memoria.
 
 ## Stack tecnológico
 
-* Java 17
-* Spring Boot 3.5.6
-* Maven
-* Spring Web
-* Bean Validation
-* Spring Data JPA
-* Base de datos relacional
-* Git y GitHub
-* OpenAPI/Swagger, previsto para la documentación de la API
+- **Java:** 17
+- **Framework:** Spring Boot 3.5.6
+- **Capa Web:** Spring Web (REST)
+- **Persistencia:** Spring Data JPA / Hibernate
+- **Validaciones:** Jakarta Bean Validation
+- **Base de datos (Dev & Test):** H2 en memoria (`jdbc:h2:mem:odontodb`)
+- **Build tool:** Maven Wrapper (`mvnw` / `mvnw.cmd`)
 
-## Estado actual
+## Ejecución y pruebas
 
-El proyecto cuenta con el scaffold inicial de Spring Boot.
+Se requiere JDK 17 configurado en el entorno. El Maven Wrapper evita instalar Maven globalmente.
 
-Actualmente incluye:
-
-* Configuración base de Spring Boot.
-* Maven Wrapper (`mvnw` / `mvnw.cmd`).
-* Spring Web.
-* Bean Validation.
-* Configuración inicial de pruebas.
-* Estructura preparada para incorporar los módulos de negocio.
-
-La implementación de las entidades, persistencia, autenticación, roles y demás funcionalidades se realizará progresivamente mediante las HU/TR correspondientes.
-
-## Inicio rápido
-
-### Windows
+### En Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/Proyecto-Houssay/backend-odonto.git
-cd backend-odonto
+# Ejecutar todas las pruebas unitarias y de integración
 .\mvnw.cmd test
+
+# Iniciar el servidor de desarrollo
 .\mvnw.cmd spring-boot:run
 ```
 
-### macOS / Linux
+### En macOS / Linux (Bash)
 
 ```bash
+# Ejecutar todas las pruebas unitarias y de integración
 ./mvnw test
+
+# Iniciar el servidor de desarrollo
 ./mvnw spring-boot:run
 ```
 
-## Estructura inicial
+El servidor queda disponible en `http://localhost:8080`.
+- Verificación técnica: `GET http://localhost:8080/api/health`
+- Consola de base de datos H2: `http://localhost:8080/h2-console`
+
+## Módulos y API disponible (Sprint 1)
+
+| Módulo | Tipo / Rutas | Descripción |
+|---|---|---|
+| **Salud** | `GET /api/health` | Healthcheck técnico de la aplicación. |
+| **Pacientes** | `POST /api/pacientes` | Registro y validación de pacientes con DNI único. |
+| **Historias Clínicas** | `HistoriaClinica`, `Diagnostico`, `Tratamiento` | Entidades, enum `EstadoTratamiento` y repositorios JPA para ficha clínica y evolución odontológica. |
+| **Odontólogos** | `GET /api/odontologos`, `GET /api/odontologos/{id}`, `GET /api/odontologos/matricula/{matricula}`, `POST /api/odontologos`, `PUT /api/odontologos/{id}`, `DELETE /api/odontologos/{id}` | Gestión de staff profesional y matrícula única. |
+| **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
+| **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
+| **Usuarios y Seguridad** | `GET /api/usuarios`, `POST /api/usuarios`, `POST /api/auth/login` | Gestión de cuentas y autenticación base. |
+
+> `DELETE /api/turnos/{id}` cancela el turno modificando su estado a `CANCELADO`; no elimina el registro de la base de datos.
+> La autenticación actual utiliza credenciales fijas en el servicio como implementación base para desarrollo.
+
+### Payload para registrar o actualizar turnos
+
+Para `POST /api/turnos` y `PUT /api/turnos/{id}`, el paciente y el odontólogo deben existir previamente (`estado` es opcional):
+
+```json
+{
+  "fecha": "2026-10-15",
+  "hora": "10:30:00",
+  "motivo": "Limpieza dental",
+  "pacienteId": 1,
+  "odontologoId": 1,
+  "estado": "PENDIENTE"
+}
+```
+
+## Estructura del proyecto
 
 ```text
-src/
-├── main/
-│   ├── java/
-│   │   └── com/proyectohoussay/odonto/
-│   │       └── BackendOdontoApplication.java
-│   │
-│   └── resources/
-│       └── application.properties
-│
-└── test/
-    └── java/
-        └── com/proyectohoussay/odonto/
-            └── BackendOdontoApplicationTests.java
-
+src/main/java/com/proyectohoussay/odonto/
+├── BackendOdontoApplication.java
+├── auth/              # Controladores, servicios y DTOs de login
+├── clinicalhistory/   # Historia clínica, diagnósticos y tratamientos (entidades y repositorios)
+├── controller/        # Controladores REST de turnos, odontólogos, especialidades y usuarios
+├── dto/               # Objetos de transferencia de datos (DTOs)
+├── exception/         # Manejo centralizado de excepciones
+├── health/            # Controladores de verificación de estado
+├── model/             # Entidades JPA de turnos, odontólogos, especialidades y usuarios
+├── patient/           # Modelo, repositorio, servicio y controlador de pacientes
+├── repository/        # Repositorios JPA
+└── service/           # Servicios con lógica de negocio
 docs/
 ├── backend-scaffold.md
 └── braian-dashboard-integration.md
 ```
 
-La estructura crecerá a medida que se incorporen los módulos funcionales del sistema.
+## Flujo de integración
 
-## Flujo de trabajo
-
-* `develop` es la rama base de integración.
-* Las ramas de trabajo se utilizan para desarrollar las HU/TR asignadas.
-* Los Pull Requests deben apuntar a `develop`.
-* Cada Pull Request debe vincular la HU/TR correspondiente.
-* Mantener commits pequeños y descriptivos.
-* No publicar credenciales, contraseñas ni archivos de configuración sensibles.
-
-## Próximos pasos
-
-1. Incorporar las entidades del dominio.
-2. Configurar persistencia con Spring Data JPA.
-3. Implementar las relaciones entre entidades.
-4. Incorporar validaciones mediante Bean Validation.
-5. Crear repositorios y pruebas de persistencia.
-6. Implementar progresivamente las HU/TR del proyecto.
-7. Definir y documentar la API mediante OpenAPI/Swagger.
-8. Incorporar autenticación y autorización.
-9. Integrar los módulos del backend con el frontend.
+- `develop` es la rama de integración continua.
+- Las ramas de trabajo individuales son `Mateo`, `Kevin`, `Braian`, `Josue` e `Iris`.
+- Todo Pull Request debe dirigirse a `develop`, compilar limpiamente y aprobar `mvn test` antes de su integración.
+- Mantener commits descriptivos y no publicar secretos ni archivos de entorno.
 
 ## Documentación
 
-* `docs/backend-scaffold.md`
-* `docs/braian-dashboard-integration.md`
-* Wiki del proyecto:
-  https://github.com/Proyecto-Houssay/backend-odonto/wiki
-
-## Proyecto
-
-Repositorio:
-
-https://github.com/Proyecto-Houssay/backend-odonto
+- [Wiki del proyecto](https://github.com/Proyecto-Houssay/backend-odonto/wiki)
+- [Sprint 0](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Sprint-0)
+- [Stack tecnológico](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Stack-tecnologico)
+- [`docs/backend-scaffold.md`](docs/backend-scaffold.md)
+- [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md)
