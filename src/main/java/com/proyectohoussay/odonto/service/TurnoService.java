@@ -54,6 +54,9 @@ public class TurnoService {
     }
 
     public Turno crearTurno(TurnoRequest request) {
+        if (request.fecha() != null && request.fecha().isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("No se permiten turnos en fechas anteriores a la actual.");
+        }
         Turno turno = construirTurno(request);
         boolean disponible = comprobarDisponibilidad(turno.getOdontologo().getId(), turno.getFecha(), turno.getHora());
         if (!disponible) {

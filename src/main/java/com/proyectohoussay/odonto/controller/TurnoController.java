@@ -2,6 +2,7 @@ package com.proyectohoussay.odonto.controller;
 
 import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.dto.TurnoRequest;
+import com.proyectohoussay.odonto.dto.TurnoResponse;
 import com.proyectohoussay.odonto.service.TurnoService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -67,7 +68,8 @@ public class TurnoController {
     public ResponseEntity<?> crearTurno(@Valid @RequestBody TurnoRequest turno) {
         try {
             Turno nuevo = turnoService.crearTurno(turno);
-            return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(TurnoResponse.de(nuevo, "Turno registrado con éxito"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (IllegalStateException e) {

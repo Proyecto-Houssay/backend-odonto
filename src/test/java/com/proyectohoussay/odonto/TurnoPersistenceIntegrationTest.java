@@ -85,7 +85,8 @@ class TurnoPersistenceIntegrationTest {
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.paciente.id").value(paciente.getId()))
                 .andExpect(jsonPath("$.odontologo.id").value(odontologo.getId()))
-                .andExpect(jsonPath("$.motivo").value("Limpieza dental"));
+                .andExpect(jsonPath("$.motivo").value("Limpieza dental"))
+                .andExpect(jsonPath("$.mensaje").value("Turno registrado con éxito"));
 
         assertThat(turnoRepository.count()).isEqualTo(1);
         var turnoGuardado = turnoRepository.findAll().get(0);
@@ -117,6 +118,23 @@ class TurnoPersistenceIntegrationTest {
         mockMvc.perform(post("/api/turnos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        assertThat(turnoRepository.count()).isZero();
+    }
+
+    @Test
+    void rechazaTurnoConFechaPasada() throws Exception {
+        Map<String, Object> body = Map.of(
+                "fecha", LocalDate.now().minusDays(1).toString(),
+                "hora", "10:30:00",
+                "motivo", "Consulta vencida",
+                "pacienteId", paciente.getId(),
+                "odontologoId", odontologo.getId());
+
+        mockMvc.perform(post("/api/turnos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest());
 
         assertThat(turnoRepository.count()).isZero();
