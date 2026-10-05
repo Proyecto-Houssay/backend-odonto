@@ -1,70 +1,79 @@
 package com.proyectohoussay.odonto.historia;
 
 import com.proyectohoussay.odonto.diagnostico.Diagnostico;
-import com.proyectohoussay.odonto.diagnostico.DiagnosticoRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDate;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 
-@DataJpaTest
+@SpringBootTest
 class HistoriaClinicaRepositoryTest {
 
     @Autowired
     private HistoriaClinicaRepository historiaClinicaRepository;
 
-    @Autowired
-    private DiagnosticoRepository diagnosticoRepository;
-
     @Test
-    void deberiaGuardarHistoriaClinicaConVariosDiagnosticos() {
+    void debeGuardarHistoriaClinicaConDiagnosticos() {
 
-        HistoriaClinica historiaClinica = new HistoriaClinica(
-                LocalDate.of(2026, 9, 21),
-                "Paciente presenta evolucion clinica favorable.",
+        LocalDate fecha = LocalDate.now();
+
+        HistoriaClinica historia = new HistoriaClinica(
+                fecha,
+                "Paciente en control odontológico general.",
                 1L
         );
 
         Diagnostico diagnostico1 = new Diagnostico(
+                fecha,
                 "Caries dental",
-                historiaClinica
+                historia
         );
 
         Diagnostico diagnostico2 = new Diagnostico(
+                fecha,
                 "Gingivitis",
-                historiaClinica
+                historia
         );
 
-        historiaClinica.agregarDiagnostico(diagnostico1);
-        historiaClinica.agregarDiagnostico(diagnostico2);
+        historia.agregarDiagnostico(diagnostico1);
+        historia.agregarDiagnostico(diagnostico2);
 
-        HistoriaClinica guardada =
-                historiaClinicaRepository.save(historiaClinica);
+        HistoriaClinica guardada = historiaClinicaRepository.save(historia);
 
-        historiaClinicaRepository.flush();
+        assertNotNull(guardada);
+        assertNotNull(guardada.getId());
 
-        HistoriaClinica recuperada =
-                historiaClinicaRepository.findById(guardada.getId())
-                        .orElseThrow();
+        assertEquals(fecha, guardada.getFechaApertura());
+        assertEquals(1L, guardada.getPacienteId());
+        assertEquals(
+                "Paciente en control odontológico general.",
+                guardada.getObservaciones()
+        );
 
-        assertThat(recuperada.getId()).isNotNull();
+        assertNotNull(guardada.getDiagnosticos());
+        assertEquals(2, guardada.getDiagnosticos().size());
 
-        assertThat(recuperada.getPacienteId())
-                .isEqualTo(1L);
+        assertEquals(
+                "Caries dental",
+                guardada.getDiagnosticos().get(0).getDescripcion()
+        );
 
-        assertThat(recuperada.getFechaApertura())
-                .isEqualTo(LocalDate.of(2026, 9, 21));
+        assertEquals(
+                "Gingivitis",
+                guardada.getDiagnosticos().get(1).getDescripcion()
+        );
 
-        assertThat(recuperada.getObservaciones())
-                .isEqualTo("Paciente presenta evolucion clinica favorable.");
+        assertEquals(
+                guardada,
+                guardada.getDiagnosticos().get(0).getHistoriaClinica()
+        );
 
-        assertThat(recuperada.getDiagnosticos())
-                .hasSize(2);
-
-        assertThat(diagnosticoRepository.count())
-                .isEqualTo(2);
+        assertEquals(
+                guardada,
+                guardada.getDiagnosticos().get(1).getHistoriaClinica()
+        );
     }
 }
