@@ -15,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
+
 @WebMvcTest(PacienteController.class)
 class PacienteControllerTest {
 
@@ -110,6 +112,7 @@ class PacienteControllerTest {
 
     @Test
     void postReturnsValidationMessageForFutureBirthDate() throws Exception {
+        String tomorrow = LocalDate.now().plusDays(1).toString();
         mockMvc.perform(post("/api/pacientes")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -119,13 +122,36 @@ class PacienteControllerTest {
                                   "dni": "12345678",
                                   "telefono": "1123456789",
                                   "email": "ana@example.com",
-                                  "fechaNacimiento": "2099-12-31"
+                                  "fechaNacimiento": "%s"
                                 }
-                                """))
+                                """.formatted(tomorrow)))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string("La fecha de nacimiento no puede ser futura"));
 
         verifyNoInteractions(pacienteService);
+    }
+
+    @Test
+    void postAcceptsBirthDateToday() throws Exception {
+        when(pacienteService.registrarPaciente(any(Paciente.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        mockMvc.perform(post("/api/pacientes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Ana",
+                                  "apellido": "Pérez",
+                                  "dni": "12345678",
+                                  "telefono": "1123456789",
+                                  "email": "ana@example.com",
+                                  "fechaNacimiento": "%s"
+                                }
+                                """.formatted(LocalDate.now())))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Paciente registrado correctamente"));
+
+        verify(pacienteService).registrarPaciente(any(Paciente.class));
     }
 
     @Test

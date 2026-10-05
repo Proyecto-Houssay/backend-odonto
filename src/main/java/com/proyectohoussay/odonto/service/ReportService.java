@@ -1,11 +1,13 @@
 package com.proyectohoussay.odonto.service;
 
 import com.proyectohoussay.odonto.dto.InventarioItemDto;
+import com.proyectohoussay.odonto.dto.InsumoRequest;
 import com.proyectohoussay.odonto.model.Insumo;
 import com.proyectohoussay.odonto.repository.InsumoRepository;
 import com.proyectohoussay.odonto.repository.TurnoRepository;
-import jakarta.annotation.PostConstruct;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -23,19 +25,6 @@ public class ReportService {
         this.turnoRepository = turnoRepository;
     }
 
-    @PostConstruct
-    public void inicializarInventarioSiVacio() {
-        if (insumoRepository.count() == 0) {
-            insumoRepository.saveAll(Arrays.asList(
-                    new Insumo("Anestesia local con vasoconstrictor", "Farmacología", 150, "ampollas", 30),
-                    new Insumo("Guantes de látex (talle M)", "Bioseguridad", 500, "pares", 100),
-                    new Insumo("Resina compuesta fotocurable", "Restauración", 25, "jeringas", 10),
-                    new Insumo("Agujas descartables cortas", "Descartables", 80, "unidades", 20),
-                    new Insumo("Eyectores de saliva descartables", "Descartables", 15, "paquetes", 20)
-            ));
-        }
-    }
-
     public List<InventarioItemDto> obtenerReporteInventario() {
         return insumoRepository.findAll().stream()
                 .map(insumo -> new InventarioItemDto(
@@ -49,8 +38,27 @@ public class ReportService {
                 .toList();
     }
 
-    public Insumo registrarInsumo(Insumo insumo) {
-        return insumoRepository.save(insumo);
+    public InventarioItemDto registrarInsumo(InsumoRequest request) {
+        Insumo insumo = new Insumo(request.nombre(), request.categoria(),
+                request.cantidadDisponible(), request.unidadMedida(), request.stockMinimo());
+        insumo = insumoRepository.save(insumo);
+        return aDto(insumo);
+    }
+
+    public InventarioItemDto actualizarInsumo(Long id, InsumoRequest request) {
+        Insumo insumo = insumoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Insumo no encontrado"));
+        insumo.setNombre(request.nombre());
+        insumo.setCategoria(request.categoria());
+        insumo.setCantidadDisponible(request.cantidadDisponible());
+        insumo.setUnidadMedida(request.unidadMedida());
+        insumo.setStockMinimo(request.stockMinimo());
+        return aDto(insumoRepository.save(insumo));
+    }
+
+    private InventarioItemDto aDto(Insumo insumo) {
+        return new InventarioItemDto(insumo.getId(), insumo.getNombre(), insumo.getCategoria(),
+                insumo.getCantidadDisponible(), insumo.getUnidadMedida(), insumo.getEstado());
     }
 
     public Map<String, Object> obtenerResumenInformes() {

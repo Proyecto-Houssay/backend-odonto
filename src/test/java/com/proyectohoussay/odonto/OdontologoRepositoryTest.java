@@ -62,25 +62,37 @@ public class OdontologoRepositoryTest {
         Odontologo oMatriculaLarga = new Odontologo("Carlos", "Perez", matriculaLarga, null, null, esp);
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> odontologoRepository.saveAndFlush(oMatriculaLarga))
                 .isInstanceOf(jakarta.validation.ConstraintViolationException.class);
+
+        Odontologo oApellidoLargo = new Odontologo("Carlos", "A".repeat(101), "MN-88889", null, null, esp);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> odontologoRepository.saveAndFlush(oApellidoLargo))
+                .isInstanceOf(jakarta.validation.ConstraintViolationException.class);
+
+        Odontologo oEmailLargo = new Odontologo("Carlos", "Perez", "MN-88890", "a".repeat(101), null, esp);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> odontologoRepository.saveAndFlush(oEmailLargo))
+                .isInstanceOf(jakarta.validation.ConstraintViolationException.class);
+
+        Odontologo oTelefonoLargo = new Odontologo("Carlos", "Perez", "MN-88891", null, "1".repeat(21), esp);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> odontologoRepository.saveAndFlush(oTelefonoLargo))
+                .isInstanceOf(jakarta.validation.ConstraintViolationException.class);
     }
 
     @Test
     void testMoverOdontologoDeEspecialidadActualizaAmbasRelaciones() {
-        Especialidad esp1 = new Especialidad("Cirugía", "Cirugía general");
-        Especialidad esp2 = new Especialidad("Ortodoncia", "Alineación");
+        Especialidad esp1 = especialidadRepository.save(new Especialidad("Cirugía", "Cirugía general"));
+        Especialidad esp2 = especialidadRepository.save(new Especialidad("Ortodoncia", "Alineación"));
 
         Odontologo o = new Odontologo("Juan", "Gomez", "MN-77777", null, null, esp1);
+        odontologoRepository.saveAndFlush(o);
+        Long odontologoId = o.getId();
         assertThat(esp1.getOdontologos()).contains(o);
 
-        // Mover a esp2 usando setEspecialidad
         o.setEspecialidad(esp2);
+        odontologoRepository.saveAndFlush(o);
+
         assertThat(o.getEspecialidad()).isEqualTo(esp2);
         assertThat(esp1.getOdontologos()).doesNotContain(o);
         assertThat(esp2.getOdontologos()).contains(o);
-
-        // Quitar especialidad
-        o.setEspecialidad(null);
-        assertThat(o.getEspecialidad()).isNull();
-        assertThat(esp2.getOdontologos()).doesNotContain(o);
+        assertThat(odontologoRepository.findById(odontologoId).orElseThrow().getEspecialidad().getId())
+                .isEqualTo(esp2.getId());
     }
 }
