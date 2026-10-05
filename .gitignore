@@ -31,3 +31,5 @@ build/
 
 ### VS Code ###
 .vscode/
+# Local IDE compilation output; keep generated classes out of version control.
+/bin/
