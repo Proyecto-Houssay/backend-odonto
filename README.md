@@ -51,6 +51,7 @@ El servidor queda disponible en `http://localhost:8080`.
 | **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
 | **Usuarios y Seguridad** | `GET /api/usuarios`, `POST /api/usuarios`, `POST /api/auth/login` | Gestión de cuentas y autenticación base. |
+| **Informes** | `GET /api/reports`, `GET /api/reports/inventario`, `GET /api/reports/atenciones` | Reportes de inventario de insumos, atenciones y resumen clínico. |
 
 > `DELETE /api/turnos/{id}` cancela el turno modificando su estado a `CANCELADO`; no elimina el registro de la base de datos.
 > La autenticación actual utiliza credenciales fijas en el servicio como implementación base para desarrollo.
