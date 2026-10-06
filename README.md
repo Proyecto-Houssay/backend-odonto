@@ -55,7 +55,11 @@ El servidor queda disponible en `http://localhost:8080`.
 | **Informes** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones` | Resumen e informes de inventario persistido y atenciones. |
 
 > `DELETE /api/turnos/{id}` cancela el turno modificando su estado a `CANCELADO`; no elimina el registro de la base de datos.
-> La autenticación actual utiliza credenciales fijas en el servicio como implementación base para desarrollo.
+
+### Usuarios y autenticación
+
+- `POST /api/usuarios` y `PUT /api/usuarios/{id}` almacenan la contraseña con hash BCrypt. Las respuestas de la API no incluyen la contraseña.
+- `POST /api/auth/login` es una implementación provisional independiente: valida credenciales fijas en `AuthService` y no consulta los usuarios persistidos ni verifica sus hashes BCrypt. No debe considerarse autenticación lista para producción.
 
 ### Payload para registrar o actualizar turnos
 
