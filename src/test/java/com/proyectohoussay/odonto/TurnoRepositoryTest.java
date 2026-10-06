@@ -45,7 +45,7 @@ public class TurnoRepositoryTest {
         Especialidad esp = especialidadRepository.save(new Especialidad("Odontopediatría", "Atención dental a niños"));
         Odontologo odonto = odontologoRepository.save(new Odontologo("Laura", "Rios", "MN-9999", "laura@odonto.com", "1188776655", esp));
 
-        LocalDate fecha = LocalDate.of(2026, 10, 15);
+        LocalDate fecha = LocalDate.now().plusDays(9);
         LocalTime hora = LocalTime.of(10, 30);
 
         Turno turno = new Turno(fecha, hora, "Limpieza dental", "PENDIENTE", paciente, odonto);
@@ -61,10 +61,15 @@ public class TurnoRepositoryTest {
         assertThat(turnoRepository.findByPacienteId(paciente.getId())).hasSize(1);
         assertThat(turnoRepository.findByOdontologoId(odonto.getId())).hasSize(1);
 
-        boolean ocupado = turnoRepository.existsByOdontologoIdAndFechaAndHora(odonto.getId(), fecha, hora);
+        boolean ocupado = turnoRepository.existeTurnoActivoEnHorario(odonto.getId(), fecha, hora, null);
         assertThat(ocupado).isTrue();
 
-        boolean libreOtraHora = turnoRepository.existsByOdontologoIdAndFechaAndHora(odonto.getId(), fecha, LocalTime.of(11, 0));
+        boolean libreOtraHora = turnoRepository.existeTurnoActivoEnHorario(odonto.getId(), fecha, LocalTime.of(11, 0), null);
         assertThat(libreOtraHora).isFalse();
+
+        turno.setEstado("CANCELADO");
+        turnoRepository.save(turno);
+        boolean libreTrasCancelar = turnoRepository.existeTurnoActivoEnHorario(odonto.getId(), fecha, hora, null);
+        assertThat(libreTrasCancelar).isFalse();
     }
 }

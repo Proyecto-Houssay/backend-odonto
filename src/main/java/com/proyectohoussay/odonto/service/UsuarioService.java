@@ -2,6 +2,9 @@ package com.proyectohoussay.odonto.service;
 
 import com.proyectohoussay.odonto.model.Usuario;
 import com.proyectohoussay.odonto.repository.UsuarioRepository;
+import com.proyectohoussay.odonto.exception.UsuarioDuplicadoException;
+import com.proyectohoussay.odonto.dto.UsuarioUpdateRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -30,23 +33,51 @@ public class UsuarioService {
     }
 
     public Usuario crearUsuario(Usuario usuario) {
-        if (usuario.getEmail() != null && usuarioRepository.existsByEmail(usuario.getEmail())) {
-            throw new IllegalArgumentException("El email ya se encuentra registrado: " + usuario.getEmail());
+        validarUnicidad(usuario.getUsername(), usuario.getEmail(), null);
+        try {
+            return usuarioRepository.save(usuario);
+        } catch (DataIntegrityViolationException exception) {
+            throw new UsuarioDuplicadoException("El nombre de usuario o el email ya se encuentran registrados.");
         }
-        return usuarioRepository.save(usuario);
     }
 
-    public Usuario actualizarUsuario(Long id, Usuario usuarioDetails) {
+    public Usuario actualizarUsuario(Long id, UsuarioUpdateRequest usuarioDetails) {
         Usuario usuario = obtenerUsuario(id);
-        usuario.setNombre(usuarioDetails.getNombre());
-        usuario.setApellido(usuarioDetails.getApellido());
-        usuario.setEmail(usuarioDetails.getEmail());
-        usuario.setRol(usuarioDetails.getRol());
-        usuario.setActivo(usuarioDetails.isActivo());
-        if (usuarioDetails.getTelefono() != null) {
-            usuario.setTelefono(usuarioDetails.getTelefono());
+        validarUnicidad(usuarioDetails.username(), usuarioDetails.email(), id);
+        usuario.setUsername(usuarioDetails.username());
+        usuario.setNombre(usuarioDetails.nombre());
+        usuario.setApellido(usuarioDetails.apellido());
+        usuario.setEmail(usuarioDetails.email());
+        usuario.setRol(usuarioDetails.rol());
+        usuario.setActivo(usuarioDetails.activo());
+        usuario.setTelefono(usuarioDetails.telefono());
+        try {
+            return usuarioRepository.save(usuario);
+        } catch (DataIntegrityViolationException exception) {
+            throw new UsuarioDuplicadoException("El nombre de usuario o el email ya se encuentran registrados.");
         }
-        return usuarioRepository.save(usuario);
+    }
+
+    private void validarUnicidad(String username, String email, Long usuarioId) {
+        if (username != null && !username.isBlank()) {
+            boolean duplicado = usuarioId == null
+                    ? usuarioRepository.existsByUsername(username)
+                    : usuarioRepository.existsByUsernameAndIdNot(username, usuarioId);
+            if (duplicado) {
+                throw new UsuarioDuplicadoException("El nombre de usuario ya se encuentra registrado.");
+            }
+        } else if (username != null) {
+            throw new IllegalArgumentException("El nombre de usuario es obligatorio.");
+        }
+
+        if (email != null && !email.isBlank()) {
+            boolean duplicado = usuarioId == null
+                    ? usuarioRepository.existsByEmail(email)
+                    : usuarioRepository.existsByEmailAndIdNot(email, usuarioId);
+            if (duplicado) {
+                throw new UsuarioDuplicadoException("El email ya se encuentra registrado.");
+            }
+        }
     }
 
     public void eliminarUsuario(Long id) {

@@ -3,12 +3,15 @@ package com.proyectohoussay.odonto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.proyectohoussay.odonto.controller.UsuarioController;
 import com.proyectohoussay.odonto.model.Usuario;
+import com.proyectohoussay.odonto.dto.UsuarioUpdateRequest;
+import com.proyectohoussay.odonto.exception.UsuarioDuplicadoException;
 import com.proyectohoussay.odonto.service.UsuarioService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -80,16 +83,43 @@ class UsuarioControllerTest {
 
     @Test
     void actualizarUsuarioNoDevuelveLaContrasena() throws Exception {
-        when(usuarioService.actualizarUsuario(org.mockito.ArgumentMatchers.eq(7L), any(Usuario.class)))
+        when(usuarioService.actualizarUsuario(org.mockito.ArgumentMatchers.eq(7L), any(UsuarioUpdateRequest.class)))
                 .thenReturn(usuario);
 
         mockMvc.perform(put("/api/usuarios/7")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestBody())))
+                        .content(objectMapper.writeValueAsString(updateRequestBody())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("iris"))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(content().string(not(containsString(PASSWORD))));
+    }
+
+    @Test
+    void creacionInvalidaDevuelve400SinReflejarContrasena() throws Exception {
+        Map<String, Object> invalid = new HashMap<>(requestBody());
+        invalid.put("username", " ");
+
+        mockMvc.perform(post("/api/usuarios")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalid)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("nombre de usuario es obligatorio")))
+                .andExpect(content().string(not(containsString(PASSWORD))))
+                .andExpect(content().string(not(containsString("$2a$"))));
+    }
+
+    @Test
+    void duplicadoDevuelve409SinReflejarDatosSecretos() throws Exception {
+        when(usuarioService.crearUsuario(any(Usuario.class)))
+                .thenThrow(new UsuarioDuplicadoException("El nombre de usuario ya se encuentra registrado."));
+
+        mockMvc.perform(post("/api/usuarios")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestBody())))
+                .andExpect(status().isConflict())
+                .andExpect(content().string(not(containsString(PASSWORD))))
+                .andExpect(content().string(not(containsString("$2a$"))));
     }
 
     private Map<String, Object> requestBody() {
@@ -99,6 +129,16 @@ class UsuarioControllerTest {
                 "apellido", "De Dominicis",
                 "email", "iris@example.com",
                 "password", PASSWORD,
+                "rol", "ADMIN",
+                "activo", true);
+    }
+
+    private Map<String, Object> updateRequestBody() {
+        return Map.of(
+                "username", "iris",
+                "nombre", "Iris",
+                "apellido", "De Dominicis",
+                "email", "iris@example.com",
                 "rol", "ADMIN",
                 "activo", true);
     }

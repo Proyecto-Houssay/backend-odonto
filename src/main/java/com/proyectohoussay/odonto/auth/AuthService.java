@@ -1,12 +1,22 @@
 package com.proyectohoussay.odonto.auth;
 
+import com.proyectohoussay.odonto.model.Usuario;
+import com.proyectohoussay.odonto.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.Optional;
 
 @Service
 public class AuthService {
 
-    private static final String REGISTERED_USERNAME = "admin";
-    private static final String REGISTERED_PASSWORD = "123456";
+    private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
+        this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     public boolean authenticate(String usernameOrEmail, String password) {
 
@@ -18,12 +28,10 @@ public class AuthService {
             return false;
         }
 
-        boolean userExists = usernameOrEmail.equals(REGISTERED_USERNAME);
-
-        if (!userExists) {
-            return false;
-        }
-
-        return password.equals(REGISTERED_PASSWORD);
+        Optional<Usuario> usuario = usuarioRepository.findByUsernameOrEmail(usernameOrEmail, usernameOrEmail);
+        return usuario
+                .filter(Usuario::isActivo)
+                .map(user -> passwordEncoder.matches(password, user.getPassword()))
+                .orElse(false);
     }
 }

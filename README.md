@@ -58,8 +58,10 @@ El servidor queda disponible en `http://localhost:8080`.
 
 ### Usuarios y autenticación
 
-- `POST /api/usuarios` y `PUT /api/usuarios/{id}` almacenan la contraseña con hash BCrypt. Las respuestas de la API no incluyen la contraseña.
-- `POST /api/auth/login` es una implementación provisional independiente: valida credenciales fijas en `AuthService` y no consulta los usuarios persistidos ni verifica sus hashes BCrypt. No debe considerarse autenticación lista para producción.
+- `POST /api/usuarios` crea usuarios y almacena la contraseña con BCrypt. Las respuestas REST de usuarios no incluyen la contraseña ni su hash.
+- `PUT /api/usuarios/{id}` actualiza los datos de perfil y estado, pero no permite cambiar ni borrar la contraseña. El cambio de contraseña requiere un flujo explícito que todavía no está implementado.
+- `POST /api/auth/login` conserva el payload `usernameOrEmail` y `password`. Busca el usuario persistido por nombre de usuario o email, compara la contraseña recibida con el hash BCrypt y rechaza credenciales incorrectas, cuentas inexistentes e inactivas con el mismo mensaje genérico.
+- El login solo valida credenciales: todavía no emite sesiones ni tokens y la API no aplica autorización por roles ni protección de acceso a los demás endpoints. Por eso, este mecanismo no es suficiente para considerar la autenticación lista para producción.
 
 ### Payload para registrar o actualizar turnos
 

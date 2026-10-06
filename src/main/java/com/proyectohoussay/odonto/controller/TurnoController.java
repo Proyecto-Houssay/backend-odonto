@@ -3,6 +3,7 @@ package com.proyectohoussay.odonto.controller;
 import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.dto.TurnoRequest;
 import com.proyectohoussay.odonto.dto.TurnoResponse;
+import com.proyectohoussay.odonto.exception.TurnoNoEncontradoException;
 import com.proyectohoussay.odonto.service.TurnoService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -26,33 +27,41 @@ public class TurnoController {
     }
 
     @GetMapping
-    public List<Turno> listarTurnos() {
-        return turnoService.listarTurnos();
+    public List<TurnoResponse> listarTurnos() {
+        return turnoService.listarTurnos().stream()
+                .map(turno -> TurnoResponse.de(turno, null))
+                .toList();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> obtenerTurno(@PathVariable Long id) {
         try {
             Turno turno = turnoService.obtenerTurno(id);
-            return ResponseEntity.ok(turno);
-        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(TurnoResponse.de(turno, null));
+        } catch (TurnoNoEncontradoException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
 
     @GetMapping("/fecha/{fecha}")
-    public List<Turno> listarPorFecha(@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
-        return turnoService.listarPorFecha(fecha);
+    public List<TurnoResponse> listarPorFecha(@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        return turnoService.listarPorFecha(fecha).stream()
+                .map(turno -> TurnoResponse.de(turno, null))
+                .toList();
     }
 
     @GetMapping("/odontologo/{odontologoId}")
-    public List<Turno> listarPorOdontologo(@PathVariable Long odontologoId) {
-        return turnoService.listarPorOdontologo(odontologoId);
+    public List<TurnoResponse> listarPorOdontologo(@PathVariable Long odontologoId) {
+        return turnoService.listarPorOdontologo(odontologoId).stream()
+                .map(turno -> TurnoResponse.de(turno, null))
+                .toList();
     }
 
     @GetMapping("/paciente/{pacienteId}")
-    public List<Turno> listarPorPaciente(@PathVariable Long pacienteId) {
-        return turnoService.listarPorPaciente(pacienteId);
+    public List<TurnoResponse> listarPorPaciente(@PathVariable Long pacienteId) {
+        return turnoService.listarPorPaciente(pacienteId).stream()
+                .map(turno -> TurnoResponse.de(turno, null))
+                .toList();
     }
 
     @GetMapping("/disponibilidad")
@@ -81,9 +90,13 @@ public class TurnoController {
     public ResponseEntity<?> actualizarTurno(@PathVariable Long id, @Valid @RequestBody TurnoRequest turno) {
         try {
             Turno actualizado = turnoService.actualizarTurno(id, turno);
-            return ResponseEntity.ok(actualizado);
-        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(TurnoResponse.de(actualizado, "Turno actualizado correctamente"));
+        } catch (TurnoNoEncontradoException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
     }
 
@@ -92,7 +105,7 @@ public class TurnoController {
         try {
             turnoService.cancelarTurno(id);
             return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
+        } catch (TurnoNoEncontradoException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }

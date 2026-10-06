@@ -30,6 +30,7 @@ public class Usuario {
     @Column(nullable = false)
     private String nombre;
 
+    @NotBlank(message = "El apellido es obligatorio.")
     @Size(max = 100)
     @Column(nullable = false, length = 100)
     private String apellido;
