@@ -72,7 +72,7 @@ class TurnoPersistenceIntegrationTest {
     @Test
     void registraTurnoPorApiYPersistePacienteOdontologoFechaHorarioYMotivo() throws Exception {
         Map<String, Object> body = Map.of(
-                "fecha", "2026-10-15",
+                "fecha", LocalDate.now().plusDays(1).toString(),
                 "hora", "10:30:00",
                 "motivo", "Limpieza dental",
                 "pacienteId", paciente.getId(),
@@ -90,7 +90,7 @@ class TurnoPersistenceIntegrationTest {
 
         assertThat(turnoRepository.count()).isEqualTo(1);
         var turnoGuardado = turnoRepository.findAll().get(0);
-        assertThat(turnoGuardado.getFecha()).isEqualTo(LocalDate.of(2026, 10, 15));
+        assertThat(turnoGuardado.getFecha()).isEqualTo(LocalDate.now().plusDays(1));
         assertThat(turnoGuardado.getHora()).hasToString("10:30");
         assertThat(turnoGuardado.getPaciente().getId()).isEqualTo(paciente.getId());
         assertThat(turnoGuardado.getOdontologo().getId()).isEqualTo(odontologo.getId());
@@ -99,7 +99,7 @@ class TurnoPersistenceIntegrationTest {
     @Test
     void noPersisteTurnoConReferenciasInexistentes() throws Exception {
         Map<String, Object> body = Map.of(
-                "fecha", "2026-10-15",
+                "fecha", LocalDate.now().plusDays(1).toString(),
                 "hora", "10:30:00",
                 "motivo", "Limpieza dental",
                 "pacienteId", 99999,
@@ -111,6 +111,42 @@ class TurnoPersistenceIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertThat(turnoRepository.count()).isZero();
+    }
+
+    @Test
+    void rechazaOdontologoInexistente() throws Exception {
+        Map<String, Object> body = Map.of(
+                "fecha", LocalDate.now().plusDays(1).toString(),
+                "hora", "10:30:00",
+                "motivo", "Limpieza dental",
+                "pacienteId", paciente.getId(),
+                "odontologoId", 99999);
+
+        mockMvc.perform(post("/api/turnos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+
+        assertThat(turnoRepository.count()).isZero();
+    }
+
+    @Test
+    void rechazaHorarioOcupadoParaElMismoOdontologo() throws Exception {
+        LocalDate fecha = LocalDate.now().plusDays(1);
+        Map<String, Object> body = Map.of(
+                "fecha", fecha.toString(),
+                "hora", "10:30:00",
+                "motivo", "Limpieza dental",
+                "pacienteId", paciente.getId(),
+                "odontologoId", odontologo.getId());
+        String json = objectMapper.writeValueAsString(body);
+
+        mockMvc.perform(post("/api/turnos").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/turnos").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isConflict());
+
+        assertThat(turnoRepository.count()).isEqualTo(1);
     }
 
     @Test
