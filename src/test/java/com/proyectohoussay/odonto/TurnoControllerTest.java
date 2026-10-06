@@ -67,7 +67,22 @@ public class TurnoControllerTest {
                         .content(jsonBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.motivo").value("Consulta general"));
+                .andExpect(jsonPath("$.motivo").value("Consulta general"))
+                .andExpect(jsonPath("$.mensaje").value("Turno registrado con éxito"));
+    }
+
+    @Test
+    void testCrearTurnoConFechaPasadaReturnsBadRequest() throws Exception {
+        given(turnoService.crearTurno(any(TurnoRequest.class)))
+                .willThrow(new IllegalArgumentException("No se permiten turnos en fechas anteriores a la actual."));
+
+        String jsonBody = "{\"fecha\":\"2020-01-01\",\"hora\":\"09:00:00\",\"motivo\":\"Consulta\",\"estado\":\"PENDIENTE\",\"pacienteId\":1,\"odontologoId\":1}";
+
+        mockMvc.perform(post("/api/turnos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("No se permiten turnos en fechas anteriores a la actual."));
     }
 
     @Test

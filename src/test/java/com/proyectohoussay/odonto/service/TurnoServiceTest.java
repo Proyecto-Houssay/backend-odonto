@@ -84,6 +84,18 @@ class TurnoServiceTest {
         verify(turnoRepository, never()).save(any(Turno.class));
     }
 
+    @Test
+    void rejectsTurnoWhenFechaIsInThePast() {
+        LocalDate fechaPasada = LocalDate.now().minusDays(1);
+        TurnoRequest pastRequest = new TurnoRequest(fechaPasada, HORA, "Urgencia", null, PACIENTE_ID, ODONTOLOGO_ID);
+
+        assertThatThrownBy(() -> turnoService.crearTurno(pastRequest))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("No se permiten turnos en fechas anteriores a la actual.");
+
+        verify(turnoRepository, never()).save(any(Turno.class));
+    }
+
     private TurnoRequest request() {
         return new TurnoRequest(FECHA, HORA, "Consulta general", null, PACIENTE_ID, ODONTOLOGO_ID);
     }

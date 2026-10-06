@@ -98,4 +98,39 @@ class DiagnosticoRepositoryTest {
         assertFalse(historia.getDiagnosticos().isEmpty());
         assertEquals("Periodontitis", historia.getDiagnosticos().get(0).getDescripcion());
     }
+
+    @Test
+    @DisplayName("should verify relationship between Diagnostico and Tratamientos")
+    void shouldVerifyRelationshipWithTratamientos() {
+        HistoriaClinica historia = new HistoriaClinica(
+                LocalDate.now(), 15L, "Control preventivo"
+        );
+        entityManager.persistAndFlush(historia);
+
+        Diagnostico diagnostico = new Diagnostico(
+                LocalDate.now(), "Gingivitis marginal"
+        );
+        historia.agregarDiagnostico(diagnostico);
+        entityManager.persistAndFlush(diagnostico);
+
+        Tratamiento t1 = new Tratamiento(
+                "Tartrectomia", LocalDate.now(), EstadoTratamiento.EN_CURSO
+        );
+        Tratamiento t2 = new Tratamiento(
+                "Instruccion de higiene", LocalDate.now(), EstadoTratamiento.PENDIENTE
+        );
+        diagnostico.agregarTratamiento(t1);
+        diagnostico.agregarTratamiento(t2);
+
+        entityManager.persistAndFlush(t1);
+        entityManager.persistAndFlush(t2);
+        entityManager.clear();
+
+        Diagnostico found = entityManager.find(Diagnostico.class, diagnostico.getId());
+        assertNotNull(found);
+        assertEquals(2, found.getTratamientos().size());
+        assertTrue(found.getTratamientos().stream().anyMatch(t -> t.getDescripcion().equals("Tartrectomia")));
+        assertTrue(found.getTratamientos().stream().anyMatch(t -> t.getEstado() == EstadoTratamiento.EN_CURSO));
+        assertTrue(found.getTratamientos().stream().allMatch(t -> t.getDiagnostico().getId().equals(diagnostico.getId())));
+    }
 }
