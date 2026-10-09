@@ -1,5 +1,6 @@
 package com.proyectohoussay.odonto.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -18,6 +19,12 @@ public class Usuario {
 
     @Column(nullable = false, unique = true)
     private String email;
+
+    @Column(unique = true)
+    private String username;
+
+    @Column(name = "password_hash")
+    private String passwordHash;
 
     private String rol;
     private boolean activo = true;
@@ -64,6 +71,23 @@ public class Usuario {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    @JsonIgnore
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     public String getRol() {

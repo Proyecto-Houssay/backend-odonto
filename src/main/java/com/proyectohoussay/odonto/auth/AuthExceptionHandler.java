@@ -1,0 +1,33 @@
+package com.proyectohoussay.odonto.auth;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+
+import java.util.stream.Collectors;
+
+@RestControllerAdvice(assignableTypes = AuthController.class)
+public class AuthExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<AuthResponse> handleValidation(MethodArgumentNotValidException exception) {
+        String message = exception.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getDefaultMessage())
+                .distinct()
+                .collect(Collectors.joining(". "));
+
+        if (message.isBlank()) {
+            message = "La solicitud contiene campos inválidos.";
+        }
+        return ResponseEntity.badRequest().body(new AuthResponse(message));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<AuthResponse> handleUnreadableBody(HttpMessageNotReadableException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new AuthResponse("El cuerpo de la solicitud es inválido."));
+    }
+}

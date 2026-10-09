@@ -1,7 +1,9 @@
 package com.proyectohoussay.odonto.controller;
 
+import com.proyectohoussay.odonto.dto.UsuarioCreateRequest;
 import com.proyectohoussay.odonto.model.Usuario;
 import com.proyectohoussay.odonto.service.UsuarioService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,12 +32,21 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public ResponseEntity<?> crearUsuario(@RequestBody Usuario usuario) {
+    public ResponseEntity<?> crearUsuario(@Valid @RequestBody UsuarioCreateRequest request) {
         try {
-            Usuario nuevo = usuarioService.crearUsuario(usuario);
+            Usuario usuario = new Usuario();
+            usuario.setNombre(request.nombre().trim());
+            usuario.setApellido(request.apellido().trim());
+            usuario.setEmail(request.email().trim());
+            usuario.setUsername(request.username());
+            usuario.setRol(request.rol());
+            usuario.setActivo(request.activo() == null || request.activo());
+            usuario.setTelefono(request.telefono());
+
+            Usuario nuevo = usuarioService.crearUsuario(usuario, request.password());
             return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
         }
     }
 
