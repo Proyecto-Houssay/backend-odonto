@@ -16,6 +16,8 @@ import java.util.List;
 @Service
 public class TurnoService {
 
+    private static final String FECHA_TURNO_PASADA_MESSAGE = "La fecha del turno no puede ser anterior a la fecha actual.";
+
     private final TurnoRepository turnoRepository;
     private final PacienteRepository pacienteRepository;
     private final OdontologoRepository odontologoRepository;
@@ -54,6 +56,7 @@ public class TurnoService {
     }
 
     public Turno crearTurno(TurnoRequest request) {
+        validarFecha(request.fecha());
         Turno turno = construirTurno(request);
         boolean disponible = comprobarDisponibilidad(turno.getOdontologo().getId(), turno.getFecha(), turno.getHora());
         if (!disponible) {
@@ -89,5 +92,14 @@ public class TurnoService {
                 ? "PENDIENTE"
                 : request.estado();
         return new Turno(request.fecha(), request.hora(), request.motivo(), estado, paciente, odontologo);
+    }
+
+    private void validarFecha(LocalDate fecha) {
+        if (fecha == null) {
+            throw new IllegalArgumentException("La fecha del turno es obligatoria.");
+        }
+        if (fecha.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException(FECHA_TURNO_PASADA_MESSAGE);
+        }
     }
 }

@@ -30,7 +30,7 @@ class TurnoServiceTest {
 
     private static final Long PACIENTE_ID = 10L;
     private static final Long ODONTOLOGO_ID = 20L;
-    private static final LocalDate FECHA = LocalDate.of(2026, 10, 15);
+    private static final LocalDate FECHA = LocalDate.now().plusDays(6);
     private static final LocalTime HORA = LocalTime.of(10, 30);
 
     @Mock
@@ -81,6 +81,20 @@ class TurnoServiceTest {
                 .hasMessage("El odontólogo no tiene disponibilidad en la fecha y hora seleccionadas.");
 
         verify(turnoRepository).existsByOdontologoIdAndFechaAndHora(ODONTOLOGO_ID, FECHA, HORA);
+        verify(turnoRepository, never()).save(any(Turno.class));
+    }
+
+    @Test
+    void rejectsTurnoWhenDateIsInThePast() {
+        TurnoRequest request = new TurnoRequest(
+                LocalDate.now().minusDays(1), HORA, "Consulta general", null, PACIENTE_ID, ODONTOLOGO_ID);
+
+        assertThatThrownBy(() -> turnoService.crearTurno(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("La fecha del turno no puede ser anterior a la fecha actual.");
+
+        verify(pacienteRepository, never()).findById(PACIENTE_ID);
+        verify(odontologoRepository, never()).findById(ODONTOLOGO_ID);
         verify(turnoRepository, never()).save(any(Turno.class));
     }
 

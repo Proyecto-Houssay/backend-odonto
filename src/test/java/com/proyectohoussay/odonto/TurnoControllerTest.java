@@ -42,12 +42,13 @@ public class TurnoControllerTest {
 
     @Test
     void testComprobarDisponibilidadReturnsTrue() throws Exception {
-        given(turnoService.comprobarDisponibilidad(1L, LocalDate.of(2026, 10, 1), LocalTime.of(9, 0)))
+        LocalDate fecha = LocalDate.now().plusDays(1);
+        given(turnoService.comprobarDisponibilidad(1L, fecha, LocalTime.of(9, 0)))
                 .willReturn(true);
 
         mockMvc.perform(get("/api/turnos/disponibilidad")
                         .param("odontologoId", "1")
-                        .param("fecha", "2026-10-01")
+                        .param("fecha", fecha.toString())
                         .param("hora", "09:00:00"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("true"));
@@ -55,12 +56,22 @@ public class TurnoControllerTest {
 
     @Test
     void testCrearTurnoReturns21Created() throws Exception {
-        Turno turnoGuardado = new Turno(LocalDate.of(2026, 10, 1), LocalTime.of(9, 0), "Consulta general", "PENDIENTE", null, null);
+        LocalDate fecha = LocalDate.now().plusDays(1);
+        Turno turnoGuardado = new Turno(fecha, LocalTime.of(9, 0), "Consulta general", "PENDIENTE", null, null);
         turnoGuardado.setId(1L);
 
         given(turnoService.crearTurno(any(TurnoRequest.class))).willReturn(turnoGuardado);
 
-        String jsonBody = "{\"fecha\":\"2026-10-01\",\"hora\":\"09:00:00\",\"motivo\":\"Consulta general\",\"estado\":\"PENDIENTE\",\"pacienteId\":1,\"odontologoId\":1}";
+        String jsonBody = """
+                {
+                  "fecha": "%s",
+                  "hora": "09:00:00",
+                  "motivo": "Consulta general",
+                  "estado": "PENDIENTE",
+                  "pacienteId": 1,
+                  "odontologoId": 1
+                }
+                """.formatted(fecha);
 
         mockMvc.perform(post("/api/turnos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -68,6 +79,53 @@ public class TurnoControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.motivo").value("Consulta general"));
+    }
+
+    @Test
+    void testCrearTurnoConFechaPasadaReturnsBadRequest() throws Exception {
+        String fechaPasada = LocalDate.now().minusDays(1).toString();
+        String jsonBody = """
+                {
+                  "fecha": "%s",
+                  "hora": "09:00:00",
+                  "motivo": "Consulta general",
+                  "pacienteId": 1,
+                  "odontologoId": 1
+                }
+                """.formatted(fechaPasada);
+
+        mockMvc.perform(post("/api/turnos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("La fecha del turno no puede ser anterior a la fecha actual."));
+
+        verify(turnoService, never()).crearTurno(any(TurnoRequest.class));
+    }
+
+    @Test
+    void testCrearTurnoAceptaFechaActual() throws Exception {
+        LocalDate fecha = LocalDate.now();
+        Turno turnoGuardado = new Turno(fecha, LocalTime.of(9, 0), "Consulta general", "PENDIENTE", null, null);
+        turnoGuardado.setId(1L);
+        given(turnoService.crearTurno(any(TurnoRequest.class))).willReturn(turnoGuardado);
+
+        String jsonBody = """
+                {
+                  "fecha": "%s",
+                  "hora": "09:00:00",
+                  "motivo": "Consulta general",
+                  "pacienteId": 1,
+                  "odontologoId": 1
+                }
+                """.formatted(fecha);
+
+        mockMvc.perform(post("/api/turnos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonBody))
+                .andExpect(status().isCreated());
+
+        verify(turnoService).crearTurno(any(TurnoRequest.class));
     }
 
     @Test

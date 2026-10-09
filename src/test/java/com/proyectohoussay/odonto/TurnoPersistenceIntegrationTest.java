@@ -21,6 +21,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -71,8 +72,9 @@ class TurnoPersistenceIntegrationTest {
 
     @Test
     void registraTurnoPorApiYPersistePacienteOdontologoFechaHorarioYMotivo() throws Exception {
+        LocalDate fechaTurno = LocalDate.now().plusDays(6);
         Map<String, Object> body = Map.of(
-                "fecha", "2026-10-15",
+                "fecha", fechaTurno.toString(),
                 "hora", "10:30:00",
                 "motivo", "Limpieza dental",
                 "pacienteId", paciente.getId(),
@@ -89,7 +91,7 @@ class TurnoPersistenceIntegrationTest {
 
         assertThat(turnoRepository.count()).isEqualTo(1);
         var turnoGuardado = turnoRepository.findAll().get(0);
-        assertThat(turnoGuardado.getFecha()).isEqualTo(LocalDate.of(2026, 10, 15));
+        assertThat(turnoGuardado.getFecha()).isEqualTo(fechaTurno);
         assertThat(turnoGuardado.getHora()).hasToString("10:30");
         assertThat(turnoGuardado.getPaciente().getId()).isEqualTo(paciente.getId());
         assertThat(turnoGuardado.getOdontologo().getId()).isEqualTo(odontologo.getId());
@@ -108,6 +110,24 @@ class TurnoPersistenceIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest());
+
+        assertThat(turnoRepository.count()).isZero();
+    }
+
+    @Test
+    void rechazaFechaPasadaSinPersistirElTurno() throws Exception {
+        Map<String, Object> body = Map.of(
+                "fecha", LocalDate.now().minusDays(1).toString(),
+                "hora", "10:30:00",
+                "motivo", "Limpieza dental",
+                "pacienteId", paciente.getId(),
+                "odontologoId", odontologo.getId());
+
+        mockMvc.perform(post("/api/turnos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("La fecha del turno no puede ser anterior a la fecha actual."));
 
         assertThat(turnoRepository.count()).isZero();
     }

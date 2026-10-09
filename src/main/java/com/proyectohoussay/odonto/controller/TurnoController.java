@@ -7,6 +7,8 @@ import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -22,6 +24,17 @@ public class TurnoController {
 
     public TurnoController(TurnoService turnoService) {
         this.turnoService = turnoService;
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<String> handleValidationException(MethodArgumentNotValidException exception) {
+        String message = exception.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getDefaultMessage())
+                .filter(errorMessage -> errorMessage != null && !errorMessage.isBlank())
+                .findFirst()
+                .orElse("Los datos del turno no son válidos");
+
+        return ResponseEntity.badRequest().body(message);
     }
 
     @GetMapping
