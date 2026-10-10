@@ -1,6 +1,7 @@
 package com.proyectohoussay.odonto.report;
 
 import com.proyectohoussay.odonto.dto.InventarioItemDto;
+import com.proyectohoussay.odonto.dto.AtencionesReportDto;
 import com.proyectohoussay.odonto.service.ReportService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,8 +10,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.mockito.Mockito.when;
@@ -56,13 +59,14 @@ class ReportControllerTest {
 
     @Test
     void obtenerReporteAtencionesRetornaDetalle() throws Exception {
-        Map<String, Object> mockReporte = new HashMap<>();
-        mockReporte.put("tipo", "Reporte de Atenciones");
-        mockReporte.put("totalAtenciones", 10);
+        LocalDate desde = LocalDate.of(2026, 4, 1);
+        LocalDate hasta = LocalDate.of(2026, 4, 30);
+        when(reportService.obtenerReporteAtenciones(desde, hasta))
+                .thenReturn(new AtencionesReportDto("Reporte de Atenciones", desde, hasta, 10, List.of()));
 
-        when(reportService.obtenerReporteAtenciones()).thenReturn(mockReporte);
-
-        mockMvc.perform(get("/api/reports/atenciones"))
+        mockMvc.perform(get("/api/reports/atenciones")
+                        .param("desde", desde.toString())
+                        .param("hasta", hasta.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tipo").value("Reporte de Atenciones"))
                 .andExpect(jsonPath("$.totalAtenciones").value(10));

@@ -53,7 +53,8 @@ El servidor queda disponible en `http://localhost:8080`.
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
 | **Usuarios** | `GET /api/usuarios`, `GET /api/usuarios/{id}`, `POST /api/usuarios`, `PUT /api/usuarios/{id}`, `DELETE /api/usuarios/{id}` | Gestión de cuentas de usuario. |
 | **Autenticación** | `POST /api/auth/login` | Autentica credenciales persistidas y devuelve un JWT Bearer de 15 minutos. |
-| **Informes** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones` | Resumen e informes de inventario persistido y atenciones. |
+| **Informes e inventario** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones`, `GET /api/reports/ganancias`, `GET /api/reports/cobros`, `GET /api/reports/anual` | Resumen y reportes con datos persistidos. Todas las rutas requieren `ADMINISTRADOR`. |
+| **Pagos** | `POST /api/pagos` | Registro mínimo de un pago para alimentar informes; requiere `ADMINISTRADOR`. No implementa edición, eliminación ni relaciones con pacientes/tratamientos. |
 
 > `DELETE /api/turnos/{id}` cancela el turno modificando su estado a `CANCELADO`; no elimina el registro de la base de datos.
 
@@ -73,6 +74,43 @@ El servidor queda disponible en `http://localhost:8080`.
 | `RECEPCIONISTA` | Acceso a pacientes y turnos; lectura de odontólogos y especialidades. Sin acceso a historias clínicas, usuarios, roles, informes o administración. |
 
 `POST /api/auth/login` y `GET /api/health` son públicos. Todos los demás endpoints requieren autenticación y se autorizan según la matriz. Las rutas clínicas todavía no tienen controladores REST implementados; sus patrones ya están reservados para el rol odontólogo y administrador.
+
+### Informes, inventario y pagos
+
+Todas las rutas `/api/reports/**` y `POST /api/pagos` requieren un JWT válido con rol `ADMINISTRADOR`. Sin token (o con token inválido/expirado), la respuesta es HTTP `401`; con otro rol autenticado, HTTP `403`.
+
+| Método y ruta | Parámetros / request | DTO de respuesta y comportamiento |
+|---|---|---|
+| `GET /api/reports` | Ninguno | Resumen `Map`: `modulo`, `estado`, `totalAtencionesRegistradas`, `totalItemsInventario` y `reportesDisponibles`. Solo enumera reportes con endpoint implementado. |
+| `GET /api/reports/inventario` | Ninguno | Lista `InventarioItemDto`: `id`, `nombre`, `categoria`, `cantidadDisponible`, `unidadMedida`, `estado`. |
+| `POST /api/reports/inventario` | `InsumoRequest`: `nombre`, `categoria`, `cantidadDisponible`, `unidadMedida`, `stockMinimo` | HTTP `201` y un `InventarioItemDto`. |
+| `PUT /api/reports/inventario/{id}` | `id` en la ruta y `InsumoRequest` en el body | HTTP `200` y un `InventarioItemDto`; si el insumo no existe, HTTP `404`. |
+| `GET /api/reports/atenciones?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | `AtencionesReportDto`: `tipo`, `desde`, `hasta`, `totalAtenciones`, `detalle`. El detalle contiene turno, fecha/hora, paciente, odontólogo, motivo y estado. Solo cuenta turnos `ATENDIDO` de hoy o anteriores; nunca cuenta fechas futuras, aunque el turno esté marcado como atendido. |
+| `GET /api/reports/ganancias?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | `GananciasReportDto`: `desde`, `hasta`, `totalIngresosBrutos`, `cantidadCobros`. “Ganancias” significa **ingresos brutos cobrados**, no utilidad neta: no hay datos de costos. Solo suma pagos `COBRADO` con fecha no futura. |
+| `GET /api/reports/cobros?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | `CobrosReportDto`: `desde`, `hasta`, `totalCobrado`, `cantidadCobros`, `cobros`. Cada elemento es `PagoResponse` (`id`, `monto`, `fecha`, `estado`, `metodo`). Solo devuelve pagos `COBRADO` no futuros. |
+| `GET /api/reports/anual?anio=YYYY` | Año calendario obligatorio (entre 1 y 9999) | `AnualReportDto`: `anio`, `totalAtenciones`, `totalCobrado`, `cantidadCobros`, `meses`. Incluye los 12 meses calendario; cada `MesAnualReportDto` contiene `mes`, `nombre`, `totalAtenciones`, `totalCobrado`, `cantidadCobros`. Atenciones/pagos futuros no se suman, incluso si existieran registros inconsistentes. |
+| `POST /api/pagos` | `PagoRequest`: `monto`, `fecha` (`YYYY-MM-DD`), `estado` (`COBRADO`, `PENDIENTE` o `ANULADO`), `metodo` | HTTP `201` y `PagoResponse`. `monto` debe ser positivo, con hasta 10 dígitos enteros y 2 decimales; `metodo` es obligatorio y admite hasta 40 caracteres. Un pago `COBRADO` no puede tener fecha futura; `PENDIENTE` puede tenerla. |
+
+Para los informes por rango, `desde` debe ser anterior o igual a `hasta`. Fechas faltantes, fechas ISO inválidas, rangos invertidos, año fuera del rango, payloads que no cumplen las validaciones y un pago cobrado futuro producen HTTP `400`. La aplicación no define aquí un esquema estable propio para el body de error; se conserva el manejo HTTP/Spring actual. Una escritura exitosa retorna `201`; lecturas y actualización de inventario exitosa retornan `200`.
+
+Ejemplo de registro de pago:
+
+```http
+POST /api/pagos
+Authorization: Bearer <token-de-administrador>
+Content-Type: application/json
+```
+
+```json
+{
+  "monto": 1250.50,
+  "fecha": "2025-06-10",
+  "estado": "COBRADO",
+  "metodo": "EFECTIVO"
+}
+```
+
+La entidad `Pago` es la fuente persistida para los informes de cobros/ingresos. La configuración actual usa H2 **en memoria**, por lo que los pagos registrados se reinician al cerrar la aplicación; no implica almacenamiento durable entre ejecuciones.
 
 #### Configuración de JWT
 

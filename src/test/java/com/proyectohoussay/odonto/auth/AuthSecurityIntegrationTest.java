@@ -152,6 +152,62 @@ class AuthSecurityIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void onlyAdministratorCanAccessReportEndpointsAndRegisterPayments() throws Exception {
+        String resumen = "/api/reports";
+        String inventario = "/api/reports/inventario";
+        String atenciones = "/api/reports/atenciones?desde=2026-04-01&hasta=2026-04-30";
+        String ganancias = "/api/reports/ganancias?desde=2026-04-01&hasta=2026-04-30";
+        String cobros = "/api/reports/cobros?desde=2026-04-01&hasta=2026-04-30";
+        String anual = "/api/reports/anual?anio=2026";
+
+        mockMvc.perform(get(resumen)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get(inventario)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get(atenciones)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get(ganancias)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get(cobros)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get(anual)).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/pagos").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnauthorized());
+
+        String administratorToken = loginAndGetToken("admin");
+        mockMvc.perform(get(resumen).header("Authorization", bearer(administratorToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(inventario).header("Authorization", bearer(administratorToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(atenciones).header("Authorization", bearer(administratorToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(ganancias).header("Authorization", bearer(administratorToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(cobros).header("Authorization", bearer(administratorToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(anual).header("Authorization", bearer(administratorToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/pagos")
+                        .header("Authorization", bearer(administratorToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"monto": 25.00, "fecha": "2026-04-15", "estado": "COBRADO", "metodo": "EFECTIVO"}
+                                """))
+                .andExpect(status().isCreated());
+
+        String dentistToken = loginAndGetToken("dentist");
+        String receptionistToken = loginAndGetToken("reception");
+        for (String uri : new String[]{resumen, inventario, atenciones, ganancias, cobros, anual}) {
+            mockMvc.perform(get(uri).header("Authorization", bearer(dentistToken)))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(get(uri).header("Authorization", bearer(receptionistToken)))
+                    .andExpect(status().isForbidden());
+        }
+        for (String token : new String[]{dentistToken, receptionistToken}) {
+            mockMvc.perform(post("/api/pagos")
+                            .header("Authorization", bearer(token))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
     private void saveUser(String username, String email, String role, boolean active) {
         Usuario user = new Usuario(username, username, "Test", email,
                 passwordEncoder.encode(PASSWORD), role, active);

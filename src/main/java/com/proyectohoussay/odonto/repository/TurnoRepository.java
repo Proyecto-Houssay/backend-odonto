@@ -21,6 +21,13 @@ public interface TurnoRepository extends JpaRepository<Turno, Long> {
 
     List<Turno> findByFechaAndOdontologoId(LocalDate fecha, Long odontologoId);
 
+    List<Turno> findByFechaBetweenAndEstadoIgnoreCaseOrderByFechaAscHoraAsc(
+            LocalDate desde, LocalDate hasta, String estado);
+
+    long countByEstadoIgnoreCase(String estado);
+
+    long countByFechaLessThanEqualAndEstadoIgnoreCase(LocalDate fecha, String estado);
+
     @Query("""
             select case when count(t) > 0 then true else false end
             from Turno t

@@ -70,7 +70,8 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/login", "/api/health").permitAll()
-                        .requestMatchers("/api/usuarios/**", "/api/reports/**").hasRole(UserRole.ADMINISTRADOR.name())
+                        .requestMatchers("/api/usuarios/**", "/api/reports/**", "/api/pagos", "/api/pagos/**")
+                        .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers(HttpMethod.GET, "/api/odontologos/**", "/api/especialidades/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/api/odontologos/**", "/api/especialidades/**")
