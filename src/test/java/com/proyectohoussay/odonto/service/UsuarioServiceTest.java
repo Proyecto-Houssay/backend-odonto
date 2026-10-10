@@ -33,7 +33,7 @@ class UsuarioServiceTest {
     @Test
     void rejectsDuplicateUsernameBeforeSaving() {
         Usuario newUser = usuario("iris", "iris@example.com", "password");
-        when(usuarioRepository.existsByUsername("iris")).thenReturn(true);
+        when(usuarioRepository.existsByUsernameIgnoreCase("iris")).thenReturn(true);
 
         assertThatThrownBy(() -> usuarioService.crearUsuario(newUser))
                 .isInstanceOf(UsuarioDuplicadoException.class)
@@ -45,8 +45,8 @@ class UsuarioServiceTest {
     @Test
     void rejectsDuplicateEmailBeforeSaving() {
         Usuario newUser = usuario("iris", "iris@example.com", "password");
-        when(usuarioRepository.existsByUsername("iris")).thenReturn(false);
-        when(usuarioRepository.existsByEmail("iris@example.com")).thenReturn(true);
+        when(usuarioRepository.existsByUsernameIgnoreCase("iris")).thenReturn(false);
+        when(usuarioRepository.existsByEmailIgnoreCase("iris@example.com")).thenReturn(true);
 
         assertThatThrownBy(() -> usuarioService.crearUsuario(newUser))
                 .isInstanceOf(UsuarioDuplicadoException.class)
@@ -60,12 +60,12 @@ class UsuarioServiceTest {
         Usuario current = usuario("iris", "iris@example.com", STORED_HASH);
         current.setId(7L);
         when(usuarioRepository.findById(7L)).thenReturn(Optional.of(current));
-        when(usuarioRepository.existsByUsernameAndIdNot("iris_updated", 7L)).thenReturn(false);
-        when(usuarioRepository.existsByEmailAndIdNot("updated@example.com", 7L)).thenReturn(false);
+        when(usuarioRepository.existsByUsernameIgnoreCaseAndIdNot("iris_updated", 7L)).thenReturn(false);
+        when(usuarioRepository.existsByEmailIgnoreCaseAndIdNot("updated@example.com", 7L)).thenReturn(false);
         when(usuarioRepository.save(current)).thenReturn(current);
 
         UsuarioUpdateRequest request = new UsuarioUpdateRequest(
-                "iris_updated", "Iris", "De Dominicis", "updated@example.com", "ADMIN", true, null);
+                "iris_updated", "Iris", "De Dominicis", "updated@example.com", "ADMINISTRADOR", true, null);
         Usuario updated = usuarioService.actualizarUsuario(7L, request);
 
         assertThat(updated.getPassword()).isEqualTo(STORED_HASH);
@@ -77,10 +77,10 @@ class UsuarioServiceTest {
         Usuario current = usuario("iris", "iris@example.com", STORED_HASH);
         current.setId(7L);
         when(usuarioRepository.findById(7L)).thenReturn(Optional.of(current));
-        when(usuarioRepository.existsByUsernameAndIdNot("taken", 7L)).thenReturn(true);
+        when(usuarioRepository.existsByUsernameIgnoreCaseAndIdNot("taken", 7L)).thenReturn(true);
 
         UsuarioUpdateRequest request = new UsuarioUpdateRequest(
-                "taken", "Iris", "De Dominicis", "iris@example.com", "ADMIN", true, null);
+                "taken", "Iris", "De Dominicis", "iris@example.com", "ADMINISTRADOR", true, null);
 
         assertThatThrownBy(() -> usuarioService.actualizarUsuario(7L, request))
                 .isInstanceOf(UsuarioDuplicadoException.class);
@@ -88,6 +88,6 @@ class UsuarioServiceTest {
     }
 
     private Usuario usuario(String username, String email, String password) {
-        return new Usuario(username, "Iris", "De Dominicis", email, password, "ADMIN", true);
+        return new Usuario(username, "Iris", "De Dominicis", email, password, "ADMINISTRADOR", true);
     }
 }

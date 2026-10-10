@@ -5,10 +5,13 @@ import com.proyectohoussay.odonto.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 @Service
 public class AuthService {
+
+    private static final int MAX_BCRYPT_PASSWORD_BYTES = 72;
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
@@ -18,20 +21,28 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public boolean authenticate(String usernameOrEmail, String password) {
-
-        if (usernameOrEmail == null || usernameOrEmail.isBlank()) {
-            return false;
+    public Optional<Usuario> authenticate(String usernameOrEmail, String password) {
+        if (usernameOrEmail == null || usernameOrEmail.isBlank()
+                || password == null || password.isBlank()
+                || password.getBytes(StandardCharsets.UTF_8).length > MAX_BCRYPT_PASSWORD_BYTES) {
+            return Optional.empty();
         }
 
-        if (password == null || password.isBlank()) {
-            return false;
-        }
-
-        Optional<Usuario> usuario = usuarioRepository.findByUsernameOrEmail(usernameOrEmail, usernameOrEmail);
-        return usuario
+        String identifier = usernameOrEmail.trim();
+        return usuarioRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(identifier, identifier)
                 .filter(Usuario::isActivo)
-                .map(user -> passwordEncoder.matches(password, user.getPassword()))
-                .orElse(false);
+                .filter(user -> UserRole.from(user.getRol()).isPresent())
+                .filter(user -> matches(password, user.getPassword()));
+    }
+
+    private boolean matches(String rawPassword, String encodedPassword) {
+        if (encodedPassword == null || encodedPassword.isBlank()) {
+            return false;
+        }
+        try {
+            return passwordEncoder.matches(rawPassword, encodedPassword);
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
     }
 }

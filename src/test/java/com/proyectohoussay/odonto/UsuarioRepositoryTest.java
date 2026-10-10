@@ -25,7 +25,7 @@ public class UsuarioRepositoryTest {
     @Test
     void testGuardarYBuscarUsuarioPorEmailYNombre() {
         Usuario usuario = new Usuario("maria_g", "Maria", "Gonzalez", "maria.gonzalez@example.com",
-                "UnaClaveSegura123!", "PACIENTE", true);
+                "UnaClaveSegura123!", "RECEPCIONISTA", true);
         usuarioRepository.save(usuario);
 
         Optional<Usuario> porEmail = usuarioRepository.findByEmail("maria.gonzalez@example.com");
@@ -43,7 +43,7 @@ public class UsuarioRepositoryTest {
     @Test
     void testGuardarYBuscarUsuarioPorUsernameYPassword() throws Exception {
         Usuario usuario = new Usuario("iris_admin", "Iris", "De Dominicis", "iris.dedominicis@example.com",
-                "PasswordSegura123!", "ADMIN", true);
+                "PasswordSegura123!", "ADMINISTRADOR", true);
         usuarioRepository.save(usuario);
 
         Optional<Usuario> porUsername = usuarioRepository.findByUsername("iris_admin");
@@ -51,7 +51,7 @@ public class UsuarioRepositoryTest {
         assertThat(porUsername.get().getUsername()).isEqualTo("iris_admin");
         assertThat(passwordEncoder.matches("PasswordSegura123!", porUsername.get().getPassword())).isTrue();
         assertThat(new ObjectMapper().writeValueAsString(porUsername.get())).doesNotContain("password");
-        assertThat(porUsername.get().getRol()).isEqualTo("ADMIN");
+        assertThat(porUsername.get().getRol()).isEqualTo("ADMINISTRADOR");
         assertThat(porUsername.get().getEmail()).isEqualTo("iris.dedominicis@example.com");
 
         boolean existeUsername = usuarioRepository.existsByUsername("iris_admin");
@@ -83,6 +83,6 @@ public class UsuarioRepositoryTest {
     }
 
     private Usuario usuario(String username, String email) {
-        return new Usuario(username, "Iris", "De Dominicis", email, "PasswordSegura123!", "ADMIN", true);
+        return new Usuario(username, "Iris", "De Dominicis", email, "PasswordSegura123!", "ADMINISTRADOR", true);
     }
 }

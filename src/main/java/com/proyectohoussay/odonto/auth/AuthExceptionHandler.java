@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 public class AuthExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<AuthResponse> handleValidation(MethodArgumentNotValidException exception) {
+    public ResponseEntity<AuthErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
         String message = exception.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getDefaultMessage())
                 .distinct()
@@ -22,12 +22,12 @@ public class AuthExceptionHandler {
         if (message.isBlank()) {
             message = "La solicitud contiene campos inválidos.";
         }
-        return ResponseEntity.badRequest().body(new AuthResponse(message));
+        return ResponseEntity.badRequest().body(new AuthErrorResponse(message));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<AuthResponse> handleUnreadableBody(HttpMessageNotReadableException exception) {
+    public ResponseEntity<AuthErrorResponse> handleUnreadableBody(HttpMessageNotReadableException exception) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new AuthResponse("El cuerpo de la solicitud es inválido."));
+                .body(new AuthErrorResponse("El cuerpo de la solicitud es inválido."));
     }
 }

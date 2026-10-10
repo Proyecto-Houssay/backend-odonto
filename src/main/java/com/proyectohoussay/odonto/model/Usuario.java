@@ -48,6 +48,7 @@ public class Usuario {
 
     @NotBlank(message = "El rol es obligatorio.")
     @Size(max = 30)
+    @jakarta.validation.constraints.Pattern(regexp = "(?i)ADMINISTRADOR|ODONTOLOGO|RECEPCIONISTA", message = "El rol no es válido.")
     @Column(nullable = false, length = 30)
     private String rol;
     private boolean activo = true;

@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 
 /** Update profile payload. Password changes are deliberately not supported here. */
 public record UsuarioUpdateRequest(
@@ -22,6 +23,7 @@ public record UsuarioUpdateRequest(
         String email,
         @NotBlank(message = "El rol es obligatorio.")
         @Size(max = 30)
+        @Pattern(regexp = "(?i)ADMINISTRADOR|ODONTOLOGO|RECEPCIONISTA", message = "El rol no es válido.")
         String rol,
         @NotNull(message = "El estado activo es obligatorio.")
         Boolean activo,

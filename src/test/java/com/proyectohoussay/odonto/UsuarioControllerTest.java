@@ -42,7 +42,7 @@ class UsuarioControllerTest {
         usuarioService = mock(UsuarioService.class);
         mockMvc = MockMvcBuilders.standaloneSetup(new UsuarioController(usuarioService)).build();
         objectMapper = new ObjectMapper();
-        usuario = new Usuario("iris", "Iris", "De Dominicis", "iris@example.com", PASSWORD, "ADMIN", true);
+        usuario = new Usuario("iris", "Iris", "De Dominicis", "iris@example.com", PASSWORD, "ADMINISTRADOR", true);
         usuario.setId(7L);
     }
 
@@ -129,7 +129,7 @@ class UsuarioControllerTest {
                 "apellido", "De Dominicis",
                 "email", "iris@example.com",
                 "password", PASSWORD,
-                "rol", "ADMIN",
+                "rol", "ADMINISTRADOR",
                 "activo", true);
     }
 
@@ -139,7 +139,7 @@ class UsuarioControllerTest {
                 "nombre", "Iris",
                 "apellido", "De Dominicis",
                 "email", "iris@example.com",
-                "rol", "ADMIN",
+                "rol", "ADMINISTRADOR",
                 "activo", true);
     }
 }
