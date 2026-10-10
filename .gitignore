@@ -33,3 +33,6 @@ build/
 .vscode/
 # Local IDE compilation output; keep generated classes out of version control.
 /bin/
+
+# Local demo credentials; use .env.example as a template.
+.env

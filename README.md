@@ -1,6 +1,6 @@
 # Novadent — Backend
 
-API REST para la gestión de un consultorio odontológico. El backend utiliza Java 17, Spring Boot 3.5.6, Spring Web, Bean Validation, Spring Data JPA y base de datos H2 en memoria.
+API REST para la gestión de un consultorio odontológico. El backend utiliza Java 17, Spring Boot 3.5.6, Spring Web, Bean Validation y Spring Data JPA. MySQL es la base predeterminada de la aplicación; H2 en memoria se reserva para pruebas automatizadas.
 
 ## Stack tecnológico
 
@@ -10,7 +10,8 @@ API REST para la gestión de un consultorio odontológico. El backend utiliza Ja
 - **Seguridad:** Spring Security OAuth2 Resource Server y JWT HS256
 - **Persistencia:** Spring Data JPA / Hibernate
 - **Validaciones:** Jakarta Bean Validation
-- **Base de datos (configuración actual):** H2 en memoria (`jdbc:h2:mem:odontodb`). No hay perfiles ni una base de datos de producción configurados todavía.
+- **Base predeterminada de la aplicación:** MySQL 8.4 con Connector/J. Docker Compose guarda sus datos en un volumen local nombrado.
+- **Base de pruebas:** H2 en memoria (`jdbc:h2:mem:odontodb`), aislada del MySQL local.
 - **Build tool:** Maven Wrapper (`mvnw` / `mvnw.cmd`)
 
 ## Ejecución y pruebas
@@ -22,9 +23,6 @@ Se requiere JDK 17 configurado en el entorno. El Maven Wrapper evita instalar Ma
 ```powershell
 # Ejecutar todas las pruebas unitarias y de integración
 .\mvnw.cmd clean test
-
-# Iniciar el servidor de desarrollo
-.\mvnw.cmd spring-boot:run
 ```
 
 ### En macOS / Linux (Bash)
@@ -32,14 +30,38 @@ Se requiere JDK 17 configurado en el entorno. El Maven Wrapper evita instalar Ma
 ```bash
 # Ejecutar todas las pruebas unitarias y de integración
 ./mvnw clean test
-
-# Iniciar el servidor de desarrollo
-./mvnw spring-boot:run
 ```
 
 El servidor queda disponible en `http://localhost:8080`.
 - Verificación técnica: `GET http://localhost:8080/api/health`
-- Consola de base de datos H2: `http://localhost:8080/h2-console`
+
+### Iniciar la aplicación (MySQL predeterminada)
+
+La aplicación usa MySQL de manera predeterminada y necesita Docker para iniciar la base local. Las pruebas automatizadas usan H2 y no requieren un servidor MySQL.
+
+#### Windows (PowerShell)
+
+```powershell
+Copy-Item .env.example .env
+docker compose up -d
+docker compose ps
+cmd /c mvnw.cmd spring-boot:run
+```
+
+#### macOS / Linux (Bash)
+
+```bash
+cp .env.example .env
+docker compose up -d
+docker compose ps
+./mvnw spring-boot:run
+```
+
+Ejecutá los comandos desde la raíz del repositorio. Esperá a que el servicio MySQL figure como `healthy` antes de iniciar Spring Boot. El archivo `.env` contiene credenciales locales y se ignora en Git; `.env.example` solo tiene valores de demostración, reemplazalos si otras personas pueden acceder a tu equipo. Spring Boot importa el `.env` local al iniciar y también acepta las mismas variables desde el entorno.
+
+El usuario `novadent_app` se limita a la base configurada en `MYSQL_DATABASE`; la aplicación no se conecta como `root`. MySQL escucha únicamente en `127.0.0.1`. El esquema se actualiza con Hibernate (`ddl-auto=update`), sin migraciones versionadas, por lo que esta configuración es para desarrollo/demo y no para producción.
+
+Para detener el contenedor sin borrar los datos, ejecutá `docker compose down`. **`docker compose down -v` elimina el volumen y borra permanentemente los datos de demo.** Para iniciar otra vez, repetí `docker compose up -d` y luego inicia la aplicación con el comando indicado arriba.
 
 ## API disponible
 
@@ -110,13 +132,13 @@ Content-Type: application/json
 }
 ```
 
-La entidad `Pago` es la fuente persistida para los informes de cobros/ingresos. La configuración actual usa H2 **en memoria**, por lo que los pagos registrados se reinician al cerrar la aplicación; no implica almacenamiento durable entre ejecuciones.
+La entidad `Pago` es la fuente persistida para los informes de cobros/ingresos. La aplicación usa MySQL y conserva los pagos al reiniciar gracias al volumen Docker `mysql_data`. H2 **en memoria** se usa solo en pruebas y no comparte ni modifica los datos de la aplicación local.
 
 #### Configuración de JWT
 
-La aplicación requiere la variable `JWT_SECRET_BASE64` en cada entorno. Debe ser Base64 válido que decodifique a **32 bytes como mínimo**; no hay una clave predeterminada ni una clave de producción en el repositorio. Conservá la misma clave entre reinicios y no la subas a Git.
+La aplicación requiere la variable `JWT_SECRET_BASE64`. El `.env.example` trae una clave conocida únicamente para la demo local; reemplazala por una clave privada antes de compartir el entorno. La clave debe ser Base64 válido que decodifique a **32 bytes como mínimo**. El `.env` real se ignora en Git: no guardes ahí una clave de producción ni la subas al repositorio. Conservá la misma clave entre reinicios para no invalidar los tokens emitidos.
 
-PowerShell (clave temporal para la sesión; guardá el valor en un gestor seguro si necesitás persistirlo):
+PowerShell (genera una clave para la sesión; guardá el valor en un gestor seguro si necesitás persistirlo):
 
 ```powershell
 $secretBytes = New-Object byte[] 32
@@ -139,7 +161,7 @@ Si regenerás la clave, los tokens ya emitidos dejan de ser válidos. Los tokens
 
 El primer administrador se crea solo al habilitar explícitamente el perfil `bootstrap-admin`, y únicamente si todavía no existe ningún `ADMINISTRADOR`. El perfil exige `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_EMAIL` y `BOOTSTRAP_ADMIN_PASSWORD`; nunca se habilita registro anónimo. Después de iniciar la aplicación y comprobar el alta, desactivá el perfil y quitá esas tres variables. No guardes la contraseña de bootstrap en el repositorio ni en el historial de comandos.
 
-PowerShell (misma sesión donde configuraste `JWT_SECRET_BASE64`):
+PowerShell (ejecutá desde la raíz del repositorio, con `.env` preparado y MySQL iniciado):
 
 ```powershell
 $env:SPRING_PROFILES_ACTIVE = "bootstrap-admin"
