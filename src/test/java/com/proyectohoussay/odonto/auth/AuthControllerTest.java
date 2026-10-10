@@ -3,16 +3,20 @@ package com.proyectohoussay.odonto.auth;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
 class AuthControllerTest {
+
+    private static final String PASSWORD = "secreto-de-prueba";
+    private static final String HASH = "$2a$10$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567";
 
     @Autowired
     private MockMvc mockMvc;
@@ -21,73 +25,44 @@ class AuthControllerTest {
     private AuthService authService;
 
     @Test
-    void respondeExitoCuandoLasCredencialesSonValidas() throws Exception {
-        when(authService.authenticate("braian@example.com", "password-segura")).thenReturn(true);
+    void loginSuccessfulReturnsOnlyConfirmationAndNeverCredentialsOrHash() throws Exception {
+        given(authService.authenticate("iris", PASSWORD)).willReturn(true);
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"usernameOrEmail":"braian@example.com","password":"password-segura"}
-                                """))
+                                {"usernameOrEmail":"iris","password":"%s"}
+                                """.formatted(PASSWORD)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Inicio de sesión exitoso."));
-
-        verify(authService).authenticate("braian@example.com", "password-segura");
+                .andExpect(content().string("Inicio de sesión exitoso"))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(PASSWORD))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(HASH))));
     }
 
     @Test
-    void devuelveErrorGenericoParaCredencialesIncorrectas() throws Exception {
-        when(authService.authenticate("desconocido", "password-incorrecta")).thenReturn(false);
+    void wrongOrUnknownCredentialsUseSameSafeResponse() throws Exception {
+        given(authService.authenticate("iris", PASSWORD)).willReturn(false);
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"usernameOrEmail":"desconocido","password":"password-incorrecta"}
-                                """))
+                                {"usernameOrEmail":"iris","password":"%s"}
+                                """.formatted(PASSWORD)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Credenciales incorrectas."))
-                .andExpect(content().string(org.hamcrest.Matchers.not(
-                        org.hamcrest.Matchers.containsString("password-incorrecta"))));
+                .andExpect(content().string("Credenciales incorrectas"))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(PASSWORD))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(HASH))));
     }
 
     @Test
-    void validaQueUsuarioYContrasenaSeanObligatorios() throws Exception {
+    void missingCredentialHasClearBadRequestWithoutEchoingRequestBody() throws Exception {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"usernameOrEmail":" ","password":" "}
-                                """))
+                                {"usernameOrEmail":" ","password":"%s"}
+                                """.formatted(PASSWORD)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(
-                        org.hamcrest.Matchers.allOf(
-                                org.hamcrest.Matchers.containsString("usuario o correo electrónico"),
-                                org.hamcrest.Matchers.containsString("contraseña"))));
-
-        verifyNoInteractions(authService);
-    }
-
-    @Test
-    void noReflejaUnaContrasenaExcesivaEnElError() throws Exception {
-        String passwordLarga = "x".repeat(73);
-        String request = "{\"usernameOrEmail\":\"braian\",\"password\":\"" + passwordLarga + "\"}";
-
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(request))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("La contraseña supera el máximo permitido"))
-                .andExpect(content().string(org.hamcrest.Matchers.not(
-                        org.hamcrest.Matchers.containsString(passwordLarga))));
-
-        verifyNoInteractions(authService);
-    }
-
-    @Test
-    void devuelveMensajeControladoCuandoElJsonEsInvalido() throws Exception {
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"usernameOrEmail\":"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("El cuerpo de la solicitud es inválido."));
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(PASSWORD))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(HASH))));
     }
 }

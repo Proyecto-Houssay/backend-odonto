@@ -2,25 +2,21 @@ package com.proyectohoussay.odonto.service;
 
 import com.proyectohoussay.odonto.model.Usuario;
 import com.proyectohoussay.odonto.repository.UsuarioRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import com.proyectohoussay.odonto.exception.UsuarioDuplicadoException;
+import com.proyectohoussay.odonto.dto.UsuarioUpdateRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 
 @Service
 public class UsuarioService {
 
-    private static final int MAX_BCRYPT_PASSWORD_BYTES = 72;
-
     private final UsuarioRepository usuarioRepository;
-    private final PasswordEncoder passwordEncoder;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
+    public UsuarioService(UsuarioRepository usuarioRepository) {
         this.usuarioRepository = usuarioRepository;
-        this.passwordEncoder = passwordEncoder;
     }
 
     public List<Usuario> listarUsuarios() {
@@ -36,59 +32,56 @@ public class UsuarioService {
         return usuarioRepository.findByEmail(email);
     }
 
-    public Usuario crearUsuario(Usuario usuario, String rawPassword) {
-        if (rawPassword == null || rawPassword.isBlank()) {
-            throw new IllegalArgumentException("La contraseña es obligatoria.");
+    public Usuario crearUsuario(Usuario usuario) {
+        validarUnicidad(usuario.getUsername(), usuario.getEmail(), null);
+        try {
+            return usuarioRepository.save(usuario);
+        } catch (DataIntegrityViolationException exception) {
+            throw new UsuarioDuplicadoException("El nombre de usuario o el email ya se encuentran registrados.");
         }
-        if (rawPassword.getBytes(StandardCharsets.UTF_8).length > MAX_BCRYPT_PASSWORD_BYTES) {
-            throw new IllegalArgumentException("La contraseña supera el máximo permitido.");
-        }
-
-        String email = normalizeRequired(usuario.getEmail());
-        if (usuarioRepository.existsByEmailIgnoreCase(email)) {
-            throw new IllegalArgumentException("El email ya se encuentra registrado: " + email);
-        }
-
-        usuario.setEmail(email);
-        usuario.setUsername(normalizeOptional(usuario.getUsername()));
-        if (usuario.getUsername() != null && usuarioRepository.existsByUsernameIgnoreCase(usuario.getUsername())) {
-            throw new IllegalArgumentException("El nombre de usuario ya se encuentra registrado.");
-        }
-
-        usuario.setPasswordHash(passwordEncoder.encode(rawPassword));
-        return usuarioRepository.save(usuario);
     }
 
-    public Usuario actualizarUsuario(Long id, Usuario usuarioDetails) {
+    public Usuario actualizarUsuario(Long id, UsuarioUpdateRequest usuarioDetails) {
         Usuario usuario = obtenerUsuario(id);
-        usuario.setNombre(usuarioDetails.getNombre());
-        usuario.setApellido(usuarioDetails.getApellido());
-        usuario.setEmail(usuarioDetails.getEmail());
-        usuario.setUsername(normalizeOptional(usuarioDetails.getUsername()));
-        usuario.setRol(usuarioDetails.getRol());
-        usuario.setActivo(usuarioDetails.isActivo());
-        if (usuarioDetails.getTelefono() != null) {
-            usuario.setTelefono(usuarioDetails.getTelefono());
+        validarUnicidad(usuarioDetails.username(), usuarioDetails.email(), id);
+        usuario.setUsername(usuarioDetails.username());
+        usuario.setNombre(usuarioDetails.nombre());
+        usuario.setApellido(usuarioDetails.apellido());
+        usuario.setEmail(usuarioDetails.email());
+        usuario.setRol(usuarioDetails.rol());
+        usuario.setActivo(usuarioDetails.activo());
+        usuario.setTelefono(usuarioDetails.telefono());
+        try {
+            return usuarioRepository.save(usuario);
+        } catch (DataIntegrityViolationException exception) {
+            throw new UsuarioDuplicadoException("El nombre de usuario o el email ya se encuentran registrados.");
         }
-        return usuarioRepository.save(usuario);
+    }
+
+    private void validarUnicidad(String username, String email, Long usuarioId) {
+        if (username != null && !username.isBlank()) {
+            boolean duplicado = usuarioId == null
+                    ? usuarioRepository.existsByUsername(username)
+                    : usuarioRepository.existsByUsernameAndIdNot(username, usuarioId);
+            if (duplicado) {
+                throw new UsuarioDuplicadoException("El nombre de usuario ya se encuentra registrado.");
+            }
+        } else if (username != null) {
+            throw new IllegalArgumentException("El nombre de usuario es obligatorio.");
+        }
+
+        if (email != null && !email.isBlank()) {
+            boolean duplicado = usuarioId == null
+                    ? usuarioRepository.existsByEmail(email)
+                    : usuarioRepository.existsByEmailAndIdNot(email, usuarioId);
+            if (duplicado) {
+                throw new UsuarioDuplicadoException("El email ya se encuentra registrado.");
+            }
+        }
     }
 
     public void eliminarUsuario(Long id) {
         Usuario usuario = obtenerUsuario(id);
         usuarioRepository.delete(usuario);
-    }
-
-    private String normalizeRequired(String value) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("El email es obligatorio.");
-        }
-        return value.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private String normalizeOptional(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return value.trim().toLowerCase(Locale.ROOT);
     }
 }

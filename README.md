@@ -55,7 +55,13 @@ El servidor queda disponible en `http://localhost:8080`.
 | **Informes** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones` | Resumen e informes de inventario persistido y atenciones. |
 
 > `DELETE /api/turnos/{id}` cancela el turno modificando su estado a `CANCELADO`; no elimina el registro de la base de datos.
-> La autenticación actual utiliza credenciales fijas en el servicio como implementación base para desarrollo.
+
+### Usuarios y autenticación
+
+- `POST /api/usuarios` crea usuarios y almacena la contraseña con BCrypt. Las respuestas REST de usuarios no incluyen la contraseña ni su hash.
+- `PUT /api/usuarios/{id}` actualiza los datos de perfil y estado, pero no permite cambiar ni borrar la contraseña. El cambio de contraseña requiere un flujo explícito que todavía no está implementado.
+- `POST /api/auth/login` conserva el payload `usernameOrEmail` y `password`. Busca el usuario persistido por nombre de usuario o email, compara la contraseña recibida con el hash BCrypt y rechaza credenciales incorrectas, cuentas inexistentes e inactivas con el mismo mensaje genérico.
+- El login solo valida credenciales: todavía no emite sesiones ni tokens y la API no aplica autorización por roles ni protección de acceso a los demás endpoints. Por eso, este mecanismo no es suficiente para considerar la autenticación lista para producción.
 
 ### Payload para registrar o actualizar turnos
 

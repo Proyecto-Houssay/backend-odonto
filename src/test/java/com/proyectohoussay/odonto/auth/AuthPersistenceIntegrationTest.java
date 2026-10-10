@@ -46,7 +46,7 @@ class AuthPersistenceIntegrationTest {
                                   "email":"ANA@example.com",
                                   "username":"ana",
                                   "password":"clave123",
-                                  "rol":"PACIENTE",
+                                  "rol":"RECEPCIONISTA",
                                   "activo":true
                                 }
                                 """))
@@ -54,9 +54,9 @@ class AuthPersistenceIntegrationTest {
                 .andExpect(content().string(not(containsString("clave123"))))
                 .andExpect(content().string(not(containsString("passwordHash"))));
 
-        Usuario usuario = usuarioRepository.findByEmailIgnoreCase("ana@example.com").orElseThrow();
-        assertThat(usuario.getPasswordHash()).isNotEqualTo("clave123");
-        assertThat(passwordEncoder.matches("clave123", usuario.getPasswordHash())).isTrue();
+        Usuario usuario = usuarioRepository.findByEmail("ana@example.com").orElseThrow();
+        assertThat(usuario.getPassword()).isNotEqualTo("clave123");
+        assertThat(passwordEncoder.matches("clave123", usuario.getPassword())).isTrue();
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

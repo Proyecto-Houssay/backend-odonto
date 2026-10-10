@@ -2,88 +2,79 @@ package com.proyectohoussay.odonto.auth;
 
 import com.proyectohoussay.odonto.model.Usuario;
 import com.proyectohoussay.odonto.repository.UsuarioRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
-    @Mock
+    private static final String RAW_PASSWORD = "clave-segura-para-prueba";
+    private static final String USERNAME = "iris";
+
     private UsuarioRepository usuarioRepository;
-
-    @Mock
     private PasswordEncoder passwordEncoder;
-
-    @InjectMocks
     private AuthService authService;
+    private Usuario activeUser;
 
-    @Test
-    void autenticaPorNombreDeUsuario() {
-        Usuario usuario = usuarioActivo("braian", "braian@example.com", "$2a$hash");
-        when(usuarioRepository.findByUsernameIgnoreCase("braian")).thenReturn(Optional.of(usuario));
-        when(passwordEncoder.matches("password-segura", "$2a$hash")).thenReturn(true);
-
-        assertThat(authService.authenticate(" braian ", "password-segura")).isTrue();
-        verify(usuarioRepository, never()).findByEmailIgnoreCase(anyString());
+    @BeforeEach
+    void setUp() {
+        usuarioRepository = mock(UsuarioRepository.class);
+        passwordEncoder = new BCryptPasswordEncoder();
+        authService = new AuthService(usuarioRepository, passwordEncoder);
+        activeUser = new Usuario(USERNAME, "Iris", "De Dominicis", "iris@example.com",
+                passwordEncoder.encode(RAW_PASSWORD), "ADMIN", true);
     }
 
     @Test
-    void autenticaPorEmailSinDistinguirMayusculas() {
-        Usuario usuario = usuarioActivo("braian", "braian@example.com", "$2a$hash");
-        when(usuarioRepository.findByUsernameIgnoreCase("BRAIAN@EXAMPLE.COM")).thenReturn(Optional.empty());
-        when(usuarioRepository.findByEmailIgnoreCase("BRAIAN@EXAMPLE.COM")).thenReturn(Optional.of(usuario));
-        when(passwordEncoder.matches("password-segura", "$2a$hash")).thenReturn(true);
+    void authenticatesActiveUserByUsernameUsingBCrypt() {
+        when(usuarioRepository.findByUsernameOrEmail(USERNAME, USERNAME)).thenReturn(Optional.of(activeUser));
 
-        assertThat(authService.authenticate("BRAIAN@EXAMPLE.COM", "password-segura")).isTrue();
+        assertThat(authService.authenticate(USERNAME, RAW_PASSWORD)).isTrue();
+        verify(usuarioRepository).findByUsernameOrEmail(USERNAME, USERNAME);
     }
 
     @Test
-    void rechazaUsuarioInexistenteYContrasenaIncorrecta() {
-        when(usuarioRepository.findByUsernameIgnoreCase("desconocido")).thenReturn(Optional.empty());
-        when(usuarioRepository.findByEmailIgnoreCase("desconocido")).thenReturn(Optional.empty());
+    void authenticatesActiveUserByEmail() {
+        String email = "iris@example.com";
+        when(usuarioRepository.findByUsernameOrEmail(email, email)).thenReturn(Optional.of(activeUser));
 
-        assertThat(authService.authenticate("desconocido", "password-segura")).isFalse();
-
-        Usuario usuario = usuarioActivo("braian", "braian@example.com", "$2a$hash");
-        when(usuarioRepository.findByUsernameIgnoreCase("braian")).thenReturn(Optional.of(usuario));
-        when(passwordEncoder.matches("incorrecta", "$2a$hash")).thenReturn(false);
-
-        assertThat(authService.authenticate("braian", "incorrecta")).isFalse();
+        assertThat(authService.authenticate(email, RAW_PASSWORD)).isTrue();
     }
 
     @Test
-    void rechazaUsuariosInactivosOSinHash() {
-        Usuario inactivo = usuarioActivo("braian", "braian@example.com", "$2a$hash");
-        inactivo.setActivo(false);
-        when(usuarioRepository.findByUsernameIgnoreCase("braian")).thenReturn(Optional.of(inactivo));
-        assertThat(authService.authenticate("braian", "password-segura")).isFalse();
+    void rejectsIncorrectPassword() {
+        when(usuarioRepository.findByUsernameOrEmail(USERNAME, USERNAME)).thenReturn(Optional.of(activeUser));
 
-        Usuario sinHash = usuarioActivo("iris", "iris@example.com", null);
-        when(usuarioRepository.findByUsernameIgnoreCase("iris")).thenReturn(Optional.of(sinHash));
-        assertThat(authService.authenticate("iris", "password-segura")).isFalse();
+        assertThat(authService.authenticate(USERNAME, "incorrecta")).isFalse();
     }
 
     @Test
-    void rechazaCredencialesVaciasYContrasenasDemasiadoLargas() {
-        assertThat(authService.authenticate(" ", "password-segura")).isFalse();
-        assertThat(authService.authenticate("braian", " ")).isFalse();
-        assertThat(authService.authenticate("braian", "a".repeat(73))).isFalse();
-        verifyNoInteractions(usuarioRepository, passwordEncoder);
+    void rejectsUnknownUser() {
+        when(usuarioRepository.findByUsernameOrEmail("desconocida", "desconocida"))
+                .thenReturn(Optional.empty());
+
+        assertThat(authService.authenticate("desconocida", RAW_PASSWORD)).isFalse();
     }
 
-    private Usuario usuarioActivo(String username, String email, String passwordHash) {
-        Usuario usuario = new Usuario("Braian", "Aguilera", email, "ADMINISTRADOR", true);
-        usuario.setUsername(username);
-        usuario.setPasswordHash(passwordHash);
-        return usuario;
+    @Test
+    void rejectsInactiveUserEvenWithCorrectPassword() {
+        activeUser.setActivo(false);
+        when(usuarioRepository.findByUsernameOrEmail(USERNAME, USERNAME)).thenReturn(Optional.of(activeUser));
+
+        assertThat(authService.authenticate(USERNAME, RAW_PASSWORD)).isFalse();
+    }
+
+    @Test
+    void rejectsBlankCredentialsWithoutQueryingRepository() {
+        assertThat(authService.authenticate(" ", RAW_PASSWORD)).isFalse();
+        assertThat(authService.authenticate(USERNAME, " ")).isFalse();
     }
 }

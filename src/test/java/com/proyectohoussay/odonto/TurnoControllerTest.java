@@ -78,7 +78,8 @@ public class TurnoControllerTest {
                         .content(jsonBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.motivo").value("Consulta general"));
+                .andExpect(jsonPath("$.motivo").value("Consulta general"))
+                .andExpect(jsonPath("$.mensaje").value("Turno registrado con éxito"));
     }
 
     @Test

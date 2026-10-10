@@ -151,4 +151,27 @@ class TratamientoRepositoryTest {
         assertNotNull(found);
         assertTrue(found.isEmpty());
     }
+
+    @Test
+    @DisplayName("should verify tratamiento fields, controlled estado and associated diagnosis")
+    void shouldVerifyCamposEstadoControladoYDiagnosticoAsociado() {
+        Diagnostico diagnostico = createPersistedDiagnostico();
+
+        Tratamiento tratamiento = new Tratamiento(
+                "Endodoncia pieza 14", LocalDate.of(2026, 10, 10), EstadoTratamiento.EN_CURSO
+        );
+        diagnostico.agregarTratamiento(tratamiento);
+        entityManager.persistAndFlush(tratamiento);
+        entityManager.clear();
+
+        Tratamiento persisted = entityManager.find(Tratamiento.class, tratamiento.getId());
+        assertNotNull(persisted);
+        assertNotNull(persisted.getId());
+        assertEquals("Endodoncia pieza 14", persisted.getDescripcion());
+        assertEquals(LocalDate.of(2026, 10, 10), persisted.getFecha());
+        assertEquals(EstadoTratamiento.EN_CURSO, persisted.getEstado());
+        assertNotNull(persisted.getDiagnostico());
+        assertEquals(diagnostico.getId(), persisted.getDiagnostico().getId());
+        assertEquals("Caries", persisted.getDiagnostico().getDescripcion());
+    }
 }

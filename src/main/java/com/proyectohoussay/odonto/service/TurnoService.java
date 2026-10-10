@@ -2,6 +2,7 @@ package com.proyectohoussay.odonto.service;
 
 import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.dto.TurnoRequest;
+import com.proyectohoussay.odonto.exception.TurnoNoEncontradoException;
 import com.proyectohoussay.odonto.model.Odontologo;
 import com.proyectohoussay.odonto.patient.Paciente;
 import com.proyectohoussay.odonto.patient.PacienteRepository;
@@ -16,7 +17,7 @@ import java.util.List;
 @Service
 public class TurnoService {
 
-    private static final String FECHA_TURNO_PASADA_MESSAGE = "La fecha del turno no puede ser anterior a la fecha actual.";
+    private static final String ESTADO_CANCELADO = "CANCELADO";
 
     private final TurnoRepository turnoRepository;
     private final PacienteRepository pacienteRepository;
@@ -36,7 +37,7 @@ public class TurnoService {
 
     public Turno obtenerTurno(Long id) {
         return turnoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Turno no encontrado con ID: " + id));
+                .orElseThrow(() -> new TurnoNoEncontradoException(id));
     }
 
     public List<Turno> listarPorFecha(LocalDate fecha) {
@@ -52,14 +53,14 @@ public class TurnoService {
     }
 
     public boolean comprobarDisponibilidad(Long odontologoId, LocalDate fecha, LocalTime hora) {
-        return !turnoRepository.existsByOdontologoIdAndFechaAndHora(odontologoId, fecha, hora);
+        return !turnoRepository.existeTurnoActivoEnHorario(odontologoId, fecha, hora, null);
     }
 
     public Turno crearTurno(TurnoRequest request) {
-        validarFecha(request.fecha());
+        validarFechaNoPasada(request.fecha());
         Turno turno = construirTurno(request);
-        boolean disponible = comprobarDisponibilidad(turno.getOdontologo().getId(), turno.getFecha(), turno.getHora());
-        if (!disponible) {
+        if (!estaCancelado(turno.getEstado()) && turnoRepository.existeTurnoActivoEnHorario(
+                turno.getOdontologo().getId(), turno.getFecha(), turno.getHora(), null)) {
             throw new IllegalStateException("El odontólogo no tiene disponibilidad en la fecha y hora seleccionadas.");
         }
         return turnoRepository.save(turno);
@@ -67,7 +68,12 @@ public class TurnoService {
 
     public Turno actualizarTurno(Long id, TurnoRequest request) {
         Turno turno = obtenerTurno(id);
+        validarFechaNoPasada(request.fecha());
         Turno details = construirTurno(request);
+        if (!estaCancelado(details.getEstado()) && turnoRepository.existeTurnoActivoEnHorario(
+                details.getOdontologo().getId(), details.getFecha(), details.getHora(), id)) {
+            throw new IllegalStateException("El odontólogo no tiene disponibilidad en la fecha y hora seleccionadas.");
+        }
         turno.setFecha(details.getFecha());
         turno.setHora(details.getHora());
         turno.setMotivo(details.getMotivo());
@@ -79,7 +85,7 @@ public class TurnoService {
 
     public void cancelarTurno(Long id) {
         Turno turno = obtenerTurno(id);
-        turno.setEstado("CANCELADO");
+        turno.setEstado(ESTADO_CANCELADO);
         turnoRepository.save(turno);
     }
 
@@ -94,12 +100,13 @@ public class TurnoService {
         return new Turno(request.fecha(), request.hora(), request.motivo(), estado, paciente, odontologo);
     }
 
-    private void validarFecha(LocalDate fecha) {
-        if (fecha == null) {
-            throw new IllegalArgumentException("La fecha del turno es obligatoria.");
+    private void validarFechaNoPasada(LocalDate fecha) {
+        if (fecha != null && fecha.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("No se permiten turnos en fechas anteriores a la actual.");
         }
-        if (fecha.isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException(FECHA_TURNO_PASADA_MESSAGE);
-        }
+    }
+
+    private boolean estaCancelado(String estado) {
+        return estado != null && ESTADO_CANCELADO.equalsIgnoreCase(estado);
     }
 }
