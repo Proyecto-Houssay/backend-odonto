@@ -7,6 +7,7 @@ import com.proyectohoussay.odonto.dto.AtencionesReportDto;
 import com.proyectohoussay.odonto.dto.CobrosReportDto;
 import com.proyectohoussay.odonto.dto.GananciasReportDto;
 import com.proyectohoussay.odonto.service.ReportService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/reports")
 @CrossOrigin(origins = "*")
+@SecurityRequirement(name = "bearerAuth")
 public class ReportController {
 
     private final ReportService reportService;

@@ -1,5 +1,6 @@
 package com.proyectohoussay.odonto.patient;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/pacientes")
+@SecurityRequirement(name = "bearerAuth")
 public class PacienteController {
 
     private final PacienteService pacienteService;

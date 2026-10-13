@@ -7,6 +7,7 @@ API REST para la gestión de un consultorio odontológico. El backend utiliza Ja
 - **Java:** 17
 - **Framework:** Spring Boot 3.5.6
 - **Capa Web:** Spring Web (REST)
+- **Documentación interactiva:** Swagger UI (SpringDoc OpenAPI)
 - **Seguridad:** Spring Security OAuth2 Resource Server y JWT HS256
 - **Persistencia:** Spring Data JPA / Hibernate
 - **Validaciones:** Jakarta Bean Validation
@@ -32,17 +33,18 @@ Se requiere JDK 17 configurado en el entorno. El Maven Wrapper evita instalar Ma
 ./mvnw clean test
 ```
 
-El servidor queda disponible en `http://localhost:8080`.
+Al iniciar la aplicación, el servidor queda disponible en `http://localhost:8080`.
 - Verificación técnica: `GET http://localhost:8080/api/health`
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- Especificación OpenAPI (JSON): `http://localhost:8080/v3/api-docs`
 
 ### Iniciar la aplicación (MySQL predeterminada)
 
-La aplicación usa MySQL de manera predeterminada y necesita Docker para iniciar la base local. Las pruebas automatizadas usan H2 y no requieren un servidor MySQL.
+La aplicación usa MySQL de manera predeterminada. Podés usar el contenedor de desarrollo **o** una instalación local de MySQL; Docker no es obligatorio si MySQL ya está funcionando. Las pruebas automatizadas usan H2 y no requieren MySQL.
 
 #### Windows (PowerShell)
 
 ```powershell
-Copy-Item .env.example .env
 docker compose up -d
 docker compose ps
 cmd /c mvnw.cmd spring-boot:run
@@ -51,17 +53,27 @@ cmd /c mvnw.cmd spring-boot:run
 #### macOS / Linux (Bash)
 
 ```bash
-cp .env.example .env
 docker compose up -d
 docker compose ps
 ./mvnw spring-boot:run
 ```
 
-Ejecutá los comandos desde la raíz del repositorio. Esperá a que el servicio MySQL figure como `healthy` antes de iniciar Spring Boot. El archivo `.env` contiene credenciales locales y se ignora en Git; `.env.example` solo tiene valores de demostración, reemplazalos si otras personas pueden acceder a tu equipo. Spring Boot importa el `.env` local al iniciar y también acepta las mismas variables desde el entorno.
+Ejecutá los comandos desde la raíz de `backend-odonto`, donde está `mvnw.cmd`. Solo si todavía no existe `.env`, copiá `.env.example` a `.env` y configurá tus credenciales locales; **no sobrescribas** un `.env` existente. Si usás Docker, esperá a que MySQL figure como `healthy`; si ya usás MySQL instalado en Windows, omití `docker compose up -d` y `docker compose ps`, pero comprobá que el servidor, puerto, base y usuario coincidan con tu `.env`. El archivo `.env` contiene credenciales locales y se ignora en Git; `.env.example` solo tiene valores de demostración. Spring Boot importa el `.env` local al iniciar y también acepta las mismas variables desde el entorno.
 
-El usuario `novadent_app` se limita a la base configurada en `MYSQL_DATABASE`; la aplicación no se conecta como `root`. MySQL escucha únicamente en `127.0.0.1`. El esquema se actualiza con Hibernate (`ddl-auto=update`), sin migraciones versionadas, por lo que esta configuración es para desarrollo/demo y no para producción.
+En el contenedor de desarrollo, el usuario `novadent_app` se limita a la base configurada en `MYSQL_DATABASE`, y MySQL escucha únicamente en `127.0.0.1`. Configurá la aplicación con un usuario dedicado, no con `root`. El esquema se actualiza con Hibernate (`ddl-auto=update`), sin migraciones versionadas, por lo que esta configuración es para desarrollo/demo y no para producción.
 
-Para detener el contenedor sin borrar los datos, ejecutá `docker compose down`. **`docker compose down -v` elimina el volumen y borra permanentemente los datos de demo.** Para iniciar otra vez, repetí `docker compose up -d` y luego inicia la aplicación con el comando indicado arriba.
+Si usás el contenedor, para detenerlo sin borrar datos ejecutá `docker compose down`. **`docker compose down -v` elimina el volumen y borra permanentemente sus datos.** Para iniciar otra vez, repetí `docker compose up -d` y luego iniciá la aplicación con el comando indicado arriba.
+
+### Probar Swagger y comprobar MySQL
+
+Swagger UI es una página para explorar y enviar solicitudes a la API; no es una base de datos. Las operaciones protegidas requieren un JWT válido:
+
+1. Abrí `http://localhost:8080/swagger-ui/index.html` y ejecutá `POST /api/auth/login` con las credenciales de un usuario existente. Para crear usuarios necesitás un `ADMINISTRADOR`; para crear pacientes también sirven `ODONTOLOGO` y `RECEPCIONISTA`.
+2. Copiá **solo el valor** `token` de la respuesta. Pulsá **Authorize** en Swagger, pegalo sin comillas ni el prefijo `Bearer`, y confirmá. El token vence a los 15 minutos; si recibís `401` por vencimiento, volvé a iniciar sesión y reemplazalo.
+3. Ejecutá `POST /api/pacientes` con datos **ficticios**, un DNI único y sin campo `id` (lo genera la base). Una respuesta `200` confirma que el endpoint aceptó la creación.
+4. En MySQL Workbench, conectate al mismo servidor y seleccioná como esquema predeterminado el valor de `MYSQL_DATABASE` de tu `.env`. Ejecutá `SELECT id, nombre, apellido, dni FROM paciente WHERE dni = 'DNI_FICTICIO';`, sustituyendo el DNI por el que enviaste. La tabla es `paciente` (singular), no `pacientes`.
+
+La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo completo y la matriz de permisos. No compartas contraseñas, JWT ni datos personales en capturas o chats.
 
 ## API disponible
 
@@ -213,6 +225,7 @@ Para `POST /api/turnos` y `PUT /api/turnos/{id}`, el paciente y el odontólogo d
 src/main/java/com/proyectohoussay/odonto/
 ├── BackendOdontoApplication.java
 ├── auth/              # Controladores, servicios y DTOs de login
+├── config/            # Configuración de OpenAPI / Swagger
 ├── clinicalhistory/   # Historia clínica, diagnósticos y tratamientos (entidades y repositorios)
 ├── controller/        # Controladores REST de turnos, odontólogos, especialidades y usuarios
 ├── dto/               # Objetos de transferencia de datos (DTOs)
@@ -224,7 +237,8 @@ src/main/java/com/proyectohoussay/odonto/
 └── service/           # Servicios con lógica de negocio
 docs/
 ├── backend-scaffold.md
-└── braian-dashboard-integration.md
+├── braian-dashboard-integration.md
+└── swagger-mysql-workflow.md
 ```
 
 ## Flujo de integración

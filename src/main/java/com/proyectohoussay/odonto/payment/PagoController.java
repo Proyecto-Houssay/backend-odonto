@@ -3,6 +3,7 @@ package com.proyectohoussay.odonto.payment;
 import com.proyectohoussay.odonto.dto.PagoRequest;
 import com.proyectohoussay.odonto.dto.PagoResponse;
 import com.proyectohoussay.odonto.service.ReportService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/pagos")
+@SecurityRequirement(name = "bearerAuth")
 public class PagoController {
 
     private final ReportService reportService;

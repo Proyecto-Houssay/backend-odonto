@@ -6,6 +6,7 @@ import com.proyectohoussay.odonto.dto.UsuarioUpdateRequest;
 import com.proyectohoussay.odonto.exception.UsuarioDuplicadoException;
 import com.proyectohoussay.odonto.service.UsuarioService;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -19,6 +20,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/usuarios")
 @CrossOrigin(origins = "*")
+@SecurityRequirement(name = "bearerAuth")
 public class UsuarioController {
 
     private final UsuarioService usuarioService;

@@ -5,6 +5,7 @@ import com.proyectohoussay.odonto.dto.TurnoRequest;
 import com.proyectohoussay.odonto.dto.TurnoResponse;
 import com.proyectohoussay.odonto.exception.TurnoNoEncontradoException;
 import com.proyectohoussay.odonto.service.TurnoService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/turnos")
 @CrossOrigin(origins = "*")
+@SecurityRequirement(name = "bearerAuth")
 public class TurnoController {
 
     private final TurnoService turnoService;
