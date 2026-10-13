@@ -72,7 +72,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/auth/login", "/api/health").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**")
                         .permitAll()
-                        .requestMatchers("/api/usuarios/**", "/api/reports/**", "/api/pagos", "/api/pagos/**")
+                        .requestMatchers("/api/usuarios/**", "/api/reports/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers(HttpMethod.GET, "/api/odontologos/**", "/api/especialidades/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
@@ -81,7 +81,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/pacientes/**", "/api/turnos/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/api/historias-clinicas/**", "/api/historias/**", "/api/diagnosticos/**",
-                                "/api/tratamientos/**", "/api/recetas/**")
+                                "/api/tratamientos/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer

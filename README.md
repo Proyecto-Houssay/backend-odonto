@@ -1,6 +1,6 @@
 # Novadent — Backend
 
-API REST para la gestión de un consultorio odontológico. El backend utiliza Java 17, Spring Boot 3.5.6, Spring Web, Bean Validation y Spring Data JPA. MySQL es la base predeterminada de la aplicación; H2 en memoria se reserva para pruebas automatizadas.
+API REST para un proyecto académico de gestión de un consultorio odontológico (IEFI). Pagos y facturación están fuera de alcance; receta se reserva para pruebas y no es una función REST de uso habitual. El backend utiliza Java 17, Spring Boot 3.5.6, Spring Web, Bean Validation y Spring Data JPA. MySQL es la base predeterminada de la aplicación; H2 en memoria se reserva para pruebas automatizadas.
 
 ## Stack tecnológico
 
@@ -87,8 +87,8 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
 | **Usuarios** | `GET /api/usuarios`, `GET /api/usuarios/{id}`, `POST /api/usuarios`, `PUT /api/usuarios/{id}`, `DELETE /api/usuarios/{id}` | Gestión de cuentas de usuario. |
 | **Autenticación** | `POST /api/auth/login` | Autentica credenciales persistidas y devuelve un JWT Bearer de 15 minutos. |
-| **Informes e inventario** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones`, `GET /api/reports/ganancias`, `GET /api/reports/cobros`, `GET /api/reports/anual` | Resumen y reportes con datos persistidos. Todas las rutas requieren `ADMINISTRADOR`. |
-| **Pagos** | `POST /api/pagos` | Registro mínimo de un pago para alimentar informes; requiere `ADMINISTRADOR`. No implementa edición, eliminación ni relaciones con pacientes/tratamientos. |
+| **Informes e inventario** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones`, `GET /api/reports/anual` | Resumen y reportes con datos persistidos. Todas las rutas requieren `ADMINISTRADOR`. |
+
 
 > `DELETE /api/turnos/{id}` cancela el turno modificando su estado a `CANCELADO`; no elimina el registro de la base de datos.
 
@@ -104,14 +104,14 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | Rol | Permisos |
 |---|---|
 | `ADMINISTRADOR` | Acceso administrativo completo, incluida la gestión de usuarios, roles, informes e insumos. |
-| `ODONTOLOGO` | Acceso a pacientes y turnos, lectura de odontólogos/especialidades y acceso a rutas clínicas de historias, diagnósticos, tratamientos y recetas. |
+| `ODONTOLOGO` | Acceso a pacientes y turnos, lectura de odontólogos/especialidades y a las rutas clínicas de historias, diagnósticos y tratamientos cuando estén implementadas. No hay API de recetas. |
 | `RECEPCIONISTA` | Acceso a pacientes y turnos; lectura de odontólogos y especialidades. Sin acceso a historias clínicas, usuarios, roles, informes o administración. |
 
 `POST /api/auth/login` y `GET /api/health` son públicos. Todos los demás endpoints requieren autenticación y se autorizan según la matriz. Las rutas clínicas todavía no tienen controladores REST implementados; sus patrones ya están reservados para el rol odontólogo y administrador.
 
-### Informes, inventario y pagos
+### Informes e inventario
 
-Todas las rutas `/api/reports/**` y `POST /api/pagos` requieren un JWT válido con rol `ADMINISTRADOR`. Sin token (o con token inválido/expirado), la respuesta es HTTP `401`; con otro rol autenticado, HTTP `403`.
+Todas las rutas `/api/reports/**` requieren un JWT válido con rol `ADMINISTRADOR`. Sin token (o con token inválido/expirado), la respuesta es HTTP `401`; con otro rol autenticado, HTTP `403`.
 
 | Método y ruta | Parámetros / request | DTO de respuesta y comportamiento |
 |---|---|---|
@@ -120,31 +120,11 @@ Todas las rutas `/api/reports/**` y `POST /api/pagos` requieren un JWT válido c
 | `POST /api/reports/inventario` | `InsumoRequest`: `nombre`, `categoria`, `cantidadDisponible`, `unidadMedida`, `stockMinimo` | HTTP `201` y un `InventarioItemDto`. |
 | `PUT /api/reports/inventario/{id}` | `id` en la ruta y `InsumoRequest` en el body | HTTP `200` y un `InventarioItemDto`; si el insumo no existe, HTTP `404`. |
 | `GET /api/reports/atenciones?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | `AtencionesReportDto`: `tipo`, `desde`, `hasta`, `totalAtenciones`, `detalle`. El detalle contiene turno, fecha/hora, paciente, odontólogo, motivo y estado. Solo cuenta turnos `ATENDIDO` de hoy o anteriores; nunca cuenta fechas futuras, aunque el turno esté marcado como atendido. |
-| `GET /api/reports/ganancias?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | `GananciasReportDto`: `desde`, `hasta`, `totalIngresosBrutos`, `cantidadCobros`. “Ganancias” significa **ingresos brutos cobrados**, no utilidad neta: no hay datos de costos. Solo suma pagos `COBRADO` con fecha no futura. |
-| `GET /api/reports/cobros?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | `CobrosReportDto`: `desde`, `hasta`, `totalCobrado`, `cantidadCobros`, `cobros`. Cada elemento es `PagoResponse` (`id`, `monto`, `fecha`, `estado`, `metodo`). Solo devuelve pagos `COBRADO` no futuros. |
-| `GET /api/reports/anual?anio=YYYY` | Año calendario obligatorio (entre 1 y 9999) | `AnualReportDto`: `anio`, `totalAtenciones`, `totalCobrado`, `cantidadCobros`, `meses`. Incluye los 12 meses calendario; cada `MesAnualReportDto` contiene `mes`, `nombre`, `totalAtenciones`, `totalCobrado`, `cantidadCobros`. Atenciones/pagos futuros no se suman, incluso si existieran registros inconsistentes. |
-| `POST /api/pagos` | `PagoRequest`: `monto`, `fecha` (`YYYY-MM-DD`), `estado` (`COBRADO`, `PENDIENTE` o `ANULADO`), `metodo` | HTTP `201` y `PagoResponse`. `monto` debe ser positivo, con hasta 10 dígitos enteros y 2 decimales; `metodo` es obligatorio y admite hasta 40 caracteres. Un pago `COBRADO` no puede tener fecha futura; `PENDIENTE` puede tenerla. |
+| `GET /api/reports/anual?anio=YYYY` | Año calendario obligatorio (entre 1 y 9999) | `AnualReportDto`: `anio`, `totalAtenciones`, `meses`. Incluye los 12 meses; cada `MesAnualReportDto` contiene `mes`, `nombre`, `totalAtenciones`. No cuenta turnos futuros aunque figuren como atendidos. |
 
-Para los informes por rango, `desde` debe ser anterior o igual a `hasta`. Fechas faltantes, fechas ISO inválidas, rangos invertidos, año fuera del rango, payloads que no cumplen las validaciones y un pago cobrado futuro producen HTTP `400`. La aplicación no define aquí un esquema estable propio para el body de error; se conserva el manejo HTTP/Spring actual. Una escritura exitosa retorna `201`; lecturas y actualización de inventario exitosa retornan `200`.
+Para el informe por rango, `desde` debe ser anterior o igual a `hasta`. Fechas faltantes o inválidas, rangos invertidos y años fuera del rango producen HTTP `400`. Una escritura de inventario exitosa retorna `201`; lecturas y actualización, `200`.
 
-Ejemplo de registro de pago:
-
-```http
-POST /api/pagos
-Authorization: Bearer <token-de-administrador>
-Content-Type: application/json
-```
-
-```json
-{
-  "monto": 1250.50,
-  "fecha": "2025-06-10",
-  "estado": "COBRADO",
-  "metodo": "EFECTIVO"
-}
-```
-
-La entidad `Pago` es la fuente persistida para los informes de cobros/ingresos. La aplicación usa MySQL y conserva los pagos al reiniciar gracias al volumen Docker `mysql_data`. H2 **en memoria** se usa solo en pruebas y no comparte ni modifica los datos de la aplicación local.
+**Fuera de alcance académico:** no hay endpoints de pagos, cobros o ganancias; tampoco se publican en Swagger. Si una base MySQL local conserva una tabla `pagos` de una versión anterior, este cambio no la borra ni altera sus datos. Las recetas quedan solo como concepto de pruebas, sin endpoint REST público. H2 en memoria se usa para tests y no modifica MySQL.
 
 #### Configuración de JWT
 

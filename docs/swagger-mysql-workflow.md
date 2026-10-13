@@ -67,9 +67,9 @@ La autenticación confirma quién realiza la solicitud; el rol determina qué op
 | Pacientes y turnos | Requieren JWT de `ADMINISTRADOR`, `ODONTOLOGO` o `RECEPCIONISTA`. |
 | Lectura de odontólogos y especialidades | Requiere JWT de cualquiera de esos tres roles. |
 | Crear, modificar o borrar odontólogos y especialidades | Requiere JWT de `ADMINISTRADOR`. |
-| Usuarios, informes y pagos | Requieren JWT de `ADMINISTRADOR`. |
+| Usuarios e informes | Requieren JWT de `ADMINISTRADOR`. |
 
-Para probar `POST /api/pacientes`, sirve cualquiera de esos tres roles. Para crear cuentas, cargar pagos o usar informes, inicia sesión con un administrador. Si aún no existe uno, utiliza el bootstrap documentado en el README; luego desactiva ese perfil y las variables correspondientes, como indica la guía.
+Para probar `POST /api/pacientes`, sirve cualquiera de esos tres roles. Para crear cuentas o usar informes, inicia sesión con un administrador. Si aún no existe uno, utiliza el bootstrap documentado en el README; luego desactiva ese perfil y las variables correspondientes, como indica la guía.
 
 ## Seguridad y alcance de las pruebas
 
@@ -77,3 +77,5 @@ Para probar `POST /api/pacientes`, sirve cualquiera de esos tres roles. Para cre
 - No uses datos personales reales para pruebas; elige un DNI ficticio y único.
 - No ejecutes `docker compose down -v`: elimina el volumen local de MySQL y sus datos de prueba.
 - Los tests configuran H2 en memoria y se limpian al terminar. La persistencia real se confirma haciendo el `POST` con el backend conectado a MySQL y consultando la fila en Workbench.
+
+El proyecto académico no expone pagos, cobros ni ganancias en Swagger. Las recetas no forman parte de la API normal; se reservan para pruebas.

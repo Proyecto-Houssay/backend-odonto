@@ -1,9 +1,6 @@
 package com.proyectohoussay.odonto.report;
 
 import com.proyectohoussay.odonto.model.Insumo;
-import com.proyectohoussay.odonto.payment.Pago;
-import com.proyectohoussay.odonto.payment.PagoEstado;
-import com.proyectohoussay.odonto.payment.PagoRepository;
 import com.proyectohoussay.odonto.model.Especialidad;
 import com.proyectohoussay.odonto.model.Odontologo;
 import com.proyectohoussay.odonto.model.Turno;
@@ -52,12 +49,8 @@ class ReportPersistenceIntegrationTest {
     @Autowired
     private OdontologoRepository odontologoRepository;
 
-    @Autowired
-    private PagoRepository pagoRepository;
-
     @BeforeEach
     void setUp() {
-        pagoRepository.deleteAll();
         turnoRepository.deleteAll();
         odontologoRepository.deleteAll();
         pacienteRepository.deleteAll();
@@ -65,6 +58,27 @@ class ReportPersistenceIntegrationTest {
         insumoRepository.deleteAll();
         insumoRepository.save(new Insumo("Fresas de diamante", "Instrumental", 40, "unidades", 10));
         insumoRepository.save(new Insumo("Baberos descartables", "Descartables", 5, "paquetes", 10));
+    }
+
+    @Test
+    void endpointsFinancierosQuedanFueraDelAlcanceAcademico() throws Exception {
+        mockMvc.perform(post("/api/pagos").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"monto": 10, "fecha": "2026-04-15", "estado": "COBRADO", "metodo": "EFECTIVO"}
+                                """))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/pagos']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/reports/cobros']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/reports/ganancias']").doesNotExist());
+        mockMvc.perform(get("/api/reports/cobros").param("desde", "2026-04-01")
+                        .param("hasta", "2026-04-30"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/reports/ganancias").param("desde", "2026-04-01")
+                        .param("hasta", "2026-04-30"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -101,68 +115,11 @@ class ReportPersistenceIntegrationTest {
     }
 
     @Test
-    void reportesFinancierosYAnualesEstanDisponiblesConPeriodo() throws Exception {
-        mockMvc.perform(get("/api/reports/ganancias")
-                        .param("desde", "2026-04-01")
-                        .param("hasta", "2026-04-30"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.desde").value("2026-04-01"))
-                .andExpect(jsonPath("$.hasta").value("2026-04-30"))
-                .andExpect(jsonPath("$.totalIngresosBrutos").value(0));
-
-        mockMvc.perform(get("/api/reports/cobros")
-                        .param("desde", "2026-04-01")
-                        .param("hasta", "2026-04-30"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalCobrado").value(0))
-                .andExpect(jsonPath("$.cobros").isArray());
-
-        mockMvc.perform(get("/api/reports/anual").param("anio", "2026"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.anio").value(2026))
-                .andExpect(jsonPath("$.totalAtenciones").value(0))
-                .andExpect(jsonPath("$.meses.length()").value(12));
-    }
-
-    @Test
-    void rechazaPeriodosInvertidosYParametrosAusentes() throws Exception {
-        mockMvc.perform(get("/api/reports/ganancias")
-                        .param("desde", "2026-04-30")
-                        .param("hasta", "2026-04-01"))
-                .andExpect(status().isBadRequest());
-
-        mockMvc.perform(get("/api/reports/cobros"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
     void resumenSoloAnunciaInformesConEndpointImplementado() throws Exception {
         mockMvc.perform(get("/api/reports"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reportesDisponibles").value(org.hamcrest.Matchers.containsInAnyOrder(
-                        "inventario", "atenciones", "ganancias", "cobros", "anual")));
-    }
-
-    @Test
-    void reportesDeCobrosYGananciasUsanCobrosPagadosYPeriodoInclusivo() throws Exception {
-        registrarPago("10.50", "2026-04-01", "COBRADO");
-        registrarPago("20.00", "2026-04-30", "COBRADO");
-        registrarPago("99.00", "2026-04-15", "PENDIENTE");
-        registrarPago("80.00", "2026-03-31", "COBRADO");
-
-        mockMvc.perform(get("/api/reports/ganancias")
-                        .param("desde", "2026-04-01")
-                        .param("hasta", "2026-04-30"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalIngresosBrutos").value(30.5))
-                .andExpect(jsonPath("$.cantidadCobros").value(2));
-
-        mockMvc.perform(get("/api/reports/cobros")
-                        .param("desde", "2026-04-01")
-                        .param("hasta", "2026-04-30"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalCobrado").value(30.5))
-                .andExpect(jsonPath("$.cobros.length()").value(2));
+                        "inventario", "atenciones", "anual")));
     }
 
     @Test
@@ -192,105 +149,21 @@ class ReportPersistenceIntegrationTest {
     }
 
     @Test
-    void informeAnualAgrupaCobrosYAtencionesPorMesYExcluyeElAnioSiguiente() throws Exception {
+    void informeAnualAgrupaAtencionesPorMesYExcluyeElAnioSiguiente() throws Exception {
         Paciente paciente = crearPaciente();
         Especialidad especialidad = especialidadRepository.save(new Especialidad("General", "Atención general"));
         Odontologo odontologo = odontologoRepository.save(new Odontologo(
                 "Laura", "Rios", "REPORT-MN-2", "report-laura2@example.com", "111112", especialidad));
 
-        registrarPago("100.00", "2025-01-01", "COBRADO");
-        registrarPago("50.00", "2025-12-31", "COBRADO");
-        registrarPago("200.00", "2026-01-01", "COBRADO");
         guardarTurno(LocalDate.of(2025, 1, 1), LocalTime.NOON, "Enero", "ATENDIDO", paciente, odontologo);
         guardarTurno(LocalDate.of(2025, 12, 31), LocalTime.NOON, "Diciembre", "ATENDIDO", paciente, odontologo);
         guardarTurno(LocalDate.of(2026, 1, 1), LocalTime.NOON, "Siguiente año", "ATENDIDO", paciente, odontologo);
 
         mockMvc.perform(get("/api/reports/anual").param("anio", "2025"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalCobrado").value(150.0))
                 .andExpect(jsonPath("$.totalAtenciones").value(2))
-                .andExpect(jsonPath("$.meses[0].totalCobrado").value(100.0))
                 .andExpect(jsonPath("$.meses[0].totalAtenciones").value(1))
-                .andExpect(jsonPath("$.meses[11].totalCobrado").value(50.0))
                 .andExpect(jsonPath("$.meses[11].totalAtenciones").value(1));
-    }
-
-    @Test
-    void registrarPagoRechazaMontoNuloOCeroYEstadoDesconocido() throws Exception {
-        mockMvc.perform(post("/api/pagos")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"monto": 0, "fecha": "2026-04-15", "estado": "COBRADO", "metodo": "EFECTIVO"}
-                                """))
-                .andExpect(status().isBadRequest());
-
-        mockMvc.perform(post("/api/pagos")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"monto": 10, "fecha": "2026-04-15", "estado": "PAGADO", "metodo": "EFECTIVO"}
-                                """))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void registrarPagoRechazaMontoConMasDeDosDecimalesSinPersistirlo() throws Exception {
-        mockMvc.perform(post("/api/pagos")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"monto": 1.239, "fecha": "2026-04-15", "estado": "COBRADO", "metodo": "EFECTIVO"}
-                                """))
-                .andExpect(status().isBadRequest());
-
-        org.assertj.core.api.Assertions.assertThat(pagoRepository.count()).isZero();
-    }
-
-    @Test
-    void registrarPagoRechazaCobradoConFechaFuturaPeroPermitePendienteFuturo() throws Exception {
-        LocalDate futuro = LocalDate.now().plusDays(1);
-
-        mockMvc.perform(post("/api/pagos")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"monto": 20.00, "fecha": "%s", "estado": "COBRADO", "metodo": "EFECTIVO"}
-                                """.formatted(futuro)))
-                .andExpect(status().isBadRequest());
-
-        org.assertj.core.api.Assertions.assertThat(pagoRepository.count()).isZero();
-
-        mockMvc.perform(post("/api/pagos")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"monto": 20.00, "fecha": "%s", "estado": "PENDIENTE", "metodo": "EFECTIVO"}
-                                """.formatted(futuro)))
-                .andExpect(status().isCreated());
-    }
-
-    @Test
-    void reportesFinancierosYAnualIgnoranPagosCobradosFuturosYaPersistidos() throws Exception {
-        LocalDate hoy = LocalDate.now();
-        LocalDate futuro = hoy.plusDays(1);
-        pagoRepository.save(new Pago(new java.math.BigDecimal("99.99"), futuro, PagoEstado.COBRADO, "EFECTIVO"));
-
-        mockMvc.perform(get("/api/reports/cobros")
-                        .param("desde", hoy.toString())
-                        .param("hasta", futuro.toString()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalCobrado").value(0))
-                .andExpect(jsonPath("$.cantidadCobros").value(0))
-                .andExpect(jsonPath("$.cobros").isEmpty());
-
-        mockMvc.perform(get("/api/reports/ganancias")
-                        .param("desde", hoy.toString())
-                        .param("hasta", futuro.toString()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalIngresosBrutos").value(0))
-                .andExpect(jsonPath("$.cantidadCobros").value(0));
-
-        mockMvc.perform(get("/api/reports/anual").param("anio", String.valueOf(futuro.getYear())))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalCobrado").value(0))
-                .andExpect(jsonPath("$.cantidadCobros").value(0))
-                .andExpect(jsonPath("$.meses[" + (futuro.getMonthValue() - 1) + "].totalCobrado").value(0));
     }
 
     @Test
@@ -329,12 +202,4 @@ class ReportPersistenceIntegrationTest {
         turnoRepository.save(new Turno(fecha, hora, motivo, estado, paciente, odontologo));
     }
 
-    private void registrarPago(String monto, String fecha, String estado) throws Exception {
-        mockMvc.perform(post("/api/pagos")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"monto": %s, "fecha": "%s", "estado": "%s", "metodo": "EFECTIVO"}
-                                """.formatted(monto, fecha, estado)))
-                .andExpect(status().isCreated());
-    }
 }

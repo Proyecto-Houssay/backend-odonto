@@ -4,8 +4,6 @@ import com.proyectohoussay.odonto.dto.InventarioItemDto;
 import com.proyectohoussay.odonto.dto.InsumoRequest;
 import com.proyectohoussay.odonto.dto.AnualReportDto;
 import com.proyectohoussay.odonto.dto.AtencionesReportDto;
-import com.proyectohoussay.odonto.dto.CobrosReportDto;
-import com.proyectohoussay.odonto.dto.GananciasReportDto;
 import com.proyectohoussay.odonto.service.ReportService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
@@ -63,20 +61,6 @@ public class ReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
         return ResponseEntity.ok(reportService.obtenerReporteAtenciones(desde, hasta));
-    }
-
-    @GetMapping("/ganancias")
-    public ResponseEntity<GananciasReportDto> obtenerReporteGanancias(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
-        return ResponseEntity.ok(reportService.obtenerReporteGanancias(desde, hasta));
-    }
-
-    @GetMapping("/cobros")
-    public ResponseEntity<CobrosReportDto> obtenerReporteCobros(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
-        return ResponseEntity.ok(reportService.obtenerReporteCobros(desde, hasta));
     }
 
     @GetMapping("/anual")
