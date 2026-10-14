@@ -81,7 +81,9 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 |---|---|---|
 | **Salud** | `GET /api/health` | Healthcheck técnico de la aplicación. |
 | **Pacientes** | `POST /api/pacientes` | Registro y validación de pacientes con DNI único. |
-| **Historias Clínicas** | `HistoriaClinica`, `Diagnostico`, `Tratamiento` | Entidades, enum `EstadoTratamiento` y repositorios JPA para ficha clínica y evolución odontológica. |
+| **Historias Clínicas** | `POST /api/historias-clinicas`, `GET /api/historias-clinicas/{id}`, `GET /api/historias-clinicas/paciente/{pacienteId}`, `POST /api/historias-clinicas/{id}/diagnosticos` | Gestión de historias clínicas y fichas odontológicas con evolución clínica. |
+| **Diagnósticos y Tratamientos** | `POST /api/diagnosticos`, `GET /api/diagnosticos/{id}`, `GET /api/diagnosticos/historia/{historiaClinicaId}`, `POST /api/diagnosticos/{id}/tratamientos`, `PATCH /api/diagnosticos/tratamientos/{id}/estado` | Registro de diagnósticos odontológicos y actualización de planes de tratamiento. |
+| **Diagnóstico por Imagen con IA** | `POST /api/ia/diagnostico-imagen/analizar`, `POST /api/ia/diagnostico-imagen/upload`, `GET /api/ia/diagnostico-imagen/paciente/{pacienteId}`, `GET /api/ia/diagnostico-imagen/{id}`, `GET /api/ia/diagnostico-imagen/catalogo` | Análisis asistido por IA de radiografías (panorámicas, periapicales, bite-wing, CBCT 3D) y fotos intraorales, detección de patologías, cálculo de severidad/urgencia e integración automática en historia clínica. |
 | **Odontólogos** | `GET /api/odontologos`, `GET /api/odontologos/{id}`, `GET /api/odontologos/matricula/{matricula}`, `POST /api/odontologos`, `PUT /api/odontologos/{id}`, `DELETE /api/odontologos/{id}` | Gestión de staff profesional y matrícula única. |
 | **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
@@ -103,11 +105,11 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 
 | Rol | Permisos |
 |---|---|
-| `ADMINISTRADOR` | Acceso administrativo completo, incluida la gestión de usuarios, roles, informes e insumos. |
-| `ODONTOLOGO` | Acceso a pacientes y turnos, lectura de odontólogos/especialidades y a las rutas clínicas de historias, diagnósticos y tratamientos cuando estén implementadas. No hay API de recetas. |
+| `ADMINISTRADOR` | Acceso administrativo completo, incluida la gestión de usuarios, roles, informes, historias clínicas, diagnósticos e IA. |
+| `ODONTOLOGO` | Acceso a pacientes y turnos, lectura de odontólogos/especialidades y acceso completo a historias clínicas, diagnósticos, tratamientos y al módulo de Diagnóstico por Imagen con IA. |
 | `RECEPCIONISTA` | Acceso a pacientes y turnos; lectura de odontólogos y especialidades. Sin acceso a historias clínicas, usuarios, roles, informes o administración. |
 
-`POST /api/auth/login` y `GET /api/health` son públicos. Todos los demás endpoints requieren autenticación y se autorizan según la matriz. Las rutas clínicas todavía no tienen controladores REST implementados; sus patrones ya están reservados para el rol odontólogo y administrador.
+`POST /api/auth/login` y `GET /api/health` son públicos. Todos los demás endpoints requieren autenticación y se autorizan según la matriz.
 
 ### Informes e inventario
 
@@ -199,6 +201,19 @@ Para `POST /api/turnos` y `PUT /api/turnos/{id}`, el paciente y el odontólogo d
 }
 ```
 
+### Diagnóstico por Imagen con IA
+
+El backend integra un motor inteligente para el triaje y diagnóstico preliminar asistido por IA de estudios de imágenes dentales:
+
+- **Modalidades admitidas:**
+  - `RADIOGRAFIA_PANORAMICA`: Evaluación general de maxilares, terceros molares retenidos, pérdida ósea generalizada y caries interproximales.
+  - `RADIOGRAFIA_PERIAPICAL`: Evaluación de pieza dental completa, lesiones radiolúcidas periapicales (granulomas, quistes), necrosis pulpar y caries profundas.
+  - `BITE_WING`: Aletas de mordida para detección precoz de caries interproximales y desajuste marginal de restauraciones.
+  - `FOTO_INTRAORAL`: Detección visual de cálculo/sarro subgingival, placa bacteriana y gingivitis marginal.
+  - `TOMOGRAFIA_CONE_BEAM`: Análisis tridimensional (CBCT 3D) de proximidad con el conducto dentario inferior y reabsorción ósea.
+- **Salida estructurada:** Hallazgos con nomenclatura odontológica FDI, severidad (`LEVE`, `MODERADA`, `SEVERA`), nivel de urgencia (`BAJA`, `MEDIA`, `ALTA`, `URGENTE`), índice de severidad (1-10) y roadmap de tratamientos sugeridos.
+- **Integración automática en Historia Clínica:** Mediante `guardarEnHistoria: true`, crea automáticamente un registro `Diagnostico` vinculado a la `HistoriaClinica` del paciente con los `Tratamiento`s en estado `PENDIENTE`.
+
 ## Estructura del proyecto
 
 ```text
@@ -206,7 +221,9 @@ src/main/java/com/proyectohoussay/odonto/
 ├── BackendOdontoApplication.java
 ├── auth/              # Controladores, servicios y DTOs de login
 ├── config/            # Configuración de OpenAPI / Swagger
-├── clinicalhistory/   # Historia clínica, diagnósticos y tratamientos (entidades y repositorios)
+├── clinicalhistory/   # Historia clínica, diagnósticos, tratamientos y controladores REST
+│   ├── ai/            # Diagnóstico por Imagen con IA (motor, entidad, repositorio, controlador y DTOs)
+│   └── dto/           # DTOs de historias clínicas, diagnósticos y tratamientos
 ├── controller/        # Controladores REST de turnos, odontólogos, especialidades y usuarios
 ├── dto/               # Objetos de transferencia de datos (DTOs)
 ├── exception/         # Manejo centralizado de excepciones

@@ -6,6 +6,9 @@ import com.proyectohoussay.odonto.controller.TurnoController;
 import com.proyectohoussay.odonto.controller.UsuarioController;
 import com.proyectohoussay.odonto.health.HealthController;
 import com.proyectohoussay.odonto.patient.PacienteController;
+import com.proyectohoussay.odonto.clinicalhistory.HistoriaClinicaController;
+import com.proyectohoussay.odonto.clinicalhistory.DiagnosticoController;
+import com.proyectohoussay.odonto.clinicalhistory.ai.DiagnosticoImagenController;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
@@ -54,6 +57,24 @@ class OpenApiSecurityIntegrationTest {
     void userManagementRequiresBearerAuth() {
         assertTrue(mapsPost(UsuarioController.class, "/api/usuarios"));
         assertBearerAuthRequired(UsuarioController.class);
+    }
+
+    @Test
+    void aiImageDiagnosisRequiresBearerAuth() {
+        assertTrue(mapsPost(DiagnosticoImagenController.class, "/api/ia/diagnostico-imagen/analizar"));
+        assertBearerAuthRequired(DiagnosticoImagenController.class);
+    }
+
+    @Test
+    void clinicalHistoryRequiresBearerAuth() {
+        assertTrue(mapsPost(HistoriaClinicaController.class, "/api/historias-clinicas"));
+        assertBearerAuthRequired(HistoriaClinicaController.class);
+    }
+
+    @Test
+    void diagnosisManagementRequiresBearerAuth() {
+        assertTrue(mapsPost(DiagnosticoController.class, "/api/diagnosticos"));
+        assertBearerAuthRequired(DiagnosticoController.class);
     }
 
     @Test

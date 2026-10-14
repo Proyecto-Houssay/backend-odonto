@@ -81,7 +81,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/pacientes/**", "/api/turnos/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/api/historias-clinicas/**", "/api/historias/**", "/api/diagnosticos/**",
-                                "/api/tratamientos/**")
+                                "/api/tratamientos/**", "/api/ia/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer
