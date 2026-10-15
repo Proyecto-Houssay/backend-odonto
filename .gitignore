@@ -36,3 +36,5 @@ build/
 
 # Local demo credentials; use .env.example as a template.
 .env
+.vercel
+.env*
