@@ -144,6 +144,10 @@ class AuthSecurityIntegrationTest {
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/historias-clinicas").header("Authorization", bearer(token)))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/diagnosticos").header("Authorization", bearer(token)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/tratamientos").header("Authorization", bearer(token)))
+                .andExpect(status().isForbidden());
         mockMvc.perform(post("/api/usuarios")
                         .header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -164,6 +168,12 @@ class AuthSecurityIntegrationTest {
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/reports").header("Authorization", bearer(dentistToken)))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/historias-clinicas").header("Authorization", bearer(dentistToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/diagnosticos").header("Authorization", bearer(dentistToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/tratamientos").header("Authorization", bearer(dentistToken)))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -196,6 +206,38 @@ class AuthSecurityIntegrationTest {
             mockMvc.perform(get(uri).header("Authorization", bearer(receptionistToken)))
                     .andExpect(status().isForbidden());
         }
+    }
+
+    @Test
+    void authenticatedUserCanChangeOnlyOwnPasswordWithoutReturningSecrets() throws Exception {
+        String token = loginAndGetToken("dentist");
+        String newPassword = "new-secure-password-123";
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"" + newPassword + "\"}"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"wrong-password\",\"newPassword\":\"" + newPassword + "\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(newPassword))));
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"" + newPassword + "\"}"))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson("dentist", PASSWORD)))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson("dentist", newPassword)))
+                .andExpect(status().isOk());
     }
 
     private void saveUser(String username, String email, String role, boolean active) {

@@ -4,6 +4,7 @@ import com.proyectohoussay.odonto.model.Usuario;
 import com.proyectohoussay.odonto.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
@@ -44,5 +45,27 @@ public class AuthService {
         } catch (IllegalArgumentException exception) {
             return false;
         }
+    }
+
+    @Transactional
+    public void changePassword(String authenticatedUsername, String currentPassword, String newPassword) {
+        if (authenticatedUsername == null || authenticatedUsername.isBlank()) {
+            throw new InvalidCurrentPasswordException();
+        }
+        Usuario user = usuarioRepository.findByUsername(authenticatedUsername)
+                .filter(Usuario::isActivo)
+                .orElseThrow(InvalidCurrentPasswordException::new);
+        if (currentPassword == null || currentPassword.isBlank()
+                || currentPassword.getBytes(StandardCharsets.UTF_8).length > MAX_BCRYPT_PASSWORD_BYTES
+                || !matches(currentPassword, user.getPassword())) {
+            throw new InvalidCurrentPasswordException();
+        }
+        if (newPassword == null || newPassword.isBlank() || newPassword.length() < 8
+                || newPassword.getBytes(StandardCharsets.UTF_8).length > MAX_BCRYPT_PASSWORD_BYTES
+                || passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new IllegalArgumentException("La nueva contraseña debe ser diferente y tener entre 8 caracteres y 72 bytes UTF-8.");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        usuarioRepository.save(user);
     }
 }

@@ -30,4 +30,15 @@ public class AuthExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new AuthErrorResponse("El cuerpo de la solicitud es inválido."));
     }
+
+    @ExceptionHandler(InvalidCurrentPasswordException.class)
+    public ResponseEntity<AuthErrorResponse> handleIncorrectCurrentPassword(InvalidCurrentPasswordException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new AuthErrorResponse("La contraseña actual es incorrecta."));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<AuthErrorResponse> handleInvalidNewPassword(IllegalArgumentException exception) {
+        return ResponseEntity.badRequest().body(new AuthErrorResponse(exception.getMessage()));
+    }
 }
