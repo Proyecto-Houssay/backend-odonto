@@ -65,11 +65,28 @@ La autenticación confirma quién realiza la solicitud; el rol determina qué op
 |---|---|
 | `POST /api/auth/login`, `GET /api/health` | Públicas. |
 | Pacientes y turnos | Requieren JWT de `ADMINISTRADOR`, `ODONTOLOGO` o `RECEPCIONISTA`. |
+| Historias clínicas, diagnósticos y tratamientos | Requieren JWT de `ADMINISTRADOR` u `ODONTOLOGO`. |
+| `POST /api/auth/change-password` | Cualquier usuario autenticado, solo para su propia contraseña. |
 | Lectura de odontólogos y especialidades | Requiere JWT de cualquiera de esos tres roles. |
 | Crear, modificar o borrar odontólogos y especialidades | Requiere JWT de `ADMINISTRADOR`. |
 | Usuarios e informes | Requieren JWT de `ADMINISTRADOR`. |
 
 Para probar `POST /api/pacientes`, sirve cualquiera de esos tres roles. Para crear cuentas o usar informes, inicia sesión con un administrador. Si aún no existe uno, utiliza el bootstrap documentado en el README; luego desactiva ese perfil y las variables correspondientes, como indica la guía.
+
+## Probar la ficha clínica con datos ficticios
+
+1. Consultá `GET /api/pacientes` para obtener el `id` del paciente de prueba. Con token de `ADMINISTRADOR` u `ODONTOLOGO`, ejecutá `POST /api/historias-clinicas` con `{"pacienteId": ID, "fechaApertura": "2026-10-14", "observaciones": "Control de prueba"}`. Guardá el `id` de la respuesta `201`.
+2. Ejecutá `POST /api/diagnosticos` con `{"historiaClinicaId": ID_HISTORIA, "fecha": "2026-10-14", "descripcion": "Diagnóstico de prueba"}`. Guardá su `id`.
+3. Ejecutá `POST /api/tratamientos` con `{"diagnosticoId": ID_DIAGNOSTICO, "descripcion": "Tratamiento de prueba", "fecha": "2026-10-14", "estado": "PENDIENTE"}`. Verificá con los `GET` de esas rutas. Una segunda historia para el mismo paciente devuelve `409`.
+4. En Workbench, con el mismo esquema, ejecutá las consultas siguientes sustituyendo `ID` por el ID numérico del paciente:
+
+   ```sql
+   SELECT id, paciente_id, fecha_apertura, observaciones FROM historias_clinicas WHERE paciente_id = ID;
+   SELECT id, historia_clinica_id, fecha, descripcion FROM diagnosticos WHERE historia_clinica_id = ID_HISTORIA;
+   SELECT id, diagnostico_id, fecha, descripcion, estado FROM tratamientos WHERE diagnostico_id = ID_DIAGNOSTICO;
+   ```
+
+Para cambiar tu propia contraseña, `POST /api/auth/change-password` recibe `{"currentPassword":"<clave-actual>","newPassword":"<clave-nueva>"}` con JWT. Devuelve `204`; iniciá sesión de nuevo con la clave nueva. No publiques claves ni tokens de prueba.
 
 ## Seguridad y alcance de las pruebas
 

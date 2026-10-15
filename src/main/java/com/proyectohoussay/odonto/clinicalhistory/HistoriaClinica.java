@@ -32,7 +32,7 @@ public class HistoriaClinica {
     private LocalDate fechaApertura;
 
     @NotNull(message = "El paciente es obligatorio")
-    @Column(name = "paciente_id", nullable = false)
+    @Column(name = "paciente_id", nullable = false, unique = true)
     private Long pacienteId;
 
     @Column(length = 1000)

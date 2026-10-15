@@ -58,9 +58,9 @@ docker compose ps
 ./mvnw spring-boot:run
 ```
 
-Ejecutá los comandos desde la raíz de `backend-odonto`, donde está `mvnw.cmd`. Solo si todavía no existe `.env`, copiá `.env.example` a `.env` y configurá tus credenciales locales; **no sobrescribas** un `.env` existente. Si usás Docker, esperá a que MySQL figure como `healthy`; si ya usás MySQL instalado en Windows, omití `docker compose up -d` y `docker compose ps`, pero comprobá que el servidor, puerto, base y usuario coincidan con tu `.env`. El archivo `.env` contiene credenciales locales y se ignora en Git; `.env.example` solo tiene valores de demostración. Spring Boot importa el `.env` local al iniciar y también acepta las mismas variables desde el entorno.
+Ejecutá los comandos desde la raíz de `backend-odonto`, donde está `mvnw.cmd`. Solo si todavía no existe `.env`, copiá `.env.example` a `.env` y configurá tus credenciales locales; **no sobrescribas** un `.env` existente. Si usás Docker, esperá a que MySQL figure como `healthy`; si ya usás MySQL instalado en Windows, omití `docker compose up -d` y `docker compose ps`, pero comprobá que el servidor, puerto, base y usuario coincidan con tu `.env`. El archivo `.env` contiene credenciales locales y se ignora en Git; `.env.example` solo tiene valores de demostración. Spring Boot importa el `.env` local al iniciar y también acepta las mismas variables desde el entorno. **Las variables de entorno ya definidas en la terminal tienen prioridad sobre `.env`**: si la conexión MySQL devuelve `Access denied` pese a que Workbench conecta, comprobá si esa terminal conserva un `MYSQL_PASSWORD` viejo; no publiques su valor.
 
-En el contenedor de desarrollo, el usuario `novadent_app` se limita a la base configurada en `MYSQL_DATABASE`, y MySQL escucha únicamente en `127.0.0.1`. Configurá la aplicación con un usuario dedicado, no con `root`. El esquema se actualiza con Hibernate (`ddl-auto=update`), sin migraciones versionadas, por lo que esta configuración es para desarrollo/demo y no para producción.
+En el contenedor de desarrollo, el usuario `novadent_app` se limita a la base configurada en `MYSQL_DATABASE`, y MySQL escucha únicamente en `127.0.0.1`. Configurá la aplicación con un usuario dedicado, no con `root`. El esquema se actualiza con Hibernate (`ddl-auto=update`), sin migraciones versionadas, por lo que esta configuración es para desarrollo/demo y no para producción. **`ddl-auto=update` no garantiza agregar restricciones nuevas a tablas MySQL existentes**: para la unicidad y referencia de historia clínica, seguí la migración manual de abajo.
 
 Si usás el contenedor, para detenerlo sin borrar datos ejecutá `docker compose down`. **`docker compose down -v` elimina el volumen y borra permanentemente sus datos.** Para iniciar otra vez, repetí `docker compose up -d` y luego iniciá la aplicación con el comando indicado arriba.
 
@@ -80,13 +80,15 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | Módulo | Tipo / Rutas | Descripción |
 |---|---|---|
 | **Salud** | `GET /api/health` | Healthcheck técnico de la aplicación. |
-| **Pacientes** | `POST /api/pacientes` | Registro y validación de pacientes con DNI único. |
-| **Historias Clínicas** | `HistoriaClinica`, `Diagnostico`, `Tratamiento` | Entidades, enum `EstadoTratamiento` y repositorios JPA para ficha clínica y evolución odontológica. |
+| **Pacientes** | `GET /api/pacientes`, `GET /api/pacientes/{id}`, `POST /api/pacientes`, `PUT /api/pacientes/{id}`, `DELETE /api/pacientes/{id}` | Registro, consulta, actualización y borrado solo si no hay historia clínica ni turnos vinculados. DNI único. |
+| **Historias clínicas** | `GET/POST /api/historias-clinicas`, `GET/PUT /api/historias-clinicas/{id}` | Una historia por paciente existente; consulta opcional `?pacienteId=`. |
+| **Diagnósticos** | `GET/POST /api/diagnosticos`, `GET/PUT /api/diagnosticos/{id}` | Asociados a una historia existente; consulta opcional `?historiaClinicaId=`. |
+| **Tratamientos** | `GET/POST /api/tratamientos`, `GET/PUT /api/tratamientos/{id}` | Asociados a un diagnóstico existente; consulta opcional `?diagnosticoId=`. Estados: `PENDIENTE`, `EN_CURSO`, `COMPLETADO`, `CANCELADO`. |
 | **Odontólogos** | `GET /api/odontologos`, `GET /api/odontologos/{id}`, `GET /api/odontologos/matricula/{matricula}`, `POST /api/odontologos`, `PUT /api/odontologos/{id}`, `DELETE /api/odontologos/{id}` | Gestión de staff profesional y matrícula única. |
 | **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
 | **Usuarios** | `GET /api/usuarios`, `GET /api/usuarios/{id}`, `POST /api/usuarios`, `PUT /api/usuarios/{id}`, `DELETE /api/usuarios/{id}` | Gestión de cuentas de usuario. |
-| **Autenticación** | `POST /api/auth/login` | Autentica credenciales persistidas y devuelve un JWT Bearer de 15 minutos. |
+| **Autenticación** | `POST /api/auth/login`, `POST /api/auth/change-password` | Login con JWT Bearer de 15 minutos y cambio de la propia contraseña autenticada. |
 | **Informes e inventario** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones`, `GET /api/reports/anual` | Resumen y reportes con datos persistidos. Todas las rutas requieren `ADMINISTRADOR`. |
 
 
@@ -95,7 +97,7 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 ### Usuarios y autenticación
 
 - `POST /api/usuarios` crea cuentas y almacena la contraseña con BCrypt. Las respuestas REST de usuarios no incluyen la contraseña ni su hash. El alta requiere rol `ADMINISTRADOR`; no existe registro público.
-- `PUT /api/usuarios/{id}` actualiza los datos de perfil y estado, pero no permite cambiar ni borrar la contraseña. El cambio de contraseña requiere un flujo explícito que todavía no está implementado.
+- `PUT /api/usuarios/{id}` actualiza los datos de perfil y estado, pero no permite cambiar ni borrar la contraseña. Cada usuario autenticado cambia su propia clave con `POST /api/auth/change-password`, enviando `currentPassword` y `newPassword`. Se exige la contraseña actual; la nueva debe ser distinta, tener al menos 8 caracteres y no superar 72 bytes UTF-8 por el límite de BCrypt. La respuesta exitosa es `204` sin secretos.
 - `POST /api/auth/login` recibe `usernameOrEmail` y `password`, busca el usuario persistido, compara con BCrypt y rechaza credenciales incorrectas, cuentas inexistentes o inactivas con el mismo error genérico. En caso de éxito responde con `token`, `tokenType: Bearer` y `expiresIn: 900`.
 - Las rutas protegidas reciben el JWT en `Authorization: Bearer <token>`. La API es stateless: tokens inválidos o expirados reciben `401`; un usuario autenticado sin el rol requerido recibe `403`.
 
@@ -104,10 +106,18 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | Rol | Permisos |
 |---|---|
 | `ADMINISTRADOR` | Acceso administrativo completo, incluida la gestión de usuarios, roles, informes e insumos. |
-| `ODONTOLOGO` | Acceso a pacientes y turnos, lectura de odontólogos/especialidades y a las rutas clínicas de historias, diagnósticos y tratamientos cuando estén implementadas. No hay API de recetas. |
+| `ODONTOLOGO` | Acceso a pacientes, turnos, historias, diagnósticos y tratamientos; lectura de odontólogos/especialidades. No hay API de recetas. |
 | `RECEPCIONISTA` | Acceso a pacientes y turnos; lectura de odontólogos y especialidades. Sin acceso a historias clínicas, usuarios, roles, informes o administración. |
 
-`POST /api/auth/login` y `GET /api/health` son públicos. Todos los demás endpoints requieren autenticación y se autorizan según la matriz. Las rutas clínicas todavía no tienen controladores REST implementados; sus patrones ya están reservados para el rol odontólogo y administrador.
+`POST /api/auth/login` y `GET /api/health` son públicos. Todos los demás endpoints requieren autenticación y se autorizan según la matriz. Cualquier usuario autenticado puede cambiar **solo su propia** contraseña: la identidad se obtiene del JWT, no de un ID enviado por el cliente. Un JWT ya emitido puede seguir vigente hasta sus 15 minutos de expiración después del cambio.
+
+Las rutas clínicas devuelven DTOs planos; no exponen directamente las entidades JPA ni permiten reasignar una historia a otro paciente, un diagnóstico a otra historia o un tratamiento a otro diagnóstico mediante `PUT`. No se ofrece borrado de registros clínicos para preservar la evolución del paciente. Una referencia inexistente responde `404` y una segunda historia para el mismo paciente responde `409`. La creación de historia y el borrado de paciente bloquean la misma fila de paciente durante la transacción para evitar una carrera entre ambas operaciones de la API. Para proteger también las operaciones SQL externas, la base MySQL existente necesita las restricciones siguientes.
+
+#### Migración MySQL única de historia clínica
+
+1. Hacé una copia de seguridad y abrí [docs/mysql-clinical-constraints.sql](docs/mysql-clinical-constraints.sql) en Workbench, con el mismo esquema que usa el backend seleccionado.
+2. Ejecutá **solo las consultas `SELECT` de los pasos 1–3**, no el archivo entero: confirmá el esquema y que las consultas de historias duplicadas y huérfanas devuelvan **cero filas**. Si aparecen filas, detenete; no borres datos para forzar la migración. Comprobá también que no existan ya restricciones equivalentes.
+3. Solo después, seleccioná y ejecutá **el único `ALTER TABLE` del paso 4**. Volvé a ejecutar el `SELECT` del paso 3: deben aparecer `UNIQUE` y `FOREIGN KEY`. Es una operación de una sola vez; no repitas el `ALTER TABLE` si ya se aplicó. No modifica ni borra filas existentes, pero MySQL confirma DDL implícitamente.
 
 ### Informes e inventario
 
@@ -206,7 +216,7 @@ src/main/java/com/proyectohoussay/odonto/
 ├── BackendOdontoApplication.java
 ├── auth/              # Controladores, servicios y DTOs de login
 ├── config/            # Configuración de OpenAPI / Swagger
-├── clinicalhistory/   # Historia clínica, diagnósticos y tratamientos (entidades y repositorios)
+├── clinicalhistory/   # Historia clínica, diagnósticos y tratamientos (API, servicio y persistencia)
 ├── controller/        # Controladores REST de turnos, odontólogos, especialidades y usuarios
 ├── dto/               # Objetos de transferencia de datos (DTOs)
 ├── exception/         # Manejo centralizado de excepciones
