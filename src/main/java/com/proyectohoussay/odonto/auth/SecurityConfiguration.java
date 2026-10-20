@@ -80,7 +80,7 @@ public class SecurityConfiguration {
                         .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers("/api/pacientes/**", "/api/turnos/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
-                        .requestMatchers("/api/historias-clinicas/**", "/api/historias/**", "/api/diagnosticos/**",
+                        .requestMatchers("/api/odontograma", "/api/odontograma/**", "/api/historias-clinicas/**", "/api/historias/**", "/api/diagnosticos/**",
                                 "/api/tratamientos/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
                         .anyRequest().authenticated())

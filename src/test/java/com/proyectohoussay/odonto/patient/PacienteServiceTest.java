@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import java.util.Optional;
 import com.proyectohoussay.odonto.clinicalhistory.HistoriaClinicaRepository;
 import com.proyectohoussay.odonto.repository.TurnoRepository;
+import com.proyectohoussay.odonto.odontogram.OdontogramaRepository;
 
 import java.time.LocalDate;
 
@@ -32,6 +33,9 @@ class PacienteServiceTest {
 
     @Mock
     private TurnoRepository turnoRepository;
+
+    @Mock
+    private OdontogramaRepository odontogramaRepository;
 
     @InjectMocks
     private PacienteService pacienteService;
@@ -108,6 +112,15 @@ class PacienteServiceTest {
         assertThatThrownBy(() -> pacienteService.eliminarPaciente(5L))
                 .isInstanceOf(IllegalStateException.class);
         verify(pacienteRepository).findLockedById(5L);
+        verify(pacienteRepository, never()).deleteById(5L);
+    }
+
+    @Test
+    void deletionRefusesPatientWithOdontogramWithoutOtherClinicalRecords() {
+        when(pacienteRepository.findLockedById(5L)).thenReturn(Optional.of(createPaciente("12345678")));
+        when(odontogramaRepository.existsByPacienteId(5L)).thenReturn(true);
+        assertThatThrownBy(() -> pacienteService.eliminarPaciente(5L))
+                .isInstanceOf(PacienteConDatosVinculadosException.class);
         verify(pacienteRepository, never()).deleteById(5L);
     }
 
