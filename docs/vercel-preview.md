@@ -2,13 +2,13 @@
 
 ## Configuración del proyecto
 
-Conectá el repositorio GitHub `Proyecto-Houssay/backend-odonto` a Vercel y elegí `backend-odonto` como raíz del proyecto. El despliegue de la rama `Braian` debe quedar como **Preview**. Vercel detecta `Dockerfile.vercel`, compila el backend y publica una URL temporal. El contenedor lee el puerto dinámico `PORT`.
+Conectá el repositorio GitHub `Proyecto-Houssay/backend-odonto` a Vercel y elegí la raíz del repositorio (`./`) como raíz del proyecto. La rama `prueba-vercel` debe desplegarse como **Preview**, nunca como Production. Vercel detecta `Dockerfile.vercel`, compila el backend y publica una URL temporal. Configurá `PORT=3000` en el entorno Preview para que Vercel enrute al puerto en el que escucha el contenedor.
 
-No uses el servicio MySQL de `docker-compose.yml` como base de Vercel: ese servicio solo es accesible dentro del entorno local. La aplicación necesita una instancia MySQL externa cuya dirección acepte conexiones desde Vercel.
+No uses el servicio MySQL de `docker-compose.yml` como base de Vercel: ese servicio solo es accesible dentro del entorno local. La aplicación necesita una instancia MySQL externa, desechable y exclusiva para Preview; no uses datos reales. La configuración local desactiva TLS en `application.properties`, así que para un proveedor administrado que requiera TLS configurá `SPRING_DATASOURCE_URL` con la URL JDBC y el modo TLS recomendado por ese proveedor (por ejemplo, `sslMode=VERIFY_IDENTITY` con su certificado/CA). No desactives la verificación TLS para resolver errores de certificado.
 
 ## Variables para el entorno Preview
 
-Cargá estas variables en la configuración de Vercel, dentro del entorno **Preview**:
+Cargá estas variables en la configuración de Vercel, dentro del entorno **Preview**, con los datos de esa base aislada:
 
 - `MYSQL_HOST`
 - `MYSQL_PORT`
@@ -16,6 +16,9 @@ Cargá estas variables en la configuración de Vercel, dentro del entorno **Prev
 - `MYSQL_USER`
 - `MYSQL_PASSWORD`
 - `JWT_SECRET_BASE64`
+- `PORT=3000`
+
+Si la URL JDBC del proveedor necesita TLS, agregá también `SPRING_DATASOURCE_URL` con la URL completa, su base y los parámetros TLS requeridos. Spring Boot usa esta variable para reemplazar la URL local de `application.properties`.
 
 Usá los datos de conexión del proveedor MySQL. No configures `MYSQL_ROOT_PASSWORD`: solo lo necesita el contenedor MySQL local. No copies el archivo `.env` al repositorio ni pegues valores secretos en el chat.
 
