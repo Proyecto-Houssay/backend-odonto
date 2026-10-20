@@ -2,6 +2,8 @@
 
 API REST para un proyecto académico de gestión de un consultorio odontológico (IEFI). Pagos y facturación están fuera de alcance; receta se reserva para pruebas y no es una función REST de uso habitual. El backend utiliza Java 17, Spring Boot 3.5.6, Spring Web, Bean Validation y Spring Data JPA. MySQL es la base predeterminada de la aplicación; H2 en memoria se reserva para pruebas automatizadas.
 
+**Odontograma académico:** presupuesto ilustrativo firmado e inmutable para pacientes existentes. Ver [prueba manual, contrato y comprobación en Workbench](docs/odontograma-academico.md). No incorpora cobros ni sustituye la historia clínica.
+
 ## Stack tecnológico
 
 - **Java:** 17
