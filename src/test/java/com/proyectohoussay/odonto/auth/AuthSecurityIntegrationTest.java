@@ -107,6 +107,29 @@ class AuthSecurityIntegrationTest {
     }
 
     @Test
+    void registrationAndPasswordResetArePublicButAuthenticatedPasswordChangeRemainsProtected() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"public-user\",\"nombre\":\"Public\",\"apellido\":\"User\",\"email\":\"public-user@example.com\",\"password\":\"test-password-123\"}"))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"missing@example.com\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"not-a-valid-token\",\"newPassword\":\"new-password-123\"}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"new-password-123\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void openApiDocumentationIsPublicWhileBusinessEndpointsRemainProtected() throws Exception {
         mockMvc.perform(get("/swagger-ui.html"))
                 .andExpect(status().is3xxRedirection());
