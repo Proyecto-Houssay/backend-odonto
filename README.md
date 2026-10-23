@@ -235,6 +235,7 @@ src/main/java/com/proyectohoussay/odonto/
 docs/
 ├── backend-scaffold.md
 ├── braian-dashboard-integration.md
+├── gestion-personal-backlog.md
 └── swagger-mysql-workflow.md
 ```
 
@@ -250,5 +251,6 @@ docs/
 - [Wiki del proyecto](https://github.com/Proyecto-Houssay/backend-odonto/wiki)
 - [Sprint 0](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Sprint-0)
 - [Stack tecnológico](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Stack-tecnologico)
+- [Backlog: Gestión de Personal](docs/gestion-personal-backlog.md)
 - [`docs/backend-scaffold.md`](docs/backend-scaffold.md)
 - [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md)
