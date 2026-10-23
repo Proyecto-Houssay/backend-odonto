@@ -31,6 +31,9 @@ class AuthControllerTest {
     @MockitoBean
     private JwtTokenService jwtTokenService;
 
+    @MockitoBean
+    private AccountService accountService;
+
     @Test
     void loginReturnsBearerTokenAndExpiryWithoutCredentials() throws Exception {
         Usuario user = new Usuario("iris", "Iris", "De Dominicis", "iris@example.com", "encoded", "ODONTOLOGO", true);
