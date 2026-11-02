@@ -5,6 +5,7 @@ import com.proyectohoussay.odonto.chatbot.dto.ChatRequest;
 import com.proyectohoussay.odonto.chatbot.dto.ChatResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -18,6 +19,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ChatbotController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class ChatbotControllerTest {
 
     @Autowired
@@ -32,13 +34,13 @@ class ChatbotControllerTest {
     @Test
     void ask_conMensajeValido_retorna200YRespuesta() throws Exception {
         ChatResponse mockResponse = ChatResponse.conAcciones(
-                "Para el dolor de muela de juicio pod??s tomar ibuprofeno...",
+                "Para el dolor de muela de juicio podés tomar ibuprofeno...",
                 "urgencia",
-                List.of("???? Llamar a la cl??nica: (011) 4555-1234", "???? Agendar turno de urgencia")
+                List.of("📞 Llamar a la clínica: (011) 4555-1234", "🏥 Agendar turno de urgencia")
         );
         when(chatbotService.procesarMensaje(any(ChatRequest.class))).thenReturn(mockResponse);
 
-        ChatRequest request = new ChatRequest("me duele la muela de juicio hace 3 d??as", "session-1");
+        ChatRequest request = new ChatRequest("me duele la muela de juicio hace 3 días", "session-1");
 
         mockMvc.perform(post("/api/chatbot/ask")
                         .contentType(MediaType.APPLICATION_JSON)
