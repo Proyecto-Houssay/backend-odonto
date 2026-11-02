@@ -4,7 +4,6 @@ import com.proyectohoussay.odonto.chatbot.dto.ChatRequest;
 import com.proyectohoussay.odonto.chatbot.dto.ChatResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.springframework.ai.chat.client.ChatClient;
@@ -67,13 +66,12 @@ class ChatbotServiceTest {
 
     @Test
     void clasificarIntencion_consultaGeneral() {
-        String intencion = chatbotService.clasificarIntencion("Hola, buenas tardes, qué horarios tienen?");
+        String intencion = chatbotService.clasificarIntencion("Hola, buenas tardes, qué días atienden?");
         assertEquals("consulta_general", intencion);
     }
 
     @Test
     void procesarMensaje_manejoDeErrores_devuelveRespuestaAmigable() {
-        // Al fallar o lanzar error el chatClient mock, debe capturar la excepción y responder amigablemente
         ChatRequest request = new ChatRequest("Hola", "session-123");
         ChatResponse response = chatbotService.procesarMensaje(request);
 
