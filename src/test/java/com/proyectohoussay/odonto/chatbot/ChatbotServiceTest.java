@@ -7,10 +7,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ChatbotServiceTest {
 
@@ -72,6 +75,10 @@ class ChatbotServiceTest {
 
     @Test
     void procesarMensaje_manejoDeErrores_devuelveRespuestaAmigable() {
+        // Simulamos un fallo arrojado por el vectorStore o búsqueda
+        when(vectorStore.similaritySearch(any(SearchRequest.class)))
+                .thenThrow(new RuntimeException("Simulated VectorStore failure"));
+
         ChatRequest request = new ChatRequest("Hola", "session-123");
         ChatResponse response = chatbotService.procesarMensaje(request);
 
