@@ -1,0 +1,86 @@
+package com.proyectohoussay.odonto.chatbot;
+
+import com.proyectohoussay.odonto.chatbot.dto.ChatRequest;
+import com.proyectohoussay.odonto.chatbot.dto.ChatResponse;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.vectorstore.VectorStore;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+class ChatbotServiceTest {
+
+    private final ChatClient chatClient = mock(ChatClient.class, Mockito.RETURNS_DEEP_STUBS);
+    private final VectorStore vectorStore = mock(VectorStore.class);
+    private final ChatbotService chatbotService = new ChatbotService(chatClient, vectorStore);
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "Me duele mucho la muela de juicio hace 3 d??as",
+        "Tengo la cara hinchada y fiebre",
+        "Se me cay?? un diente por un golpe urgente",
+        "Tengo un dolor insoportable"
+    })
+    void clasificarIntencion_deberiaDetectarUrgencias(String mensaje) {
+        String intencion = chatbotService.clasificarIntencion(mensaje);
+        assertEquals("urgencia", intencion);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "??Cu??nto sale una limpieza con OSDE?",
+        "Precio de una extracci??n particular",
+        "Cu??nto cuesta un implante con Swiss Medical",
+        "Tarifas y copago para conducto"
+    })
+    void clasificarIntencion_deberiaDetectarPrecios(String mensaje) {
+        String intencion = chatbotService.clasificarIntencion(mensaje);
+        assertEquals("precio", intencion);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "Quiero sacar un turno para la semana que viene",
+        "??Hay disponibilidad de citas para ma??ana?",
+        "Necesito cancelar mi turno de las 15 hs"
+    })
+    void clasificarIntencion_deberiaDetectarTurnos(String mensaje) {
+        String intencion = chatbotService.clasificarIntencion(mensaje);
+        assertEquals("turno", intencion);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "Quer??a consultar por ortodoncia y brackets",
+        "Hacen blanqueamiento dental?",
+        "Informaci??n sobre pr??tesis o implantes"
+    })
+    void clasificarIntencion_deberiaDetectarTratamientos(String mensaje) {
+        String intencion = chatbotService.clasificarIntencion(mensaje);
+        assertEquals("tratamiento", intencion);
+    }
+
+    @Test
+    void clasificarIntencion_consultaGeneral() {
+        String intencion = chatbotService.clasificarIntencion("Hola, buenas tardes, qu?? d??as atienden?");
+        assertEquals("consulta_general", intencion);
+    }
+
+    @Test
+    void procesarMensaje_manejoDeErrores_devuelveRespuestaAmigable() {
+        // Simulamos una excepci??n cuando el chatClient intenta armar o ejecutar el prompt
+        when(chatClient.prompt()).thenThrow(new RuntimeException("Simulated ChatClient failure"));
+
+        ChatRequest request = new ChatRequest("Hola", "session-123");
+        ChatResponse response = chatbotService.procesarMensaje(request);
+
+        assertNotNull(response);
+        assertEquals("error", response.intencion());
+        assertTrue(response.respuesta().contains("Disculp??, hubo un error"));
+    }
+}

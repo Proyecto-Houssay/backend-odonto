@@ -70,7 +70,7 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/password-reset/request",
-                                "/api/auth/password-reset/confirm", "/api/health").permitAll()
+                                "/api/auth/password-reset/confirm", "/api/health", "/api/chatbot/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers("/api/usuarios/**", "/api/reports/**")
@@ -116,3 +116,4 @@ public class SecurityConfiguration {
                 .orElseGet(List::of);
     }
 }
+
