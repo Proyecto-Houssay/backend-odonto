@@ -55,7 +55,7 @@ class PublicRegistrationIntegrationTest {
     }
 
     @Test
-    void registersAReceptionistWithoutAllowingRoleEscalationAndCanLogIn() throws Exception {
+    void registersAPatientWithoutAllowingRoleEscalationAndCanLogIn() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -74,7 +74,7 @@ class PublicRegistrationIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(PASSWORD))));
 
         Usuario created = usuarioRepository.findByEmailIgnoreCase("ana.nieto@example.com").orElseThrow();
-        assertThat(created.getRol()).isEqualTo("RECEPCIONISTA");
+        assertThat(created.getRol()).isEqualTo("PACIENTE");
         assertThat(created.isActivo()).isTrue();
         assertThat(passwordEncoder.matches(PASSWORD, created.getPassword())).isTrue();
 
@@ -84,7 +84,8 @@ class PublicRegistrationIntegrationTest {
                                 {"usernameOrEmail":"ana.nieto@example.com","password":"%s"}
                                 """.formatted(PASSWORD)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").exists());
+                .andExpect(jsonPath("$.token").exists())
+                .andExpect(jsonPath("$.role").value("PACIENTE"));
     }
 
     @Test

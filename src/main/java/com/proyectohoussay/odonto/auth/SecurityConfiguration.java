@@ -70,7 +70,11 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/password-reset/request",
-                                "/api/auth/password-reset/confirm", "/api/health", "/api/chatbot/**").permitAll()
+                                "/api/auth/password-reset/confirm", "/api/health").permitAll()
+                        .requestMatchers("/api/chatbot/knowledge", "/api/chatbot/knowledge/**")
+                        .hasRole(UserRole.ADMINISTRADOR.name())
+                        .requestMatchers(HttpMethod.POST, "/api/chatbot/ask")
+                        .hasAnyRole(UserRole.PACIENTE.name(), UserRole.ADMINISTRADOR.name())
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers("/api/usuarios/**", "/api/reports/**")

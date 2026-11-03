@@ -56,7 +56,7 @@ public class AccountService {
         }
 
         Usuario user = new Usuario(username, request.nombre().trim(), request.apellido().trim(), email,
-                passwordEncoder.encode(request.password()), UserRole.RECEPCIONISTA.name(), true);
+                passwordEncoder.encode(request.password()), UserRole.PACIENTE.name(), true);
         try {
             user = usuarioRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException exception) {

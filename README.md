@@ -90,7 +90,8 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
 | **Usuarios** | `GET /api/usuarios`, `GET /api/usuarios/{id}`, `POST /api/usuarios`, `PUT /api/usuarios/{id}`, `DELETE /api/usuarios/{id}` | Gestión de cuentas de usuario. |
-| **Autenticación** | `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/password-reset/request`, `POST /api/auth/password-reset/confirm`, `POST /api/auth/change-password` | Login, registro público con rol fijo `RECEPCIONISTA`, recuperación por enlace de correo y cambio de la propia contraseña autenticada. |
+| **Autenticación** | `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/password-reset/request`, `POST /api/auth/password-reset/confirm`, `POST /api/auth/change-password` | Login, registro público con rol fijo `PACIENTE`, recuperación por enlace de correo y cambio de la propia contraseña autenticada. |
+| **Chatbot RAG** | `POST /api/chatbot/ask`, `POST /api/chatbot/knowledge`, `DELETE /api/chatbot/knowledge/{source}` | Respuestas apoyadas en documentos aprobados con citas; chat para pacientes y administración, gestión de fuentes solo para administración. |
 | **Informes e inventario** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones`, `GET /api/reports/anual` | Resumen y reportes con datos persistidos. Todas las rutas requieren `ADMINISTRADOR`. |
 
 
@@ -99,11 +100,11 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 ### Usuarios y autenticación
 
 - `POST /api/usuarios` crea cuentas y almacena la contraseña con BCrypt. Las respuestas REST de usuarios no incluyen la contraseña ni su hash. El alta administrativa requiere rol `ADMINISTRADOR`.
-- `POST /api/auth/register` crea una cuenta pública con `username`, `nombre`, `apellido`, `email` y `password`; el backend asigna siempre `RECEPCIONISTA` y estado activo, aunque el cliente envíe campos extra como rol. Usuario y correo deben ser únicos. La contraseña se almacena con BCrypt y se valida contra el límite de 72 bytes UTF-8. La respuesta `201` informa si el correo de bienvenida se envió; no se inicia sesión automáticamente.
+- `POST /api/auth/register` crea una cuenta pública con `username`, `nombre`, `apellido`, `email` y `password`; el backend asigna siempre `PACIENTE` y estado activo, aunque el cliente envíe campos extra como rol. Usuario y correo deben ser únicos. La contraseña se almacena con BCrypt y se valida contra el límite de 72 bytes UTF-8. La respuesta `201` informa si el correo de bienvenida se envió; no se inicia sesión automáticamente.
 - `POST /api/auth/password-reset/request` recibe `{"email":"persona@example.com"}`. Devuelve el mismo mensaje para cuentas existentes e inexistentes, sin confirmar si el correo está registrado. Con SMTP habilitado envía un enlace de un solo uso que vence en 30 minutos; el token sin procesar no se guarda en la base.
 - `POST /api/auth/password-reset/confirm` recibe `{"token":"...","newPassword":"..."}` y devuelve `204` si restablece la clave. Un token vencido, usado o inválido recibe `400`. Después de un restablecimiento el enlace no puede volver a usarse. Este flujo no elimina ni debilita el requisito de contraseña actual de `POST /api/auth/change-password`.
 - `PUT /api/usuarios/{id}` actualiza los datos de perfil y estado, pero no permite cambiar ni borrar la contraseña. Cada usuario autenticado cambia su propia clave con `POST /api/auth/change-password`, enviando `currentPassword` y `newPassword`. Se exige la contraseña actual; la nueva debe ser distinta, tener al menos 8 caracteres y no superar 72 bytes UTF-8 por el límite de BCrypt. La respuesta exitosa es `204` sin secretos.
-- `POST /api/auth/login` recibe `usernameOrEmail` y `password`, busca el usuario persistido, compara con BCrypt y rechaza credenciales incorrectas, cuentas inexistentes o inactivas con el mismo error genérico. En caso de éxito responde con `token`, `tokenType: Bearer` y `expiresIn: 900`.
+- `POST /api/auth/login` recibe `usernameOrEmail` y `password`, busca el usuario persistido, compara con BCrypt y rechaza credenciales incorrectas, cuentas inexistentes o inactivas con el mismo error genérico. En caso de éxito responde con `token`, `tokenType: Bearer`, `expiresIn: 900` y el `role` del usuario.
 - Las rutas protegidas reciben el JWT en `Authorization: Bearer <token>`. La API es stateless: tokens inválidos o expirados reciben `401`; un usuario autenticado sin el rol requerido recibe `403`.
 
 #### Matriz de roles
@@ -113,8 +114,15 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | `ADMINISTRADOR` | Acceso administrativo completo, incluida la gestión de usuarios, roles, informes e insumos. |
 | `ODONTOLOGO` | Acceso a pacientes, turnos, historias, diagnósticos y tratamientos; lectura de odontólogos/especialidades. No hay API de recetas. |
 | `RECEPCIONISTA` | Acceso a pacientes y turnos; lectura de odontólogos y especialidades. Sin acceso a historias clínicas, usuarios, roles, informes o administración. |
+| `PACIENTE` | Acceso al chatbot. No accede a informes, gestión de fuentes ni endpoints clínicos administrativos. |
 
-`POST /api/auth/login`, `POST /api/auth/register`, las dos rutas `password-reset` y `GET /api/health` son públicos. El cambio de contraseña sigue protegido; el resto de endpoints requiere autenticación y se autoriza según la matriz. Cualquier usuario autenticado puede cambiar **solo su propia** contraseña: la identidad se obtiene del JWT, no de un ID enviado por el cliente. Un JWT ya emitido puede seguir vigente hasta sus 15 minutos de expiración después del cambio.
+`POST /api/auth/login`, `POST /api/auth/register`, las dos rutas `password-reset` y `GET /api/health` son públicos. `POST /api/chatbot/ask` requiere rol `PACIENTE` o `ADMINISTRADOR`; las rutas `/api/chatbot/knowledge` requieren `ADMINISTRADOR`. El cambio de contraseña sigue protegido; el resto de endpoints requiere autenticación y se autoriza según la matriz. Cualquier usuario autenticado puede cambiar **solo su propia** contraseña: la identidad se obtiene del JWT, no de un ID enviado por el cliente. Un JWT ya emitido puede seguir vigente hasta sus 15 minutos de expiración después del cambio.
+
+### Chatbot con RAG
+
+El asistente busca fragmentos en documentos Markdown aprobados y devuelve la respuesta junto con `citas` (`id`, `documento`, `version`, `fragmento`). Si no encuentra evidencia suficiente, informa esa limitación; no diagnostica ni recomienda medicamentos. Las fuentes versionadas administradas por la API se guardan en `CHATBOT_KNOWLEDGE_DIRECTORY` (por defecto `./data/knowledge`) y se vuelven a indexar al iniciar. La carga requiere `OPENAI_API_KEY`; sin esa clave el backend omite embeddings y la administración de documentos responde `503`.
+
+`POST /api/chatbot/knowledge` recibe `source`, `version` y contenido Markdown, y `DELETE /api/chatbot/knowledge/{source}` retira una fuente administrada. Ambos endpoints requieren JWT de `ADMINISTRADOR`. Las fuentes del directorio del repositorio son de solo lectura.
 
 #### Correo de bienvenida y recuperación local
 
