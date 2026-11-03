@@ -1,5 +1,6 @@
 package com.proyectohoussay.odonto.patient;
 
+import com.proyectohoussay.odonto.auth.RoleAuthorizationInterceptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -9,11 +10,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.Mockito.doReturn;
 
 import java.time.LocalDate;
 
@@ -25,6 +29,14 @@ class PacienteControllerTest {
 
     @MockitoBean
     private PacienteService pacienteService;
+
+    @MockitoBean
+    private RoleAuthorizationInterceptor roleAuthorizationInterceptor;
+
+    @BeforeEach
+    void allowRequestsWithoutRoleAnnotations() throws Exception {
+        doReturn(true).when(roleAuthorizationInterceptor).preHandle(any(), any(), any());
+    }
 
     @Test
     void postRegistersPatientThroughService() throws Exception {

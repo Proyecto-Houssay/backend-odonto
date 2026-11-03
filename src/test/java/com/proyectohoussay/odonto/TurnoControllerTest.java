@@ -1,10 +1,12 @@
 package com.proyectohoussay.odonto;
 
+import com.proyectohoussay.odonto.auth.RoleAuthorizationInterceptor;
 import com.proyectohoussay.odonto.controller.TurnoController;
 import com.proyectohoussay.odonto.dto.TurnoRequest;
 import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.service.TurnoService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -18,6 +20,7 @@ import java.util.Collections;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -30,6 +33,14 @@ public class TurnoControllerTest {
 
     @MockitoBean
     private TurnoService turnoService;
+
+    @MockitoBean
+    private RoleAuthorizationInterceptor roleAuthorizationInterceptor;
+
+    @BeforeEach
+    void allowRequestsWithoutRoleAnnotations() throws Exception {
+        doReturn(true).when(roleAuthorizationInterceptor).preHandle(any(), any(), any());
+    }
 
     @Test
     void testListarTurnosReturnsOk() throws Exception {

@@ -1,6 +1,7 @@
 package com.proyectohoussay.odonto.service;
 
 import com.proyectohoussay.odonto.model.Turno;
+import com.proyectohoussay.odonto.model.EstadoTurno;
 import com.proyectohoussay.odonto.dto.TurnoRequest;
 import com.proyectohoussay.odonto.model.Odontologo;
 import com.proyectohoussay.odonto.patient.Paciente;
@@ -80,14 +81,20 @@ public class TurnoService {
         turnoRepository.save(turno);
     }
 
+    public Turno actualizarEstado(Long id, EstadoTurno estado) {
+        Turno turno = obtenerTurno(id);
+        turno.setEstado(estado.name());
+        return turnoRepository.save(turno);
+    }
+
     private Turno construirTurno(TurnoRequest request) {
         Paciente paciente = pacienteRepository.findById(request.pacienteId())
                 .orElseThrow(() -> new IllegalArgumentException("El paciente indicado no existe."));
         Odontologo odontologo = odontologoRepository.findById(request.odontologoId())
                 .orElseThrow(() -> new IllegalArgumentException("El odontólogo indicado no existe."));
         String estado = request.estado() == null || request.estado().isBlank()
-                ? "PENDIENTE"
-                : request.estado();
+                ? EstadoTurno.PENDIENTE.name()
+                : EstadoTurno.valueOf(request.estado().trim().toUpperCase()).name();
         return new Turno(request.fecha(), request.hora(), request.motivo(), estado, paciente, odontologo);
     }
 }

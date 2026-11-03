@@ -4,11 +4,13 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final AuthService authService;
@@ -20,16 +22,16 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
 
-        boolean authenticated = authService.authenticate(
+        var session = authService.authenticate(
                 request.usernameOrEmail(),
                 request.password()
         );
 
-        if (!authenticated) {
+        if (session.isEmpty()) {
             return ResponseEntity.status(401)
-                    .body("Credenciales incorrectas");
+                    .body(java.util.Map.of("message", "Credenciales incorrectas"));
         }
 
-        return ResponseEntity.ok("Inicio de sesión exitoso");
+        return ResponseEntity.ok(session.get());
     }
 }

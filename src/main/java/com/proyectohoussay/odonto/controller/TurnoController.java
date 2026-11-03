@@ -3,6 +3,8 @@ package com.proyectohoussay.odonto.controller;
 import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.dto.TurnoRequest;
 import com.proyectohoussay.odonto.service.TurnoService;
+import com.proyectohoussay.odonto.auth.RequireRoles;
+import com.proyectohoussay.odonto.dto.EstadoTurnoRequest;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -82,6 +84,16 @@ public class TurnoController {
             return ResponseEntity.ok(actualizado);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}/estado")
+    @RequireRoles({"ADMIN", "ODONTOLOGO"})
+    public ResponseEntity<?> actualizarEstado(@PathVariable Long id, @Valid @RequestBody EstadoTurnoRequest request) {
+        try {
+            return ResponseEntity.ok(turnoService.actualizarEstado(id, request.estado()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Turno no encontrado");
         }
     }
 

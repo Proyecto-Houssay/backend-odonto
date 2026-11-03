@@ -14,7 +14,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
 import java.util.List;
 
 @Service
@@ -22,9 +21,6 @@ public class KnowledgeAdminService {
 
     private final VectorStore vectorStore;
     private final KnowledgeBaseLoader loader;
-
-    @Value("${app.chatbot.admin-token:}")
-    private String adminToken;
 
     @Value("${app.chatbot.knowledge-directory:./data/knowledge}")
     private String managedDirectory;
@@ -40,8 +36,7 @@ public class KnowledgeAdminService {
         this.loader = loader;
     }
 
-    public synchronized void ingest(KnowledgeDocumentRequest request, String suppliedToken) {
-        authorize(suppliedToken);
+    public synchronized void ingest(KnowledgeDocumentRequest request) {
         ensureEmbeddingsConfigured();
 
         String filename = request.source() + ".md";
@@ -90,8 +85,7 @@ public class KnowledgeAdminService {
         }
     }
 
-    public synchronized void delete(String source, String suppliedToken) {
-        authorize(suppliedToken);
+    public synchronized void delete(String source) {
         ensureEmbeddingsConfigured();
         if (source == null || !source.matches("[A-Za-z0-9][A-Za-z0-9._-]{0,99}")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nombre de fuente inválido");
@@ -114,17 +108,6 @@ public class KnowledgeAdminService {
         } catch (IOException exception) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "No se pudo retirar el documento", exception);
-        }
-    }
-
-    private void authorize(String suppliedToken) {
-        if (adminToken == null || adminToken.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "La gestión documental no está habilitada");
-        }
-        byte[] expected = adminToken.getBytes(StandardCharsets.UTF_8);
-        byte[] supplied = suppliedToken == null ? new byte[0] : suppliedToken.getBytes(StandardCharsets.UTF_8);
-        if (!MessageDigest.isEqual(expected, supplied)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Credencial administrativa inválida");
         }
     }
 

@@ -6,6 +6,7 @@ public record InventarioItemDto(
         String categoria,
         int cantidadDisponible,
         String unidadMedida,
+        int stockMinimo,
         String estado
 ) {
 }

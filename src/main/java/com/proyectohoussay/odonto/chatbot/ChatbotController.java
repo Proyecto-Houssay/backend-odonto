@@ -4,13 +4,13 @@ import com.proyectohoussay.odonto.chatbot.dto.ChatRequest;
 import com.proyectohoussay.odonto.chatbot.dto.ChatResponse;
 import com.proyectohoussay.odonto.chatbot.dto.KnowledgeDocumentRequest;
 import com.proyectohoussay.odonto.chatbot.rag.KnowledgeAdminService;
+import com.proyectohoussay.odonto.auth.RequireRoles;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -59,22 +59,23 @@ public class ChatbotController {
      * }
      */
     @PostMapping("/ask")
+    @RequireRoles({"PATIENT", "ADMIN"})
     public ResponseEntity<ChatResponse> ask(@Valid @RequestBody ChatRequest request) {
         ChatResponse response = chatbotService.procesarMensaje(request);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/knowledge")
+    @RequireRoles("ADMIN")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void ingestKnowledge(@Valid @RequestBody KnowledgeDocumentRequest request,
-                               @RequestHeader(name = "X-Admin-Token", required = false) String token) {
-        knowledgeAdminService.ingest(request, token);
+    public void ingestKnowledge(@Valid @RequestBody KnowledgeDocumentRequest request) {
+        knowledgeAdminService.ingest(request);
     }
 
     @DeleteMapping("/knowledge/{source}")
+    @RequireRoles("ADMIN")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteKnowledge(@PathVariable String source,
-                               @RequestHeader(name = "X-Admin-Token", required = false) String token) {
-        knowledgeAdminService.delete(source, token);
+    public void deleteKnowledge(@PathVariable String source) {
+        knowledgeAdminService.delete(source);
     }
 }

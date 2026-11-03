@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.proyectohoussay.odonto.chatbot.dto.ChatRequest;
 import com.proyectohoussay.odonto.chatbot.dto.ChatResponse;
 import com.proyectohoussay.odonto.chatbot.rag.KnowledgeAdminService;
+import com.proyectohoussay.odonto.auth.RoleAuthorizationInterceptor;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -15,6 +17,8 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -32,6 +36,14 @@ class ChatbotControllerTest {
 
     @MockitoBean
     private KnowledgeAdminService knowledgeAdminService;
+
+    @MockitoBean
+    private RoleAuthorizationInterceptor roleAuthorizationInterceptor;
+
+    @BeforeEach
+    void allowAnnotatedRoutesInControllerSlice() throws Exception {
+        doReturn(true).when(roleAuthorizationInterceptor).preHandle(any(), any(), any());
+    }
 
     @Test
     void ask_conMensajeValido_retorna200YRespuesta() throws Exception {

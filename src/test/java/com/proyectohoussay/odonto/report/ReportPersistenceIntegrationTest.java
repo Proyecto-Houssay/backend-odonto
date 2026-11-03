@@ -1,5 +1,6 @@
 package com.proyectohoussay.odonto.report;
 
+import com.proyectohoussay.odonto.auth.JwtTokenService;
 import com.proyectohoussay.odonto.model.Insumo;
 import com.proyectohoussay.odonto.repository.InsumoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,7 +16,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = "app.auth.jwt-secret=test-secret-that-has-at-least-thirty-two-bytes")
 @AutoConfigureMockMvc
 class ReportPersistenceIntegrationTest {
 
@@ -24,6 +25,9 @@ class ReportPersistenceIntegrationTest {
 
     @Autowired
     private InsumoRepository insumoRepository;
+
+    @Autowired
+    private JwtTokenService jwtTokenService;
 
     @BeforeEach
     void setUp() {
@@ -35,6 +39,7 @@ class ReportPersistenceIntegrationTest {
     @Test
     void getInventarioRetornaDatosPersistidosReales() throws Exception {
         mockMvc.perform(get("/api/reports/inventario")
+                        .header("Authorization", adminAuthorization())
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
@@ -51,6 +56,7 @@ class ReportPersistenceIntegrationTest {
         insumoRepository.deleteAll();
 
         mockMvc.perform(get("/api/reports/inventario")
+                        .header("Authorization", adminAuthorization())
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
@@ -59,9 +65,14 @@ class ReportPersistenceIntegrationTest {
     @Test
     void getResumenReflejaCantidadDeItemsPersistidos() throws Exception {
         mockMvc.perform(get("/api/reports")
+                        .header("Authorization", adminAuthorization())
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.modulo").value("Informes y Gestión Odontológica"))
                 .andExpect(jsonPath("$.totalItemsInventario").value(2));
+    }
+
+    private String adminAuthorization() {
+        return "Bearer " + jwtTokenService.issue("test-admin", "ADMIN");
     }
 }
