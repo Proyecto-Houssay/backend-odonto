@@ -3,16 +3,18 @@ package com.proyectohoussay.odonto.service;
 import com.proyectohoussay.odonto.dto.InventarioItemDto;
 import com.proyectohoussay.odonto.dto.InsumoRequest;
 import com.proyectohoussay.odonto.model.Insumo;
+import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.repository.InsumoRepository;
 import com.proyectohoussay.odonto.repository.TurnoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
+import java.util.stream.Collectors;
 
 @Service
 public class ReportService {
@@ -68,23 +70,47 @@ public class ReportService {
 
         resumen.put("modulo", "Informes y Gestión Odontológica");
         resumen.put("estado", "DISPONIBLE");
-        resumen.put("totalAtencionesRegistradas", totalTurnos);
+        resumen.put("totalTurnosRegistrados", totalTurnos);
         resumen.put("totalItemsInventario", totalItems);
-        resumen.put("reportesDisponibles", Arrays.asList(
+        resumen.put("reportesDisponibles", List.of(
                 "inventario",
-                "atenciones",
-                "ganancias",
-                "cobros",
-                "anual"
+                "turnos-por-periodo",
+                "resumen-anual-de-turnos"
         ));
+        resumen.put("reportesFinancierosDisponibles", false);
         return resumen;
     }
 
-    public Map<String, Object> obtenerReporteAtenciones() {
+    public Map<String, Object> obtenerReporteAtenciones(LocalDate desde, LocalDate hasta) {
+        List<Turno> turnos = obtenerTurnos(desde, hasta);
         Map<String, Object> reporte = new HashMap<>();
-        reporte.put("tipo", "Reporte de Atenciones");
-        reporte.put("totalAtenciones", turnoRepository.count());
-        reporte.put("detalle", "Atenciones y turnos contabilizados en el sistema");
+        reporte.put("tipo", "Turnos registrados");
+        reporte.put("desde", desde);
+        reporte.put("hasta", hasta);
+        reporte.put("totalTurnos", turnos.size());
+        reporte.put("porEstado", turnos.stream().collect(Collectors.groupingBy(
+                turno -> turno.getEstado() == null || turno.getEstado().isBlank() ? "SIN_ESTADO" : turno.getEstado(),
+                Collectors.counting())));
+        reporte.put("detalle", "Conteo de turnos registrados; el sistema no distingue una atención efectivamente realizada.");
         return reporte;
+    }
+
+    public Map<String, Object> obtenerReporteAnual(int anio) {
+        LocalDate desde = LocalDate.of(anio, 1, 1);
+        LocalDate hasta = LocalDate.of(anio, 12, 31);
+        Map<String, Object> reporte = obtenerReporteAtenciones(desde, hasta);
+        reporte.put("tipo", "Resumen anual de turnos registrados");
+        reporte.put("anio", anio);
+        reporte.put("reportesFinancierosDisponibles", false);
+        return reporte;
+    }
+
+    private List<Turno> obtenerTurnos(LocalDate desde, LocalDate hasta) {
+        if (desde == null && hasta == null) return turnoRepository.findAll();
+        if (desde == null || hasta == null || desde.isAfter(hasta)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Debe indicar desde y hasta, y desde no puede ser posterior a hasta");
+        }
+        return turnoRepository.findByFechaBetween(desde, hasta);
     }
 }

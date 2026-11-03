@@ -13,9 +13,12 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -50,7 +53,18 @@ public class ReportController {
     }
 
     @GetMapping("/atenciones")
-    public ResponseEntity<Map<String, Object>> obtenerReporteAtenciones() {
-        return ResponseEntity.ok(reportService.obtenerReporteAtenciones());
+    public ResponseEntity<Map<String, Object>> obtenerReporteAtenciones(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return ResponseEntity.ok(reportService.obtenerReporteAtenciones(desde, hasta));
+    }
+
+    @GetMapping("/anual")
+    public ResponseEntity<Map<String, Object>> obtenerReporteAnual(@RequestParam int anio) {
+        if (anio < 1 || anio > 9999) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "El año debe estar entre 1 y 9999");
+        }
+        return ResponseEntity.ok(reportService.obtenerReporteAnual(anio));
     }
 }

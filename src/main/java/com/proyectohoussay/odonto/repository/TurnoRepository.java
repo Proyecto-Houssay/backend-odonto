@@ -13,6 +13,8 @@ public interface TurnoRepository extends JpaRepository<Turno, Long> {
 
     List<Turno> findByFecha(LocalDate fecha);
 
+    List<Turno> findByFechaBetween(LocalDate desde, LocalDate hasta);
+
     List<Turno> findByOdontologoId(Long odontologoId);
 
     List<Turno> findByPacienteId(Long pacienteId);

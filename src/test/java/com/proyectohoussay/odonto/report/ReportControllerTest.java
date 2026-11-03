@@ -55,14 +55,36 @@ class ReportControllerTest {
     @Test
     void obtenerReporteAtencionesRetornaDetalle() throws Exception {
         Map<String, Object> mockReporte = new HashMap<>();
-        mockReporte.put("tipo", "Reporte de Atenciones");
-        mockReporte.put("totalAtenciones", 10);
+        mockReporte.put("tipo", "Turnos registrados");
+        mockReporte.put("totalTurnos", 10);
 
-        when(reportService.obtenerReporteAtenciones()).thenReturn(mockReporte);
+        when(reportService.obtenerReporteAtenciones(null, null)).thenReturn(mockReporte);
 
         mockMvc.perform(get("/api/reports/atenciones"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.tipo").value("Reporte de Atenciones"))
-                .andExpect(jsonPath("$.totalAtenciones").value(10));
+                .andExpect(jsonPath("$.tipo").value("Turnos registrados"))
+                .andExpect(jsonPath("$.totalTurnos").value(10));
+    }
+
+    @Test
+    void obtenerReporteAnualRetornaDatosDelAnioSolicitado() throws Exception {
+        Map<String, Object> mockReporte = new HashMap<>();
+        mockReporte.put("tipo", "Resumen anual de turnos registrados");
+        mockReporte.put("anio", 2026);
+        mockReporte.put("totalTurnos", 0);
+        mockReporte.put("reportesFinancierosDisponibles", false);
+        when(reportService.obtenerReporteAnual(2026)).thenReturn(mockReporte);
+
+        mockMvc.perform(get("/api/reports/anual").param("anio", "2026"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.anio").value(2026))
+                .andExpect(jsonPath("$.totalTurnos").value(0))
+                .andExpect(jsonPath("$.reportesFinancierosDisponibles").value(false));
+    }
+
+    @Test
+    void obtenerReporteAnualRechazaAniosFueraDeRango() throws Exception {
+        mockMvc.perform(get("/api/reports/anual").param("anio", "0"))
+                .andExpect(status().isBadRequest());
     }
 }
