@@ -2,13 +2,20 @@ package com.proyectohoussay.odonto.chatbot;
 
 import com.proyectohoussay.odonto.chatbot.dto.ChatRequest;
 import com.proyectohoussay.odonto.chatbot.dto.ChatResponse;
+import com.proyectohoussay.odonto.chatbot.dto.KnowledgeDocumentRequest;
+import com.proyectohoussay.odonto.chatbot.rag.KnowledgeAdminService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.http.HttpStatus;
 
 /**
  * Controlador REST del chatbot inteligente con IA + RAG.
@@ -16,11 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
  * del paciente y devuelve una respuesta generada por IA fundamentada
  * en la base de conocimiento de la Clínica Novadent.
  *
- * Funcionalidades:
- * - Responde preguntas frecuentes (FAQ)
- * - Informa precios según obra social consultando el nomenclador
- * - Realiza triage de urgencias dentales
- * - Orienta sobre turnos y servicios disponibles
+ * Responde consultas generales con citas de documentos aprobados y permite
+ * gestionar las fuentes con una credencial administrativa configurada.
  */
 @RestController
 @RequestMapping("/api/chatbot")
@@ -28,9 +32,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class ChatbotController {
 
     private final ChatbotService chatbotService;
+    private final KnowledgeAdminService knowledgeAdminService;
 
-    public ChatbotController(ChatbotService chatbotService) {
+    public ChatbotController(ChatbotService chatbotService, KnowledgeAdminService knowledgeAdminService) {
         this.chatbotService = chatbotService;
+        this.knowledgeAdminService = knowledgeAdminService;
     }
 
     /**
@@ -39,15 +45,16 @@ public class ChatbotController {
      * Ejemplo de request:
      * POST /api/chatbot/ask
      * {
-     *   "mensaje": "me duele la muela de juicio hace 3 días",
+     *   "mensaje": "¿Qué información tiene la clínica sobre horarios?",
      *   "sessionId": "abc123"
      * }
      *
      * Ejemplo de response:
      * {
-     *   "respuesta": "Entiendo que tenés dolor de muela de juicio...",
-     *   "intencion": "urgencia",
-     *   "accionesSugeridas": ["📞 Llamar a la clínica", "🏥 Agendar turno de urgencia"],
+     *   "respuesta": "...",
+     *   "intencion": "consulta_general",
+     *   "accionesSugeridas": [],
+     *   "citas": [{"documento":"faq.md — Horarios","version":"1","fragmento":"..."}],
      *   "timestamp": "2026-11-02T17:30:00"
      * }
      */
@@ -55,5 +62,19 @@ public class ChatbotController {
     public ResponseEntity<ChatResponse> ask(@Valid @RequestBody ChatRequest request) {
         ChatResponse response = chatbotService.procesarMensaje(request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/knowledge")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void ingestKnowledge(@Valid @RequestBody KnowledgeDocumentRequest request,
+                               @RequestHeader(name = "X-Admin-Token", required = false) String token) {
+        knowledgeAdminService.ingest(request, token);
+    }
+
+    @DeleteMapping("/knowledge/{source}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteKnowledge(@PathVariable String source,
+                               @RequestHeader(name = "X-Admin-Token", required = false) String token) {
+        knowledgeAdminService.delete(source, token);
     }
 }

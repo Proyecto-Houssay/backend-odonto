@@ -10,11 +10,14 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.UUID;
 
 /**
  * Carga la base de conocimiento de la clínica dental en el VectorStore
@@ -31,6 +34,12 @@ public class KnowledgeBaseLoader {
 
     @Value("${spring.ai.openai.api-key:mock-key-for-local-dev}")
     private String apiKey;
+
+    @Value("${app.chatbot.knowledge-directory:./data/knowledge}")
+    private String managedDirectory;
+
+    @Value("${app.chatbot.knowledge-version:1}")
+    private String defaultVersion;
 
     public KnowledgeBaseLoader(VectorStore vectorStore) {
         this.vectorStore = vectorStore;
@@ -58,7 +67,7 @@ public class KnowledgeBaseLoader {
             for (Resource resource : resources) {
                 String filename = resource.getFilename();
                 String content = resource.getContentAsString(StandardCharsets.UTF_8);
-                List<Document> chunks = splitIntoChunks(content, filename);
+                List<Document> chunks = splitIntoChunks(content, filename, defaultVersion);
                 allDocuments.addAll(chunks);
                 log.info("Cargado archivo de conocimiento: {} ({} secciones)", filename, chunks.size());
             }
@@ -70,6 +79,25 @@ public class KnowledgeBaseLoader {
                 log.warn("No se encontraron archivos de conocimiento en {}", KNOWLEDGE_PATH);
             }
 
+            Path managedPath = Paths.get(managedDirectory);
+            if (Files.isDirectory(managedPath)) {
+                try (var paths = Files.list(managedPath)) {
+                    paths.filter(path -> path.getFileName().toString().endsWith(".md")).forEach(path -> {
+                        try {
+                            String content = Files.readString(path, StandardCharsets.UTF_8);
+                            Path versionPath = path.resolveSibling(path.getFileName() + ".version");
+                            String version = Files.exists(versionPath)
+                                    ? Files.readString(versionPath, StandardCharsets.UTF_8).trim() : defaultVersion;
+                            List<Document> managedDocuments = splitIntoChunks(content,
+                                    path.getFileName().toString(), version);
+                            if (!managedDocuments.isEmpty()) vectorStore.add(managedDocuments);
+                        } catch (Exception e) {
+                            log.warn("No se pudo indexar el documento administrado {}", path.getFileName());
+                        }
+                    });
+                }
+            }
+
         } catch (Exception e) {
             log.warn("No se pudo conectar con el proveedor de IA para embeddings durante el inicio: {}. La base de conocimiento podrá indexarse cuando haya conectividad.", e.getMessage());
         }
@@ -79,11 +107,12 @@ public class KnowledgeBaseLoader {
      * Divide un archivo markdown en chunks basados en las secciones (##).
      * Cada chunk mantiene el título de la sección como contexto.
      */
-    private List<Document> splitIntoChunks(String content, String filename) {
+    public List<Document> splitIntoChunks(String content, String filename, String version) {
         List<Document> documents = new ArrayList<>();
         String[] sections = content.split("(?=\n## )");
 
-        for (String section : sections) {
+        for (int i = 0; i < sections.length; i++) {
+            String section = sections[i];
             String trimmed = section.trim();
             if (trimmed.isEmpty() || trimmed.length() < 20) {
                 continue;
@@ -91,10 +120,15 @@ public class KnowledgeBaseLoader {
 
             String title = extractTitle(trimmed);
 
-            Document doc = new Document(trimmed, Map.of(
-                "source", filename != null ? filename : "unknown",
+            String source = filename != null ? filename : "unknown";
+            String documentId = UUID.nameUUIDFromBytes((source + "|" + version + "|" + i + "|" + trimmed)
+                    .getBytes(StandardCharsets.UTF_8)).toString();
+            Document doc = new Document(documentId, trimmed, Map.of(
+                "source", source,
                 "section", title,
-                "type", categorizeDocument(filename)
+                "type", categorizeDocument(filename),
+                "version", version,
+                "fragment", i
             ));
             documents.add(doc);
         }

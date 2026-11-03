@@ -33,3 +33,4 @@ build/
 .vscode/
 # Local IDE compilation output; keep generated classes out of version control.
 /bin/
+/data/knowledge/

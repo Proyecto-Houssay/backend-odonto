@@ -12,5 +12,6 @@ public record ChatRequest(
     @Size(max = 1000, message = "El mensaje no puede superar los 1000 caracteres")
     String mensaje,
 
+    @Size(max = 100, message = "El identificador de sesión no puede superar los 100 caracteres")
     String sessionId
 ) {}

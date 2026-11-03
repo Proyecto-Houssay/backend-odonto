@@ -3,6 +3,7 @@ package com.proyectohoussay.odonto.chatbot;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.proyectohoussay.odonto.chatbot.dto.ChatRequest;
 import com.proyectohoussay.odonto.chatbot.dto.ChatResponse;
+import com.proyectohoussay.odonto.chatbot.rag.KnowledgeAdminService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -29,6 +30,9 @@ class ChatbotControllerTest {
     @MockitoBean
     private ChatbotService chatbotService;
 
+    @MockitoBean
+    private KnowledgeAdminService knowledgeAdminService;
+
     @Test
     void ask_conMensajeValido_retorna200YRespuesta() throws Exception {
         ChatResponse mockResponse = ChatResponse.conAcciones(
@@ -47,6 +51,7 @@ class ChatbotControllerTest {
                 .andExpect(jsonPath("$.respuesta").value(mockResponse.respuesta()))
                 .andExpect(jsonPath("$.intencion").value("urgencia"))
                 .andExpect(jsonPath("$.accionesSugeridas[0]").exists())
+                .andExpect(jsonPath("$.citas").isArray())
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 

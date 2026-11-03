@@ -52,10 +52,19 @@ El servidor queda disponible en `http://localhost:8080`.
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
 | **Usuarios** | `GET /api/usuarios`, `GET /api/usuarios/{id}`, `POST /api/usuarios`, `PUT /api/usuarios/{id}`, `DELETE /api/usuarios/{id}` | Gestión de cuentas de usuario. |
 | **Autenticación** | `POST /api/auth/login` | Inicio de sesión base. |
-| **Informes** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones` | Resumen e informes de inventario persistido y atenciones. |
+| **Informes** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones?desde=AAAA-MM-DD&hasta=AAAA-MM-DD`, `GET /api/reports/anual?anio=AAAA` | Inventario persistido y conteo de turnos registrados por período y año. |
+| **Asistente RAG** | `POST /api/chatbot/ask`, `POST /api/chatbot/knowledge`, `DELETE /api/chatbot/knowledge/{source}` | Preguntas con citas de documentos versionados; gestión documental requiere `X-Admin-Token`. |
 
 > `DELETE /api/turnos/{id}` cancela el turno modificando su estado a `CANCELADO`; no elimina el registro de la base de datos.
 > La autenticación actual utiliza credenciales fijas en el servicio como implementación base para desarrollo.
+
+Los informes de ganancias y cobros no se ofrecen porque este backend no registra pagos ni contiene un contrato financiero. El informe de turnos no afirma que todos los turnos correspondan a atenciones realizadas; los estados existentes no tienen un estado de atención completada definido.
+
+### Asistente RAG (prototipo)
+
+El endpoint de preguntas devuelve `respuesta`, `citas[]` (identificador, documento, versión y fragmento), `intencion`, `accionesSugeridas` y `timestamp`. La lista queda vacía si las fuentes aprobadas no superan el umbral `CHATBOT_MINIMUM_SIMILARITY` (por defecto `0.65`), y entonces el asistente se abstiene. Las fuentes Markdown de `src/main/resources/knowledge/` se indexan al iniciar cuando hay `OPENAI_API_KEY` configurada.
+
+La gestión de documentos administrados exige `CHATBOT_ADMIN_TOKEN` y el encabezado `X-Admin-Token`. Se guardan en `CHATBOT_KNOWLEDGE_DIRECTORY` (por defecto `./data/knowledge/`, excluido de Git), se versionan y se vuelven a indexar al iniciar. No configures el token en el frontend. La autenticación general del sistema sigue siendo una implementación base; este prototipo no debe exponerse como portal autenticado de pacientes hasta integrar una autenticación con roles real.
 
 ### Payload para registrar o actualizar turnos
 
