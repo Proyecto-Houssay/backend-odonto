@@ -20,10 +20,12 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtTokenService jwtTokenService;
+    private final AccountService accountService;
 
-    public AuthController(AuthService authService, JwtTokenService jwtTokenService) {
+    public AuthController(AuthService authService, JwtTokenService jwtTokenService, AccountService accountService) {
         this.authService = authService;
         this.jwtTokenService = jwtTokenService;
+        this.accountService = accountService;
     }
 
     @PostMapping("/login")
@@ -40,6 +42,24 @@ public class AuthController {
         }
 
         return ResponseEntity.ok(jwtTokenService.issueToken(authenticatedUser.get()));
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<RegistrationResponse> register(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(accountService.register(request));
+    }
+
+    @PostMapping("/password-reset/request")
+    public ResponseEntity<PasswordResetRequestResponse> requestPasswordReset(
+            @Valid @RequestBody PasswordResetRequest request) {
+        return ResponseEntity.ok(accountService.requestPasswordReset(request.email()));
+    }
+
+    @PostMapping("/password-reset/confirm")
+    public ResponseEntity<Void> confirmPasswordReset(
+            @Valid @RequestBody PasswordResetConfirmationRequest request) {
+        accountService.confirmPasswordReset(request.token(), request.newPassword());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/change-password")
