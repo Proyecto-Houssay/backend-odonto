@@ -76,6 +76,14 @@ public class TeletriajeService {
         return solicitudRepository.save(solicitud);
     }
 
+    /** Crea la solicitud y reserva el turno dentro de una única transacción. */
+    @Transactional
+    public CitaTeletriaje crearYReservar(ReservarTeletriajeCompletoRequest request,
+                                        Long currentUserId, String currentRole) {
+        SolicitudTeletriaje solicitud = crearSolicitud(request.solicitud());
+        return reservarTurno(solicitud.getId(), request.reserva(), currentUserId, currentRole);
+    }
+
     public List<SolicitudTeletriaje> obtenerColaPrioridad() {
         return solicitudRepository.obtenerColaPrioridad();
     }

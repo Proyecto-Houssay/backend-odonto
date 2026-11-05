@@ -86,6 +86,17 @@ public class TeletriajeController {
                 .body(CitaTeletriajeResponse.de(cita));
     }
 
+    @PostMapping("/reservas")
+    public ResponseEntity<CitaTeletriajeResponse> crearYReservar(
+            @Valid @RequestBody ReservarTeletriajeCompletoRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        CitaTeletriaje cita = teletriajeService.crearYReservar(
+                request, extraerUserId(jwt), extraerRol(jwt));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .location(URI.create("/api/teletriaje/citas/" + cita.getId()))
+                .body(CitaTeletriajeResponse.de(cita));
+    }
+
     @GetMapping("/citas/{id}")
     public CitaTeletriajeResponse obtenerCita(
             @PathVariable Long id,

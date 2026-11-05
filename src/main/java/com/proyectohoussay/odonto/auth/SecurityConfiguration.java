@@ -98,6 +98,8 @@ public class SecurityConfiguration {
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers(HttpMethod.POST, "/api/teletriaje/solicitudes/*/reservar")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
+                        .requestMatchers(HttpMethod.POST, "/api/teletriaje/reservas")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/api/teletriaje/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name(), UserRole.PACIENTE.name())
                         .anyRequest().authenticated())

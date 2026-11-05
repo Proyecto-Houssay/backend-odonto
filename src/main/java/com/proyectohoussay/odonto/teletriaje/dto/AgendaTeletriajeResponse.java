@@ -18,6 +18,7 @@ public record AgendaTeletriajeResponse(
         Long odontologoId,
         String odontologoNombre,
         String estadoSala,
+        boolean consentimientoInformado,
         String enlaceVideo,
         LocalDateTime enlaceExpiraEn,
         boolean enlaceFuncional
@@ -41,6 +42,7 @@ public record AgendaTeletriajeResponse(
                         ? cita.getOdontologo().getNombre() + " " + cita.getOdontologo().getApellido()
                         : null,
                 cita.getEstadoSala() != null ? cita.getEstadoSala().name() : null,
+                cita.isConsentimientoInformado(),
                 enlaceFuncional ? cita.getEnlaceVideo() : null,
                 cita.getEnlaceExpiraEn(),
                 enlaceFuncional
