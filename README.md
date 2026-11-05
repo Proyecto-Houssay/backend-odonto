@@ -88,7 +88,8 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | **Tratamientos** | `GET/POST /api/tratamientos`, `GET/PUT /api/tratamientos/{id}` | Asociados a un diagnóstico existente; consulta opcional `?diagnosticoId=`. Estados: `PENDIENTE`, `EN_CURSO`, `COMPLETADO`, `CANCELADO`. |
 | **Odontólogos** | `GET /api/odontologos`, `GET /api/odontologos/{id}`, `GET /api/odontologos/matricula/{matricula}`, `POST /api/odontologos`, `PUT /api/odontologos/{id}`, `DELETE /api/odontologos/{id}` | Gestión de staff profesional y matrícula única. |
 | **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
-| **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
+| **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `GET /api/turnos/disponibilidad/fecha/{fecha}?odontologoId={id}`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación, disponibilidad puntual y franjas libres estimadas. |
+| **Teletriaje** | `GET /api/teletriaje/citas/agenda?desde=YYYY-MM-DD&hasta=YYYY-MM-DD[&odontologoId={id}]` | Agenda de teleconsultas con estado de sala y enlace solo cuando es funcional. Requiere rol `ADMINISTRADOR`, `ODONTOLOGO` o `RECEPCIONISTA`; admite rangos de hasta 46 días. |
 | **Usuarios** | `GET /api/usuarios`, `GET /api/usuarios/{id}`, `POST /api/usuarios`, `PUT /api/usuarios/{id}`, `DELETE /api/usuarios/{id}` | Gestión de cuentas de usuario. |
 | **Autenticación** | `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/password-reset/request`, `POST /api/auth/password-reset/confirm`, `POST /api/auth/change-password` | Login, registro público con rol fijo `PACIENTE`, recuperación por enlace de correo y cambio de la propia contraseña autenticada. |
 | **Chatbot RAG** | `POST /api/chatbot/ask`, `POST /api/chatbot/knowledge`, `DELETE /api/chatbot/knowledge/{source}` | Respuestas apoyadas en documentos aprobados con citas; chat para pacientes y administración, gestión de fuentes solo para administración. |
@@ -96,6 +97,8 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 
 
 > `DELETE /api/turnos/{id}` cancela el turno modificando su estado a `CANCELADO`; no elimina el registro de la base de datos.
+
+> `GET /api/turnos/disponibilidad/fecha/{fecha}?odontologoId={id}` estima franjas de 30 minutos dentro del horario institucional (lunes a viernes 08:00–20:00, sábados 09:00–14:00). No hay horarios individuales por profesional persistidos todavía. Excluye turnos no cancelados y horarios pasados del día actual; toda reserva vuelve a validar disponibilidad en el servidor.
 
 ### Usuarios y autenticación
 

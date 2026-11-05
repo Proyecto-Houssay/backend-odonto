@@ -11,12 +11,14 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -101,6 +103,20 @@ public class TeletriajeController {
         return teletriajeService.listarCitasPaciente(pacienteId).stream()
                 .map(CitaTeletriajeResponse::de)
                 .toList();
+    }
+
+    @GetMapping("/citas/agenda")
+    public ResponseEntity<?> listarAgendaTeletriaje(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Long odontologoId) {
+        try {
+            List<AgendaTeletriajeResponse> citas = teletriajeService.listarAgenda(desde, hasta, odontologoId)
+                    .stream().map(AgendaTeletriajeResponse::de).toList();
+            return ResponseEntity.ok(citas);
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
     }
 
     @PostMapping("/citas/{id}/revocar")

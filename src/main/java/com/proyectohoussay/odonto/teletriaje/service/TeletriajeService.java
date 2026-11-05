@@ -203,6 +203,16 @@ public class TeletriajeService {
         return citaRepository.findByPacienteId(pacienteId);
     }
 
+    public List<CitaTeletriaje> listarAgenda(LocalDate desde, LocalDate hasta, Long odontologoId) {
+        if (desde == null || hasta == null || hasta.isBefore(desde)) {
+            throw new IllegalArgumentException("El rango de fechas de la agenda no es válido.");
+        }
+        if (hasta.isAfter(desde.plusDays(45))) {
+            throw new IllegalArgumentException("La agenda admite rangos de hasta 46 días.");
+        }
+        return citaRepository.listarAgenda(desde, hasta, odontologoId);
+    }
+
     @Transactional
     public CitaTeletriaje consultarAccesoCita(Long citaId, Long usuarioId, String rol, String username) {
         CitaTeletriaje cita = obtenerCita(citaId);

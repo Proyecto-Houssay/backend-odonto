@@ -92,6 +92,8 @@ public class SecurityConfiguration {
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
                         .requestMatchers(HttpMethod.POST, "/api/teletriaje/citas/*/revocar")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
+                        .requestMatchers(HttpMethod.GET, "/api/teletriaje/citas/agenda")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers(HttpMethod.GET, "/api/teletriaje/solicitudes")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers(HttpMethod.POST, "/api/teletriaje/solicitudes/*/reservar")
