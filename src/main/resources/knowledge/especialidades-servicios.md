@@ -1,85 +1,85 @@
-# Especialidades y Servicios ??? Cl??nica Dental Novadent
+# Especialidades y Servicios — Clínica Dental Novadent
 
 ## Especialidades Disponibles
 
-### 1. Odontolog??a General
-- Consultas de rutina y diagn??stico.
-- Radiograf??as digitales (periapicales y panor??micas).
+### 1. Odontología General
+- Consultas de rutina y diagnóstico.
+- Radiografías digitales (periapicales y panorámicas).
 - Plan de tratamiento integral.
-- Control y seguimiento peri??dico.
+- Control y seguimiento periódico.
 
 ### 2. Endodoncia
 - Tratamiento de conducto (uni, bi y multirradicular).
-- Retratamiento endod??ntico.
-- Apicectom??a.
-- Se utiliza tecnolog??a de localizador apical electr??nico.
+- Retratamiento endodóntico.
+- Apicectomía.
+- Se utiliza tecnología de localizador apical electrónico.
 
 ### 3. Ortodoncia
-- Brackets met??licos convencionales.
-- Brackets est??ticos (cer??micos).
+- Brackets metálicos convencionales.
+- Brackets estéticos (cerámicos).
 - Alineadores transparentes.
-- Ortodoncia interceptiva (ni??os).
-- Contenci??n y seguimiento post-tratamiento.
+- Ortodoncia interceptiva (niños).
+- Contención y seguimiento post-tratamiento.
 
-### 4. Cirug??a Oral
+### 4. Cirugía Oral
 - Extracciones simples y complejas.
-- Cirug??a de muelas de juicio (terceros molares).
-- Frenectom??a.
+- Cirugía de muelas de juicio (terceros molares).
+- Frenectomía.
 - Biopsia de tejidos blandos.
 
-### 5. Implantolog??a
+### 5. Implantología
 - Implantes unitarios de titanio.
-- Implantes m??ltiples.
-- Elevaci??n de seno maxilar.
-- Injerto ??seo.
+- Implantes múltiples.
+- Elevación de seno maxilar.
+- Injerto óseo.
 - Carga inmediata (en casos seleccionados).
 
-### 6. Est??tica Dental
+### 6. Estética Dental
 - Blanqueamiento dental profesional (en consultorio y domiciliario).
 - Carillas de porcelana.
-- Dise??o de sonrisa digital.
-- Contorneado est??tico.
+- Diseño de sonrisa digital.
+- Contorneado estético.
 
-### 7. Pr??tesis Dental
+### 7. Prótesis Dental
 - Coronas de porcelana.
 - Puentes fijos.
-- Pr??tesis removibles parciales y completas.
-- Pr??tesis sobre implantes.
+- Prótesis removibles parciales y completas.
+- Prótesis sobre implantes.
 
-### 8. Odontopediatr??a
-- Atenci??n de ni??os desde los 3 a??os.
+### 8. Odontopediatría
+- Atención de niños desde los 3 años.
 - Selladores de fisuras.
-- Topicaci??n con fl??or.
+- Topicación con flúor.
 - Tratamiento de caries en dientes temporarios.
 - Ortopedia funcional de los maxilares.
-- Ambiente l??dico y t??cnicas de manejo de conducta.
+- Ambiente lúdico y técnicas de manejo de conducta.
 
 ### 9. Periodoncia
-- Diagn??stico y tratamiento de enfermedad periodontal (gingivitis y periodontitis).
+- Diagnóstico y tratamiento de enfermedad periodontal (gingivitis y periodontitis).
 - Raspaje y alisado radicular.
-- Cirug??a periodontal.
+- Cirugía periodontal.
 - Mantenimiento periodontal.
 
-### 10. Rehabilitaci??n Oral
-- Planes de tratamiento integral para pacientes con m??ltiples piezas afectadas.
-- Coordinaci??n entre especialidades.
-- Rehabilitaci??n completa con implantes.
+### 10. Rehabilitación Oral
+- Planes de tratamiento integral para pacientes con múltiples piezas afectadas.
+- Coordinación entre especialidades.
+- Rehabilitación completa con implantes.
 
 ## Equipo Profesional
-- Contamos con un equipo de odont??logos especializados en cada ??rea.
-- Todos nuestros profesionales est??n matriculados y cuentan con formaci??n de posgrado.
+- Contamos con un equipo de odontólogos especializados en cada área.
+- Todos nuestros profesionales están matriculados y cuentan con formación de posgrado.
 - Realizamos interconsultas entre especialidades para garantizar un tratamiento integral.
 
-## Tecnolog??a
-- Radiograf??a digital de baja radiaci??n.
-- Sistema de gesti??n de turnos e historias cl??nicas digitales.
-- Materiales de ??ltima generaci??n importados.
-- Esterilizaci??n por autoclave clase B.
+## Tecnología
+- Radiografía digital de baja radiación.
+- Sistema de gestión de turnos e historias clínicas digitales.
+- Materiales de última generación importados.
+- Esterilización por autoclave clase B.
 - Protocolos de bioseguridad certificados.
 
-## Recomendaciones de la Cl??nica
-- Realiz?? una limpieza dental profesional cada 6 meses.
-- Consult?? al odont??logo ante cualquier dolor o molestia.
-- Los ni??os deben tener su primera consulta dental al a??o de edad.
-- Us?? cepillo de cerdas suaves y cambialo cada 3 meses.
+## Recomendaciones de la Clínica
+- Realizá una limpieza dental profesional cada 6 meses.
+- Consultá al odontólogo ante cualquier dolor o molestia.
+- Los niños deben tener su primera consulta dental al año de edad.
+- Usá cepillo de cerdas suaves y cambialo cada 3 meses.
 - El hilo dental es tan importante como el cepillado.

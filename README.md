@@ -94,7 +94,7 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | **Usuarios** | `GET /api/usuarios`, `GET /api/usuarios/{id}`, `POST /api/usuarios`, `PUT /api/usuarios/{id}`, `DELETE /api/usuarios/{id}` | Gestión de cuentas de usuario. |
 | **Autenticación** | `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/password-reset/request`, `POST /api/auth/password-reset/confirm`, `POST /api/auth/change-password` | Login, registro público con rol fijo `PACIENTE`, recuperación por enlace de correo y cambio de la propia contraseña autenticada. |
 | **Chatbot RAG** | `POST /api/chatbot/ask`, `POST /api/chatbot/knowledge`, `DELETE /api/chatbot/knowledge/{source}` | Respuestas apoyadas en documentos aprobados con citas; chat para pacientes y administración, gestión de fuentes solo para administración. |
-| **Informes e inventario** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones`, `GET /api/reports/anual` | Resumen y reportes con datos persistidos. Todas las rutas requieren `ADMINISTRADOR`. |
+| **Informes e inventario** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones`, `GET /api/reports/anual`, `GET /api/reports/cobros`, `GET /api/reports/ganancias`, `POST /api/finanzas/movimientos` | Resumen y reportes con datos persistidos, incluidos movimientos financieros académicos. Todas las rutas requieren `ADMINISTRADOR`. |
 
 
 > `DELETE /api/turnos/{id}` cancela el turno modificando su estado a `CANCELADO`; no elimina el registro de la base de datos.
@@ -146,20 +146,23 @@ Las rutas clínicas devuelven DTOs planos; no exponen directamente las entidades
 
 ### Informes e inventario
 
-Todas las rutas `/api/reports/**` requieren un JWT válido con rol `ADMINISTRADOR`. Sin token (o con token inválido/expirado), la respuesta es HTTP `401`; con otro rol autenticado, HTTP `403`.
+Todas las rutas `/api/reports/**` y `/api/finanzas/**` requieren un JWT válido con rol `ADMINISTRADOR`. Sin token (o con token inválido/expirado), la respuesta es HTTP `401`; con otro rol autenticado, HTTP `403`.
 
 | Método y ruta | Parámetros / request | DTO de respuesta y comportamiento |
 |---|---|---|
-| `GET /api/reports` | Ninguno | Resumen `Map`: `modulo`, `estado`, `totalAtencionesRegistradas`, `totalItemsInventario` y `reportesDisponibles`. Solo enumera reportes con endpoint implementado. |
+| `GET /api/reports` | Ninguno | Resumen `Map`: `modulo`, `estado`, `totalAtencionesRegistradas`, `totalItemsInventario`, `reportesDisponibles` y `reportesFinancierosDisponibles`. Solo enumera reportes con endpoint implementado. |
 | `GET /api/reports/inventario` | Ninguno | Lista `InventarioItemDto`: `id`, `nombre`, `categoria`, `cantidadDisponible`, `unidadMedida`, `estado`. |
 | `POST /api/reports/inventario` | `InsumoRequest`: `nombre`, `categoria`, `cantidadDisponible`, `unidadMedida`, `stockMinimo` | HTTP `201` y un `InventarioItemDto`. |
 | `PUT /api/reports/inventario/{id}` | `id` en la ruta y `InsumoRequest` en el body | HTTP `200` y un `InventarioItemDto`; si el insumo no existe, HTTP `404`. |
 | `GET /api/reports/atenciones?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | `AtencionesReportDto`: `tipo`, `desde`, `hasta`, `totalAtenciones`, `detalle`. El detalle contiene turno, fecha/hora, paciente, odontólogo, motivo y estado. Solo cuenta turnos `ATENDIDO` de hoy o anteriores; nunca cuenta fechas futuras, aunque el turno esté marcado como atendido. |
 | `GET /api/reports/anual?anio=YYYY` | Año calendario obligatorio (entre 1 y 9999) | `AnualReportDto`: `anio`, `totalAtenciones`, `meses`. Incluye los 12 meses; cada `MesAnualReportDto` contiene `mes`, `nombre`, `totalAtenciones`. No cuenta turnos futuros aunque figuren como atendidos. |
+| `GET /api/reports/cobros?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | Lista los movimientos `INGRESO` persistidos en el período, incluyendo su `turnoId`. |
+| `GET /api/reports/ganancias?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | Totales registrados de ingresos, egresos, resultado neto y cantidad de movimientos; `sinRegistros` distingue un período vacío de un resultado cero. |
+| `POST /api/finanzas/movimientos` | `{ "tipo": "INGRESO"|"EGRESO", "fecha": "YYYY-MM-DD", "importe": 12500.00, "concepto": "...", "medioPago": "...", "turnoId": 1 }` | Registra un movimiento y responde HTTP `201`. Un ingreso requiere un turno existente; un egreso no admite `turnoId`. El importe debe ser positivo y la fecha no futura. |
 
 Para el informe por rango, `desde` debe ser anterior o igual a `hasta`. Fechas faltantes o inválidas, rangos invertidos y años fuera del rango producen HTTP `400`. Una escritura de inventario exitosa retorna `201`; lecturas y actualización, `200`.
 
-**Fuera de alcance académico:** no hay endpoints de pagos, cobros o ganancias; tampoco se publican en Swagger. Si una base MySQL local conserva una tabla `pagos` de una versión anterior, este cambio no la borra ni altera sus datos. Las recetas quedan solo como concepto de pruebas, sin endpoint REST público. H2 en memoria se usa para tests y no modifica MySQL.
+**Límite de alcance:** estos endpoints son un registro académico manual para alimentar reportes; no procesan pagos, no integran una pasarela, no emiten comprobantes ni reemplazan facturación. Los importes no prueban que haya ocurrido un pago real. Si una base MySQL local conserva una tabla `pagos` de una versión anterior, este cambio no la borra ni altera sus datos. Las recetas quedan solo como concepto de pruebas, sin endpoint REST público. H2 en memoria se usa para tests y no modifica MySQL.
 
 #### Configuración de JWT
 

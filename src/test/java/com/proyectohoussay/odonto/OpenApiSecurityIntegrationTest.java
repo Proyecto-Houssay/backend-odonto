@@ -10,6 +10,8 @@ import com.proyectohoussay.odonto.clinicalhistory.HistoriaClinicaController;
 import com.proyectohoussay.odonto.clinicalhistory.DiagnosticoController;
 import com.proyectohoussay.odonto.clinicalhistory.ClinicalRecordController;
 import com.proyectohoussay.odonto.clinicalhistory.ai.DiagnosticoImagenController;
+import com.proyectohoussay.odonto.report.MovimientoFinancieroController;
+import com.proyectohoussay.odonto.report.ReportController;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
@@ -64,6 +66,19 @@ class OpenApiSecurityIntegrationTest {
     void aiImageDiagnosisRequiresBearerAuth() {
         assertTrue(mapsPost(DiagnosticoImagenController.class, "/api/ia/diagnostico-imagen/analizar"));
         assertBearerAuthRequired(DiagnosticoImagenController.class);
+    }
+
+    @Test
+    void financialMovementCreationRequiresBearerAuth() {
+        assertTrue(mapsPost(MovimientoFinancieroController.class, "/api/finanzas/movimientos"));
+        assertBearerAuthRequired(MovimientoFinancieroController.class);
+    }
+
+    @Test
+    void financialReportsAreDocumentedAsAuthenticatedEndpoints() {
+        assertTrue(mapsGet(ReportController.class, "/api/reports/cobros"));
+        assertTrue(mapsGet(ReportController.class, "/api/reports/ganancias"));
+        assertBearerAuthRequired(ReportController.class);
     }
 
     @Test

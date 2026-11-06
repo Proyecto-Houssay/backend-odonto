@@ -251,6 +251,32 @@ class AuthSecurityIntegrationTest {
     }
 
     @Test
+    void financialMovementEndpointIsAvailableOnlyToAdministrators() throws Exception {
+        String movementRequest = """
+                {"tipo":"EGRESO","fecha":"%s","importe":2500.00,"concepto":"Materiales"}
+                """.formatted(java.time.LocalDate.now());
+
+        mockMvc.perform(post("/api/finanzas/movimientos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(movementRequest))
+                .andExpect(status().isUnauthorized());
+
+        String receptionistToken = loginAndGetToken("reception");
+        mockMvc.perform(post("/api/finanzas/movimientos")
+                        .header("Authorization", bearer(receptionistToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(movementRequest))
+                .andExpect(status().isForbidden());
+
+        String administratorToken = loginAndGetToken("admin");
+        mockMvc.perform(post("/api/finanzas/movimientos")
+                        .header("Authorization", bearer(administratorToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void chatbotAllowsPatientsAndAdministratorsButRejectsAnonymousStaffAndNonAdminKnowledgeChanges() throws Exception {
         when(chatbotService.procesarMensaje(any(ChatRequest.class)))
                 .thenReturn(ChatResponse.simple("Respuesta respaldada por fuentes.", "consulta_general"));

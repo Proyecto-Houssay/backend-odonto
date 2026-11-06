@@ -77,7 +77,7 @@ public class SecurityConfiguration {
                         .hasAnyRole(UserRole.PACIENTE.name(), UserRole.ADMINISTRADOR.name())
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**")
                         .permitAll()
-                        .requestMatchers("/api/usuarios/**", "/api/reports/**")
+                        .requestMatchers("/api/usuarios/**", "/api/reports/**", "/api/finanzas/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers(HttpMethod.GET, "/api/odontologos/**", "/api/especialidades/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
