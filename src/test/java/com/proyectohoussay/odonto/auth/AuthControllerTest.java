@@ -31,11 +31,14 @@ class AuthControllerTest {
     @MockitoBean
     private JwtTokenService jwtTokenService;
 
+    @MockitoBean
+    private AccountService accountService;
+
     @Test
-    void loginReturnsBearerTokenAndExpiryWithoutCredentials() throws Exception {
+    void loginReturnsBearerTokenRoleAndExpiryWithoutCredentials() throws Exception {
         Usuario user = new Usuario("iris", "Iris", "De Dominicis", "iris@example.com", "encoded", "ODONTOLOGO", true);
         given(authService.authenticate("iris", PASSWORD)).willReturn(Optional.of(user));
-        given(jwtTokenService.issueToken(user)).willReturn(new AuthResponse("signed-token", "Bearer", 900));
+        given(jwtTokenService.issueToken(user)).willReturn(new AuthResponse("signed-token", "Bearer", 900, "ODONTOLOGO"));
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -46,6 +49,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.token").value("signed-token"))
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.expiresIn").value(900))
+                .andExpect(jsonPath("$.role").value("ODONTOLOGO"))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(PASSWORD))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("encoded"))));
     }
