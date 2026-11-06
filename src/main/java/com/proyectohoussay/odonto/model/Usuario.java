@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.proyectohoussay.odonto.patient.Paciente;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.regex.Pattern;
@@ -53,6 +55,11 @@ public class Usuario {
     private String rol;
     private boolean activo = true;
     private String telefono;
+
+    @JsonIgnore
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "paciente_id", unique = true)
+    private Paciente paciente;
 
     public Usuario() {
     }
@@ -135,6 +142,15 @@ public class Usuario {
 
     public String getTelefono() {
         return telefono;
+    }
+
+    @JsonIgnore
+    public Paciente getPaciente() {
+        return paciente;
+    }
+
+    public void setPaciente(Paciente paciente) {
+        this.paciente = paciente;
     }
 
     public void setTelefono(String telefono) {

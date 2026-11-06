@@ -2,6 +2,8 @@ package com.proyectohoussay.odonto.report;
 
 import com.proyectohoussay.odonto.dto.InventarioItemDto;
 import com.proyectohoussay.odonto.dto.AtencionesReportDto;
+import com.proyectohoussay.odonto.dto.MovimientoFinancieroDto;
+import com.proyectohoussay.odonto.model.TipoMovimientoFinanciero;
 import com.proyectohoussay.odonto.service.ReportService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +13,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -70,5 +73,35 @@ class ReportControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tipo").value("Reporte de Atenciones"))
                 .andExpect(jsonPath("$.totalAtenciones").value(10));
+    }
+
+    @Test
+    void obtenerReportesFinancierosRetornaGananciasYCobros() throws Exception {
+        LocalDate desde = LocalDate.of(2026, 4, 1);
+        LocalDate hasta = LocalDate.of(2026, 4, 30);
+        when(reportService.obtenerReporteGanancias(desde, hasta)).thenReturn(Map.of(
+                "ingresosRegistrados", new BigDecimal("12500.00"),
+                "egresosRegistrados", new BigDecimal("2500.00"),
+                "gananciaNetaRegistrada", new BigDecimal("10000.00"),
+                "cantidadMovimientos", 2,
+                "sinRegistros", false));
+        when(reportService.obtenerCobros(desde, hasta)).thenReturn(List.of(
+                new MovimientoFinancieroDto(1L, desde, TipoMovimientoFinanciero.INGRESO,
+                        new BigDecimal("12500.00"), "Consulta", "TARJETA", 5L)));
+
+        mockMvc.perform(get("/api/reports/ganancias")
+                        .param("desde", desde.toString())
+                        .param("hasta", hasta.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ingresosRegistrados").value(12500.00))
+                .andExpect(jsonPath("$.egresosRegistrados").value(2500.00))
+                .andExpect(jsonPath("$.gananciaNetaRegistrada").value(10000.00));
+
+        mockMvc.perform(get("/api/reports/cobros")
+                        .param("desde", desde.toString())
+                        .param("hasta", hasta.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].tipo").value("INGRESO"))
+                .andExpect(jsonPath("$[0].turnoId").value(5));
     }
 }

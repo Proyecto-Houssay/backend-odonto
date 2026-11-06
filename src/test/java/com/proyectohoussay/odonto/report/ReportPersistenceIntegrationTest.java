@@ -2,12 +2,14 @@ package com.proyectohoussay.odonto.report;
 
 import com.proyectohoussay.odonto.model.Insumo;
 import com.proyectohoussay.odonto.model.Especialidad;
+import com.proyectohoussay.odonto.model.MovimientoFinanciero;
 import com.proyectohoussay.odonto.model.Odontologo;
 import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.patient.Paciente;
 import com.proyectohoussay.odonto.patient.PacienteRepository;
 import com.proyectohoussay.odonto.repository.EspecialidadRepository;
 import com.proyectohoussay.odonto.repository.InsumoRepository;
+import com.proyectohoussay.odonto.repository.MovimientoFinancieroRepository;
 import com.proyectohoussay.odonto.repository.OdontologoRepository;
 import com.proyectohoussay.odonto.repository.TurnoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,10 +49,14 @@ class ReportPersistenceIntegrationTest {
     private EspecialidadRepository especialidadRepository;
 
     @Autowired
+    private MovimientoFinancieroRepository movimientoRepository;
+
+    @Autowired
     private OdontologoRepository odontologoRepository;
 
     @BeforeEach
     void setUp() {
+        movimientoRepository.deleteAll();
         turnoRepository.deleteAll();
         odontologoRepository.deleteAll();
         pacienteRepository.deleteAll();
@@ -61,24 +67,60 @@ class ReportPersistenceIntegrationTest {
     }
 
     @Test
-    void endpointsFinancierosQuedanFueraDelAlcanceAcademico() throws Exception {
+    void registraMovimientosAcademicosYExponeReportesSinProcesarPagos() throws Exception {
+        LocalDate today = LocalDate.now();
+        Paciente paciente = new Paciente();
+        paciente.setNombre("Ana");
+        paciente.setApellido("Lopez");
+        paciente.setDni("report-finance-" + System.nanoTime());
+        paciente.setEmail("report-finance-" + System.nanoTime() + "@example.com");
+        paciente.setFechaNacimiento(LocalDate.of(1990, 1, 1));
+        paciente = pacienteRepository.save(paciente);
+
+        Especialidad especialidad = especialidadRepository.save(
+                new Especialidad("Clínica general", "Atención general"));
+        Odontologo odontologo = odontologoRepository.save(new Odontologo(
+                "Laura", "Rios", "MN-FIN-" + System.nanoTime(), "finance@example.com", "1144556677", especialidad));
+        Turno turno = turnoRepository.save(new Turno(today, LocalTime.of(9, 30), "Consulta", "ATENDIDO",
+                paciente, odontologo));
+
         mockMvc.perform(post("/api/pagos").contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"monto": 10, "fecha": "2026-04-15", "estado": "COBRADO", "metodo": "EFECTIVO"}
                                 """))
                 .andExpect(status().isNotFound());
 
+        mockMvc.perform(post("/api/finanzas/movimientos").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tipo":"INGRESO","fecha":"%s","importe":12500.00,"concepto":"Consulta","medioPago":"TARJETA","turnoId":%d}
+                                """.formatted(today, turno.getId())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tipo").value("INGRESO"))
+                .andExpect(jsonPath("$.turnoId").value(turno.getId()));
+        mockMvc.perform(post("/api/finanzas/movimientos").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tipo":"EGRESO","fecha":"%s","importe":2500.00,"concepto":"Materiales"}
+                                """.formatted(today)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/reports/cobros").param("desde", today.toString()).param("hasta", today.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].importe").value(12500.0));
+        mockMvc.perform(get("/api/reports/ganancias").param("desde", today.toString()).param("hasta", today.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ingresosRegistrados").value(12500.0))
+                .andExpect(jsonPath("$.egresosRegistrados").value(2500.0))
+                .andExpect(jsonPath("$.gananciaNetaRegistrada").value(10000.0));
+        org.assertj.core.api.Assertions.assertThat(movimientoRepository.findByFechaBetween(today, today))
+                .hasSize(2);
+
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/pagos']").doesNotExist())
-                .andExpect(jsonPath("$.paths['/api/reports/cobros']").doesNotExist())
-                .andExpect(jsonPath("$.paths['/api/reports/ganancias']").doesNotExist());
-        mockMvc.perform(get("/api/reports/cobros").param("desde", "2026-04-01")
-                        .param("hasta", "2026-04-30"))
-                .andExpect(status().isNotFound());
-        mockMvc.perform(get("/api/reports/ganancias").param("desde", "2026-04-01")
-                        .param("hasta", "2026-04-30"))
-                .andExpect(status().isNotFound());
+                .andExpect(jsonPath("$.paths['/api/finanzas/movimientos'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/reports/cobros'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/reports/ganancias'].get").exists());
     }
 
     @Test
@@ -119,7 +161,7 @@ class ReportPersistenceIntegrationTest {
         mockMvc.perform(get("/api/reports"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reportesDisponibles").value(org.hamcrest.Matchers.containsInAnyOrder(
-                        "inventario", "atenciones", "anual")));
+                        "inventario", "atenciones", "anual", "cobros", "ganancias")));
     }
 
     @Test
