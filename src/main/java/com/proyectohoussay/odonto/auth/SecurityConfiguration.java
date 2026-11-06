@@ -88,6 +88,20 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/odontograma", "/api/odontograma/**", "/api/historias-clinicas/**", "/api/historias/**", "/api/diagnosticos/**",
                                 "/api/tratamientos/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
+                        .requestMatchers(HttpMethod.PUT, "/api/teletriaje/solicitudes/*/prioridad")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
+                        .requestMatchers(HttpMethod.POST, "/api/teletriaje/citas/*/revocar")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
+                        .requestMatchers(HttpMethod.GET, "/api/teletriaje/citas/agenda")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
+                        .requestMatchers(HttpMethod.GET, "/api/teletriaje/solicitudes")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
+                        .requestMatchers(HttpMethod.POST, "/api/teletriaje/solicitudes/*/reservar")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
+                        .requestMatchers(HttpMethod.POST, "/api/teletriaje/reservas")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
+                        .requestMatchers("/api/teletriaje/**")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name(), UserRole.PACIENTE.name())
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
