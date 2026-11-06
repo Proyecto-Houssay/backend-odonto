@@ -19,10 +19,10 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -56,11 +56,8 @@ class DiagnosticoImagenServiceTest {
     }
 
     @Test
-    @DisplayName("should analyze panoramic radiograph and detect impacted molars and periodontitis")
+    @DisplayName("should return unavailable without a real analysis provider")
     void shouldAnalyzePanoramicRadiograph() {
-        when(diagnosticoImagenRepository.save(any(DiagnosticoImagen.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
         AnalisisImagenRequest request = new AnalisisImagenRequest(
                 TipoImagenDental.RADIOGRAFIA_PANORAMICA,
                 Base64.getEncoder().encodeToString("fake-panoramic-image".getBytes()),
@@ -71,25 +68,13 @@ class DiagnosticoImagenServiceTest {
                 "panoramica.png"
         );
 
-        AnalisisImagenResponse response = service.analizarImagen(request);
-
-        assertNotNull(response);
-        assertEquals(TipoImagenDental.RADIOGRAFIA_PANORAMICA, response.tipoImagen());
-        assertFalse(response.hallazgos().isEmpty());
-        assertTrue(response.hallazgos().stream().anyMatch(h -> h.patologia() == PatologiaDental.DIENTE_RETENIDO_IMPACTADO));
-        assertTrue(response.hallazgos().stream().anyMatch(h -> h.patologia() == PatologiaDental.PERDIDA_OSEA_PERIODONTAL));
-        assertEquals(NivelUrgencia.ALTA, response.nivelUrgencia());
-        assertTrue(response.indiceSeveridad() > 5.0);
-        assertNotNull(response.diagnosticoSugerido());
-        assertFalse(response.tratamientosSugeridos().isEmpty());
+        var exception = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> service.analizarImagen(request));
+        assertEquals(503, exception.getStatusCode().value());
     }
 
     @Test
-    @DisplayName("should analyze periapical radiograph and set URGENTE urgency for periapical lesion")
+    @DisplayName("should not infer periapical findings when provider is unavailable")
     void shouldAnalyzePeriapicalRadiographWithUrgentStatus() {
-        when(diagnosticoImagenRepository.save(any(DiagnosticoImagen.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
         AnalisisImagenRequest request = new AnalisisImagenRequest(
                 TipoImagenDental.RADIOGRAFIA_PERIAPICAL,
                 null,
@@ -100,20 +85,13 @@ class DiagnosticoImagenServiceTest {
                 "periapical_36.jpg"
         );
 
-        AnalisisImagenResponse response = service.analizarImagen(request);
-
-        assertNotNull(response);
-        assertEquals(NivelUrgencia.URGENTE, response.nivelUrgencia());
-        assertTrue(response.hallazgos().stream().anyMatch(h -> h.patologia() == PatologiaDental.LESION_PERIAPICAL));
-        assertTrue(response.tratamientosSugeridos().stream().anyMatch(t -> t.contains("Endodoncia") || t.contains("conducto")));
+        var exception = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> service.analizarImagen(request));
+        assertEquals(503, exception.getStatusCode().value());
     }
 
     @Test
-    @DisplayName("should analyze bitewing radiograph and detect interproximal caries")
+    @DisplayName("should not infer bitewing findings when provider is unavailable")
     void shouldAnalyzeBitewingRadiograph() {
-        when(diagnosticoImagenRepository.save(any(DiagnosticoImagen.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
         AnalisisImagenRequest request = new AnalisisImagenRequest(
                 TipoImagenDental.BITE_WING,
                 null,
@@ -124,23 +102,13 @@ class DiagnosticoImagenServiceTest {
                 "aleta_mordida.png"
         );
 
-        AnalisisImagenResponse response = service.analizarImagen(request);
-
-        assertNotNull(response);
-        assertEquals(TipoImagenDental.BITE_WING, response.tipoImagen());
-        assertTrue(response.hallazgos().stream().anyMatch(h -> h.patologia() == PatologiaDental.CARIES_DENTAL));
-        assertEquals(NivelUrgencia.MEDIA, response.nivelUrgencia());
+        var exception = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> service.analizarImagen(request));
+        assertEquals(503, exception.getStatusCode().value());
     }
 
     @Test
-    @DisplayName("should automatically persist diagnosis into clinical history when guardarEnHistoria is true")
+    @DisplayName("should not persist a diagnosis when provider is unavailable")
     void shouldPersistDiagnosisIntoClinicalHistory() {
-        HistoriaClinica historia = new HistoriaClinica(LocalDate.now(), 50L, "Historia previa");
-        when(historiaClinicaRepository.findByPacienteId(50L)).thenReturn(Optional.of(historia));
-        when(diagnosticoRepository.save(any(Diagnostico.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(diagnosticoImagenRepository.save(any(DiagnosticoImagen.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
         AnalisisImagenRequest request = new AnalisisImagenRequest(
                 TipoImagenDental.RADIOGRAFIA_PERIAPICAL,
                 null,
@@ -151,19 +119,13 @@ class DiagnosticoImagenServiceTest {
                 "estudio.png"
         );
 
-        AnalisisImagenResponse response = service.analizarImagen(request);
-
-        assertNotNull(response);
-        ArgumentCaptor<Diagnostico> captor = ArgumentCaptor.forClass(Diagnostico.class);
-        verify(diagnosticoRepository).save(captor.capture());
-        Diagnostico savedDiagnostico = captor.getValue();
-        assertNotNull(savedDiagnostico);
-        assertTrue(savedDiagnostico.getDescripcion().contains("Radiografía Periapical"));
-        assertFalse(savedDiagnostico.getTratamientos().isEmpty());
+        var exception = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> service.analizarImagen(request));
+        assertEquals(503, exception.getStatusCode().value());
+        org.mockito.Mockito.verifyNoInteractions(diagnosticoImagenRepository, historiaClinicaRepository, diagnosticoRepository);
     }
 
     @Test
-    @DisplayName("should reject invalid base64 image data")
+    @DisplayName("should remain unavailable without inspecting base64 content")
     void shouldRejectInvalidBase64() {
         AnalisisImagenRequest request = new AnalisisImagenRequest(
                 TipoImagenDental.RADIOGRAFIA_PANORAMICA,
@@ -175,15 +137,13 @@ class DiagnosticoImagenServiceTest {
                 null
         );
 
-        assertThrows(IllegalArgumentException.class, () -> service.analizarImagen(request));
+        var exception = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> service.analizarImagen(request));
+        assertEquals(503, exception.getStatusCode().value());
     }
 
     @Test
-    @DisplayName("should process multipart uploaded file successfully")
+    @DisplayName("should not read or save a multipart file before provider setup")
     void shouldProcessMultipartUpload() {
-        when(diagnosticoImagenRepository.save(any(DiagnosticoImagen.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
         MockMultipartFile file = new MockMultipartFile(
                 "archivo",
                 "radiografia.jpg",
@@ -191,29 +151,27 @@ class DiagnosticoImagenServiceTest {
                 new byte[]{1, 2, 3, 4, 5, 6, 7, 8}
         );
 
-        AnalisisImagenResponse response = service.analizarArchivo(
+        var exception = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> service.analizarArchivo(
                 file,
                 TipoImagenDental.FOTO_INTRAORAL,
                 12L,
                 null,
                 "Evaluación de cálculo dental",
                 false
-        );
-
-        assertNotNull(response);
-        assertEquals(TipoImagenDental.FOTO_INTRAORAL, response.tipoImagen());
-        assertTrue(response.hallazgos().stream().anyMatch(h -> h.patologia() == PatologiaDental.CALCULO_DENTAL));
+        ));
+        assertEquals(503, exception.getStatusCode().value());
+        org.mockito.Mockito.verifyNoInteractions(diagnosticoImagenRepository, historiaClinicaRepository, diagnosticoRepository);
     }
 
     @Test
-    @DisplayName("should return full catalog of AI capabilities")
+    @DisplayName("should report Dr. Annie as not available")
     void shouldReturnCompleteCatalog() {
         CatalogoIaDto catalogo = service.obtenerCatalogo();
 
         assertNotNull(catalogo);
-        assertEquals(5, catalogo.tiposImagen().size());
-        assertEquals(7, catalogo.patologias().size());
-        assertEquals(4, catalogo.nivelesUrgencia().size());
-        assertEquals("OPERATIVO", catalogo.estadoServicio());
+        assertTrue(catalogo.tiposImagen().isEmpty());
+        assertTrue(catalogo.patologias().isEmpty());
+        assertTrue(catalogo.nivelesUrgencia().isEmpty());
+        assertEquals("EN_PREPARACION", catalogo.estadoServicio());
     }
 }

@@ -22,15 +22,14 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 /**
- * REST controller for Dental Image Diagnosis with AI.
- * Enables automated detection of caries, periodontal bone loss, periapical lesions,
- * impacted molars, and defective restorations from dental radiographs and photographs.
+ * REST endpoints for Dr. Annie, the planned dental image-analysis assistant.
+ * Analysis remains unavailable until a real provider is configured and validated.
  */
 @RestController
 @RequestMapping("/api/ia/diagnostico-imagen")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Diagnóstico por Imagen con IA", description = "Análisis automatizado de radiografías y fotografías dentales asistido por IA")
+@Tag(name = "Dr. Annie", description = "Asistente IA para análisis de radiografías odontológicas, actualmente en preparación")
 public class DiagnosticoImagenController {
 
     private final DiagnosticoImagenService diagnosticoImagenService;
@@ -39,14 +38,14 @@ public class DiagnosticoImagenController {
         this.diagnosticoImagenService = diagnosticoImagenService;
     }
 
-    @Operation(summary = "Analizar imagen dental en formato Base64", description = "Procesa una radiografía o foto dental en Base64, detecta patologías con IA y sugiere tratamientos.")
+    @Operation(summary = "Solicitar análisis dental", description = "El análisis responde HTTP 503 hasta conectar y validar un proveedor clínico.")
     @PostMapping("/analizar")
     public ResponseEntity<AnalisisImagenResponse> analizar(@Valid @RequestBody AnalisisImagenRequest request) {
         AnalisisImagenResponse response = diagnosticoImagenService.analizarImagen(request);
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Subir y analizar archivo de imagen dental (Multipart)", description = "Sube un archivo de radiografía o fotografía dental y ejecuta el análisis de diagnóstico asistido por IA.")
+    @Operation(summary = "Solicitar análisis de un archivo dental", description = "La función está en preparación y no procesa ni guarda la radiografía.")
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AnalisisImagenResponse> upload(
             @RequestParam("archivo") MultipartFile archivo,

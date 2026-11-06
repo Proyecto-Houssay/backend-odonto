@@ -86,7 +86,7 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | **Historias clínicas** | `GET/POST /api/historias-clinicas`, `GET/PUT /api/historias-clinicas/{id}`, `GET /api/historias-clinicas/{id}/detalle`, `GET /api/historias-clinicas/paciente/{pacienteId}`, `POST /api/historias-clinicas/{id}/diagnosticos` | Una historia por paciente existente; consulta opcional `?pacienteId=` y detalle con diagnósticos y tratamientos. |
 | **Diagnósticos** | `GET/POST /api/diagnosticos`, `GET/PUT /api/diagnosticos/{id}`, `GET /api/diagnosticos/{id}/detalle`, `GET /api/diagnosticos/historia/{historiaClinicaId}`, `POST /api/diagnosticos/{id}/tratamientos`, `PATCH /api/diagnosticos/tratamientos/{id}/estado` | Diagnósticos asociados a una historia existente, detalle con tratamientos y actualización de planes de tratamiento. Estados: `PENDIENTE`, `EN_CURSO`, `COMPLETADO`, `CANCELADO`. |
 | **Tratamientos** | `GET/POST /api/tratamientos`, `GET/PUT /api/tratamientos/{id}` | Asociados a un diagnóstico existente; consulta opcional `?diagnosticoId=`. Estados: `PENDIENTE`, `EN_CURSO`, `COMPLETADO`, `CANCELADO`. |
-| **Diagnóstico por Imagen con IA** | `POST /api/ia/diagnostico-imagen/analizar`, `POST /api/ia/diagnostico-imagen/upload`, `GET /api/ia/diagnostico-imagen/paciente/{pacienteId}`, `GET /api/ia/diagnostico-imagen/{id}`, `GET /api/ia/diagnostico-imagen/catalogo` | Análisis asistido por IA de imágenes dentales, hallazgos de severidad/urgencia e integración con historia clínica. |
+| **Dr. Annie / Diagnóstico por Imagen con IA** | `POST /api/ia/diagnostico-imagen/analizar`, `POST /api/ia/diagnostico-imagen/upload` | En preparación. Los POST responden HTTP 503 hasta configurar y validar un proveedor real; no generan hallazgos ni guardan diagnósticos. |
 | **Odontólogos** | `GET /api/odontologos`, `GET /api/odontologos/{id}`, `GET /api/odontologos/matricula/{matricula}`, `POST /api/odontologos`, `PUT /api/odontologos/{id}`, `DELETE /api/odontologos/{id}` | Gestión de staff profesional y matrícula única. |
 | **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `GET /api/turnos/disponibilidad/fecha/{fecha}?odontologoId={id}`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación, disponibilidad puntual y franjas libres estimadas. |
@@ -239,16 +239,7 @@ Para `POST /api/turnos` y `PUT /api/turnos/{id}`, el paciente y el odontólogo d
 
 ### Diagnóstico por Imagen con IA
 
-El backend integra un motor inteligente para el triaje y diagnóstico preliminar asistido por IA de estudios de imágenes dentales:
-
-- **Modalidades admitidas:**
-  - `RADIOGRAFIA_PANORAMICA`: Evaluación general de maxilares, terceros molares retenidos, pérdida ósea generalizada y caries interproximales.
-  - `RADIOGRAFIA_PERIAPICAL`: Evaluación de pieza dental completa, lesiones radiolúcidas periapicales (granulomas, quistes), necrosis pulpar y caries profundas.
-  - `BITE_WING`: Aletas de mordida para detección precoz de caries interproximales y desajuste marginal de restauraciones.
-  - `FOTO_INTRAORAL`: Detección visual de cálculo/sarro subgingival, placa bacteriana y gingivitis marginal.
-  - `TOMOGRAFIA_CONE_BEAM`: Análisis tridimensional (CBCT 3D) de proximidad con el conducto dentario inferior y reabsorción ósea.
-- **Salida estructurada:** Hallazgos con nomenclatura odontológica FDI, severidad (`LEVE`, `MODERADA`, `SEVERA`), nivel de urgencia (`BAJA`, `MEDIA`, `ALTA`, `URGENTE`), índice de severidad (1-10) y roadmap de tratamientos sugeridos.
-- **Integración automática en Historia Clínica:** Mediante `guardarEnHistoria: true`, crea automáticamente un registro `Diagnostico` vinculado a la `HistoriaClinica` del paciente con los `Tratamiento`s en estado `PENDIENTE`.
+Dr. Annie es el nombre previsto para el asistente. El proveedor clínico aún no está conectado: los endpoints de análisis devuelven HTTP 503 y no procesan ni guardan imágenes, hallazgos, diagnósticos o tratamientos. No subir radiografías hasta que haya un proveedor real con uso clínico y tratamiento de datos validados. Ver [`docs/dr-annie.md`](docs/dr-annie.md).
 
 ## Estructura del proyecto
 
@@ -290,3 +281,4 @@ docs/
 - [Backlog: Gestión de Personal](docs/gestion-personal-backlog.md)
 - [`docs/backend-scaffold.md`](docs/backend-scaffold.md)
 - [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md)
+- [`docs/dr-annie.md`](docs/dr-annie.md)
