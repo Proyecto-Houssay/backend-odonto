@@ -71,6 +71,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/password-reset/request",
                                 "/api/auth/password-reset/confirm", "/api/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/chatbot/config", "/api/chatbot/status").permitAll()
                         .requestMatchers("/api/chatbot/knowledge", "/api/chatbot/knowledge/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers(HttpMethod.POST, "/api/chatbot/ask")
@@ -120,4 +121,3 @@ public class SecurityConfiguration {
                 .orElseGet(List::of);
     }
 }
-

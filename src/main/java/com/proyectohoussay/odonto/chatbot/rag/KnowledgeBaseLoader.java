@@ -12,17 +12,20 @@ import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Carga la base de conocimiento de la clínica dental en el VectorStore
- * al iniciar la aplicación. Los documentos se dividen en secciones (chunks)
- * para mejorar la precisión de la búsqueda semántica (RAG).
+ * y en memoria al iniciar la aplicación. Los documentos se dividen en secciones (chunks)
+ * para garantizar respuestas precisas basadas en fuentes aprobadas (RAG),
+ * incluso cuando no se disponga de una API key externa en entornos de desarrollo/demo.
  */
 @Component
 public class KnowledgeBaseLoader {
@@ -31,6 +34,7 @@ public class KnowledgeBaseLoader {
     private static final String KNOWLEDGE_PATH = "classpath:knowledge/*.md";
 
     private final VectorStore vectorStore;
+    private final List<Document> approvedDocuments = new CopyOnWriteArrayList<>();
 
     @Value("${spring.ai.openai.api-key:mock-key-for-local-dev}")
     private String apiKey;
@@ -47,17 +51,11 @@ public class KnowledgeBaseLoader {
 
     /**
      * Carga todos los archivos .md de la carpeta knowledge/ al iniciar la app.
-     * Si no hay API key real configurada (por ejemplo en tests locales o CI),
-     * captura cualquier excepción de red/autenticación para permitir que la app
-     * y los tests de integración levanten normalmente.
+     * Siempre mantiene las fuentes aprobadas indexadas en memoria para permitir
+     * respuestas citadas y triaje en modo autónomo si no hay API key de OpenAI.
      */
     @PostConstruct
     public void loadKnowledgeBase() {
-        if (apiKey == null || apiKey.isBlank() || apiKey.startsWith("mock-key")) {
-            log.warn("OPENAI_API_KEY no configurada o mock. Se omite la indexación inicial de embeddings.");
-            return;
-        }
-
         try {
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
             Resource[] resources = resolver.getResources(KNOWLEDGE_PATH);
@@ -69,16 +67,10 @@ public class KnowledgeBaseLoader {
                 String content = resource.getContentAsString(StandardCharsets.UTF_8);
                 List<Document> chunks = splitIntoChunks(content, filename, defaultVersion);
                 allDocuments.addAll(chunks);
-                log.info("Cargado archivo de conocimiento: {} ({} secciones)", filename, chunks.size());
+                log.info("Cargado archivo de conocimiento aprobado: {} ({} secciones)", filename, chunks.size());
             }
 
-            if (!allDocuments.isEmpty()) {
-                vectorStore.add(allDocuments);
-                log.info("Base de conocimiento cargada exitosamente: {} documentos en total", allDocuments.size());
-            } else {
-                log.warn("No se encontraron archivos de conocimiento en {}", KNOWLEDGE_PATH);
-            }
-
+            // Cargar también documentos administrados si existen
             Path managedPath = Paths.get(managedDirectory);
             if (Files.isDirectory(managedPath)) {
                 try (var paths = Files.list(managedPath)) {
@@ -90,16 +82,32 @@ public class KnowledgeBaseLoader {
                                     ? Files.readString(versionPath, StandardCharsets.UTF_8).trim() : defaultVersion;
                             List<Document> managedDocuments = splitIntoChunks(content,
                                     path.getFileName().toString(), version);
-                            if (!managedDocuments.isEmpty()) vectorStore.add(managedDocuments);
+                            allDocuments.addAll(managedDocuments);
                         } catch (Exception e) {
-                            log.warn("No se pudo indexar el documento administrado {}", path.getFileName());
+                            log.warn("No se pudo leer el documento administrado {}", path.getFileName());
                         }
                     });
                 }
             }
 
+            approvedDocuments.clear();
+            approvedDocuments.addAll(allDocuments);
+            log.info("Total de secciones aprobadas disponibles en memoria: {}", approvedDocuments.size());
+
+            // Si hay API key real configurada, cargar también en el VectorStore para embeddings semánticos
+            if (isApiKeyConfigured() && vectorStore != null) {
+                try {
+                    vectorStore.add(allDocuments);
+                    log.info("Base de conocimiento indexada en VectorStore con embeddings: {} documentos", allDocuments.size());
+                } catch (Exception e) {
+                    log.warn("No se pudo conectar con el proveedor de IA para embeddings durante el inicio: {}. El asistente operará con fuentes aprobadas en memoria.", e.getMessage());
+                }
+            } else {
+                log.info("OPENAI_API_KEY no configurada o mock. El asistente operará con el motor de fuentes aprobadas en memoria ({} secciones).", approvedDocuments.size());
+            }
+
         } catch (Exception e) {
-            log.warn("No se pudo conectar con el proveedor de IA para embeddings durante el inicio: {}. La base de conocimiento podrá indexarse cuando haya conectividad.", e.getMessage());
+            log.warn("Error cargando archivos de conocimiento aprobados: {}", e.getMessage());
         }
     }
 
@@ -134,6 +142,14 @@ public class KnowledgeBaseLoader {
         }
 
         return documents;
+    }
+
+    public List<Document> getApprovedDocuments() {
+        return Collections.unmodifiableList(approvedDocuments);
+    }
+
+    public boolean isApiKeyConfigured() {
+        return apiKey != null && !apiKey.isBlank() && !apiKey.startsWith("mock-key");
     }
 
     private String extractTitle(String section) {
