@@ -108,7 +108,8 @@ public class SecurityConfiguration {
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/api/teletriaje/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name(), UserRole.PACIENTE.name())
-                        .anyRequest().authenticated())
+                        .anyRequest().hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name()))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
         return http.build();
