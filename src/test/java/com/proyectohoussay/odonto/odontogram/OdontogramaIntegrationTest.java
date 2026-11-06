@@ -6,6 +6,7 @@ import com.proyectohoussay.odonto.auth.JwtTokenService;
 import com.proyectohoussay.odonto.model.Usuario;
 import com.proyectohoussay.odonto.patient.Paciente;
 import com.proyectohoussay.odonto.patient.PacienteRepository;
+import com.proyectohoussay.odonto.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -38,6 +39,7 @@ class OdontogramaIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
     @Autowired PacienteRepository patients;
+    @Autowired UsuarioRepository users;
     @Autowired JwtTokenService tokens;
     @Autowired JdbcTemplate jdbc;
     long patientId;
@@ -93,9 +95,14 @@ class OdontogramaIntegrationTest {
     }
 
     @Test
-    void authorizesEveryEndpointForClinicalRolesOnly() throws Exception {
-        for (String path : List.of("/api/odontograma?pacienteId=" + patientId, "/api/odontograma/catalogo", "/api/odontograma/999999")) {
+    void authorizesReadOnlyReceptionAndClinicalWrites() throws Exception {
+        long id = mapper.readTree(create(request()).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString()).get("id").asLong();
+        for (String path : List.of("/api/odontograma?pacienteId=" + patientId, "/api/odontograma/catalogo", "/api/odontograma/" + id)) {
             mvc.perform(get(path)).andExpect(status().isUnauthorized());
+            mvc.perform(get(path).header("Authorization", reception)).andExpect(status().isOk());
+        }
+        for (String path : List.of("/api/historias-clinicas/1", "/api/historias/1", "/api/diagnosticos/1", "/api/tratamientos/1")) {
             mvc.perform(get(path).header("Authorization", reception)).andExpect(status().isForbidden());
         }
         mvc.perform(post("/api/odontograma").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request())))
@@ -105,6 +112,63 @@ class OdontogramaIntegrationTest {
         create(request()).andExpect(status().isCreated());
         mvc.perform(post("/api/odontograma").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
                 .content(mapper.writeValueAsString(request()))).andExpect(status().isCreated());
+    }
+
+    @Test
+    void loginWithPersistedUsersEnforcesOdontogramRoleContract() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        Usuario doctorUser = saveUser("odontogram-doctor-" + suffix, "ODONTOLOGO");
+        Usuario adminUser = saveUser("odontogram-admin-" + suffix, "ADMINISTRADOR");
+        Usuario receptionUser = saveUser("odontogram-reception-" + suffix, "RECEPCIONISTA");
+
+        String doctorToken = login(doctorUser.getUsername());
+        String adminToken = login(adminUser.getUsername());
+        String receptionToken = login(receptionUser.getUsername());
+        String listPath = "/api/odontograma?pacienteId=" + patientId;
+
+        mvc.perform(get("/api/odontograma/catalogo")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/odontograma/catalogo").header("Authorization", receptionToken))
+                .andExpect(status().isOk());
+        mvc.perform(get(listPath).header("Authorization", receptionToken))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/odontograma").header("Authorization", receptionToken)
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request())))
+                .andExpect(status().isForbidden());
+
+        for (var actor : List.of(Map.entry(doctorUser.getId(), doctorToken), Map.entry(adminUser.getId(), adminToken))) {
+            mvc.perform(get("/api/odontograma/catalogo").header("Authorization", actor.getValue()))
+                    .andExpect(status().isOk());
+            MvcResult created = mvc.perform(post("/api/odontograma").header("Authorization", actor.getValue())
+                    .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request())))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.creadoPorId").value(actor.getKey()))
+                    .andExpect(jsonPath("$.firmaBase64").isNotEmpty()).andReturn();
+            long id = mapper.readTree(created.getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(get("/api/odontograma/" + id).header("Authorization", actor.getValue()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(id))
+                    .andExpect(jsonPath("$.firmaBase64").isNotEmpty());
+            mvc.perform(get(listPath).header("Authorization", actor.getValue()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").exists());
+            MvcResult receptionDetail = mvc.perform(get("/api/odontograma/" + id).header("Authorization", receptionToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(id))
+                    .andExpect(jsonPath("$.dientes[0].numero").value(11))
+                    .andExpect(jsonPath("$.firmaBase64").doesNotExist()).andReturn();
+            assertThat(mapper.readTree(receptionDetail.getResponse().getContentAsString()).has("firmaBase64")).isFalse();
+        }
+    }
+
+    private Usuario saveUser(String username, String role) {
+        return users.saveAndFlush(new Usuario(username, "Test", "User", username + "@example.com",
+                "LocalTestPassword1!", role, true));
+    }
+
+    private String login(String username) throws Exception {
+        MvcResult result = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "usernameOrEmail", username, "password", "LocalTestPassword1!"))))
+                .andExpect(status().isOk()).andReturn();
+        return "Bearer " + mapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
     }
 
     @Test
@@ -152,6 +216,17 @@ class OdontogramaIntegrationTest {
         for (String key : List.of("pacienteId", "dientes", "consentimientoAceptado", "versionConsentimiento", "firmaBase64")) {
             var input = request(); input.remove(key); assertRejected(input);
         }
+    }
+
+    @Test
+    void reportsInvalidBeanValidationFieldAndMessage() throws Exception {
+        var input = request();
+        input.remove("pacienteId");
+
+        MvcResult result = create(input).andExpect(status().isBadRequest()).andReturn();
+
+        assertThat(result.getResponse().getContentAsString())
+                .contains("pacienteId", "must not be null");
     }
 
     @Test
