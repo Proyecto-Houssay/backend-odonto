@@ -38,4 +38,11 @@ public class Odontograma {
                 dientes.stream().map(OdontogramaDiente::response).toList(), totalPresupuesto,
                 consentimientoAceptado, versionConsentimiento, textoConsentimiento, firmaBase64);
     }
+
+    PacienteOdontogramaResponse respuestaPaciente() {
+        return new PacienteOdontogramaResponse(creadoEn, dientes.stream().map(diente -> {
+            OdontogramaResponse.Diente item = diente.response();
+            return new PacienteOdontogramaResponse.Pieza(item.numero(), item.nombre(), item.tratamiento());
+        }).toList());
+    }
 }

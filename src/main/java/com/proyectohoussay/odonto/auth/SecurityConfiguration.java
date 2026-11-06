@@ -79,16 +79,23 @@ public class SecurityConfiguration {
                         .permitAll()
                         .requestMatchers("/api/usuarios/**", "/api/reports/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
+                        .requestMatchers("/api/admin/vinculos-paciente/**").hasRole(UserRole.ADMINISTRADOR.name())
+                        .requestMatchers("/api/portal-paciente/**").hasRole(UserRole.PACIENTE.name())
+                        .requestMatchers("/api/seguimiento/**")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
                         .requestMatchers(HttpMethod.GET, "/api/odontologos/**", "/api/especialidades/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/api/odontologos/**", "/api/especialidades/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers("/api/pacientes/**", "/api/turnos/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
+                        .requestMatchers(HttpMethod.GET, "/api/odontograma", "/api/odontograma/**")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/api/odontograma", "/api/odontograma/**", "/api/historias-clinicas/**", "/api/historias/**", "/api/diagnosticos/**",
                                 "/api/tratamientos/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
-                        .anyRequest().authenticated())
+                        .anyRequest().hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name()))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
         return http.build();
