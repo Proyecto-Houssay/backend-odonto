@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.nio.file.Files;
@@ -41,6 +42,9 @@ public class KnowledgeBaseLoader {
     @Value("${app.chatbot.knowledge-version:1}")
     private String defaultVersion;
 
+    @Value("${app.chatbot.approved-bundled-sources:}")
+    private String approvedBundledSources;
+
     public KnowledgeBaseLoader(VectorStore vectorStore) {
         this.vectorStore = vectorStore;
     }
@@ -66,6 +70,10 @@ public class KnowledgeBaseLoader {
 
             for (Resource resource : resources) {
                 String filename = resource.getFilename();
+                if (!isApprovedBundledSource(filename, approvedBundledSources)) {
+                    log.warn("Se omite la fuente de conocimiento empaquetada sin aprobación explícita: {}", filename);
+                    continue;
+                }
                 String content = resource.getContentAsString(StandardCharsets.UTF_8);
                 List<Document> chunks = splitIntoChunks(content, filename, defaultVersion);
                 allDocuments.addAll(chunks);
@@ -76,7 +84,7 @@ public class KnowledgeBaseLoader {
                 vectorStore.add(allDocuments);
                 log.info("Base de conocimiento cargada exitosamente: {} documentos en total", allDocuments.size());
             } else {
-                log.warn("No se encontraron archivos de conocimiento en {}", KNOWLEDGE_PATH);
+                log.warn("No hay fuentes empaquetadas aprobadas para indexar en {}", KNOWLEDGE_PATH);
             }
 
             Path managedPath = Paths.get(managedDirectory);
@@ -101,6 +109,16 @@ public class KnowledgeBaseLoader {
         } catch (Exception e) {
             log.warn("No se pudo conectar con el proveedor de IA para embeddings durante el inicio: {}. La base de conocimiento podrá indexarse cuando haya conectividad.", e.getMessage());
         }
+    }
+
+    static boolean isApprovedBundledSource(String filename, String approvedSources) {
+        if (filename == null || approvedSources == null || approvedSources.isBlank()) {
+            return false;
+        }
+        return Arrays.stream(approvedSources.split(","))
+                .map(String::trim)
+                .filter(source -> !source.isBlank())
+                .anyMatch(filename::equals);
     }
 
     /**

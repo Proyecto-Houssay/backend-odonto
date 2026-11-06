@@ -10,12 +10,17 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.document.Document;
+import org.springframework.test.util.ReflectionTestUtils;
+import java.text.Normalizer;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ChatbotServiceTest {
@@ -23,6 +28,12 @@ class ChatbotServiceTest {
     private final ChatClient chatClient = mock(ChatClient.class, Mockito.RETURNS_DEEP_STUBS);
     private final VectorStore vectorStore = mock(VectorStore.class);
     private final ChatbotService chatbotService = new ChatbotService(chatClient, vectorStore);
+
+    private static String normalize(String text) {
+        return Normalizer.normalize(text, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT);
+    }
 
     @ParameterizedTest
     @ValueSource(strings = {
@@ -52,7 +63,8 @@ class ChatbotServiceTest {
     @ValueSource(strings = {
         "Quiero sacar un turno para la semana que viene",
         "¿Hay disponibilidad de citas para mañana?",
-        "Necesito cancelar mi turno de las 15 hs"
+        "Necesito cancelar mi turno de las 15 hs",
+        "Hola, buenas tardes, ¿qué días atienden?"
     })
     void clasificarIntencion_deberiaDetectarTurnos(String mensaje) {
         String intencion = chatbotService.clasificarIntencion(mensaje);
@@ -70,35 +82,118 @@ class ChatbotServiceTest {
         assertEquals("tratamiento", intencion);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "hola",
+        "¡Hola!",
+        "Buenas tardes",
+        "Buen día",
+        "Hola, ¿cómo estás?",
+        "Gracias",
+        "¿En qué me podés ayudar?"
+    })
+    void clasificarIntencion_deberiaDetectarSaludosOConsultasDeAyuda(String mensaje) {
+        String intencion = chatbotService.clasificarIntencion(mensaje);
+        assertEquals("saludo", intencion);
+    }
+
+    @Test
+    void procesarMensaje_saludoSinProveedorRespondeUtilmenteSinLlamarAlVectorStoreNiOpenAI() {
+        ChatResponse response = chatbotService.procesarMensaje(new ChatRequest("hola", "session-saludo"));
+
+        assertNotNull(response);
+        assertEquals("saludo", response.intencion());
+        String text = normalize(response.respuesta());
+        assertTrue(text.contains("hola") || text.contains("asistente"));
+        assertTrue(text.contains("turno"));
+        assertTrue(text.contains("odontograma"));
+        assertFalse(text.contains("lunes"));
+        assertFalse(text.contains("9:00"));
+        assertFalse(text.contains("$"));
+        assertTrue(response.accionesSugeridas().contains("/mis-turnos"));
+        assertTrue(response.accionesSugeridas().contains("/mi-odontograma"));
+        assertTrue(response.citas().isEmpty());
+        verify(vectorStore, never()).similaritySearch(any(SearchRequest.class));
+        verify(chatClient, never()).prompt();
+    }
+
     @Test
     void clasificarIntencion_consultaGeneral() {
-        String intencion = chatbotService.clasificarIntencion("Hola, buenas tardes, qué días atienden?");
+        String intencion = chatbotService.clasificarIntencion("¿Dónde queda el consultorio?");
         assertEquals("consulta_general", intencion);
     }
 
     @Test
-    void procesarMensaje_manejoDeErrores_devuelveRespuestaAmigable() {
-        // Simulamos una excepción cuando el chatClient intenta armar o ejecutar el prompt
+    void procesarMensaje_fallaDelProveedorDeTurnosNoInventaHorariosYOfreceRuta() {
+        // Simulate provider failure after retrieval; clinic-hours data is not currently verified.
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
                 new Document("doc", "Información aprobada de prueba.", Map.of("source", "faq.md", "version", "1"))));
         when(chatClient.prompt()).thenThrow(new RuntimeException("Simulated ChatClient failure"));
 
-        ChatRequest request = new ChatRequest("Hola", "session-123");
+        ChatRequest request = new ChatRequest("¿Qué horarios tienen disponibles?", "session-123");
         ChatResponse response = chatbotService.procesarMensaje(request);
 
         assertNotNull(response);
-        assertEquals("error", response.intencion());
-        assertTrue(response.respuesta().contains("No se pudo procesar la consulta"));
+        assertEquals("turno", response.intencion());
+        String text = normalize(response.respuesta());
+        assertTrue(text.contains("no puedo confirmar") && text.contains("horarios"));
+        assertFalse(text.contains("lunes a viernes"));
+        assertTrue(response.accionesSugeridas().contains("/mis-turnos"));
+        assertTrue(response.citas().isEmpty());
+    }
+
+    @Test
+    void procesarMensaje_conClaveMockNoIntentaLlamarAOpenAINiInventaHorarios() {
+        ChatbotService serviceSinClave = new ChatbotService(chatClient, vectorStore);
+        ReflectionTestUtils.setField(serviceSinClave, "apiKey", "mock-key-for-local-dev");
+
+        ChatResponse response = serviceSinClave.procesarMensaje(new ChatRequest("¿Qué horarios tienen disponibles?", null));
+
+        assertEquals("turno", response.intencion());
+        String text = normalize(response.respuesta());
+        assertTrue(text.contains("no puedo confirmar") && text.contains("horarios"));
+        assertTrue(response.accionesSugeridas().contains("/mis-turnos"));
+        assertTrue(response.citas().isEmpty());
+        verify(vectorStore, never()).similaritySearch(any(SearchRequest.class));
+        verify(chatClient, never()).prompt();
     }
 
     @Test
     void procesarMensaje_sinDocumentosSeNiegaSinInventarYCitaVacia() {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
-        ChatResponse response = chatbotService.procesarMensaje(new ChatRequest("Consulta sin fuentes", null));
+        ChatResponse response = chatbotService.procesarMensaje(new ChatRequest("¿Qué horarios tienen disponibles?", null));
 
-        assertTrue(response.respuesta().startsWith("No tengo información suficiente"));
+        String text = normalize(response.respuesta());
+        assertTrue(text.contains("no puedo confirmar") && text.contains("horarios"));
         assertTrue(response.citas().isEmpty());
+        assertTrue(response.accionesSugeridas().contains("/mis-turnos"));
+    }
+
+    @Test
+    void procesarMensaje_consultaDeTurnosPropiosNoInventaDatosNiFiltraPacientes() {
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenThrow(new RuntimeException("offline"));
+
+        ChatResponse response = chatbotService.procesarMensaje(new ChatRequest("¿Cuándo es mi próximo turno?", null));
+
+        assertEquals("turno", response.intencion());
+        String text = normalize(response.respuesta());
+        assertTrue(text.contains("turnos"));
+        assertFalse(text.contains("dni"));
+        assertTrue(response.accionesSugeridas().contains("/mis-turnos"));
+        assertTrue(response.citas().isEmpty());
+    }
+
+    @Test
+    void procesarMensaje_consultaSobreMolestiaDerivaSinDiagnosticarNiRecetar() {
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenThrow(new RuntimeException("offline"));
+
+        ChatResponse response = chatbotService.procesarMensaje(new ChatRequest("Tengo dolor en un diente", null));
+
+        assertEquals("odontograma", response.intencion());
+        assertFalse(response.respuesta().toLowerCase().contains("ibuprofeno"));
+        assertFalse(response.respuesta().toLowerCase().contains("diagnóstico probable"));
+        assertTrue(response.accionesSugeridas().contains("/mi-odontograma"));
     }
 
     @Test
@@ -114,7 +209,7 @@ class ChatbotServiceTest {
         assertEquals("doc-1", response.citas().get(0).id());
         assertEquals("2026-10", response.citas().get(0).version());
         assertTrue(response.citas().get(0).fragmento().contains("Lunes a viernes"));
-        assertTrue(response.accionesSugeridas().isEmpty());
+        assertEquals(List.of("/mis-turnos"), response.accionesSugeridas());
     }
 
     @Test
