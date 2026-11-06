@@ -86,7 +86,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/pacientes/**", "/api/turnos/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/api/odontograma", "/api/odontograma/**", "/api/historias-clinicas/**", "/api/historias/**", "/api/diagnosticos/**",
-                                "/api/tratamientos/**")
+                                "/api/tratamientos/**", "/api/ia/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
                         .requestMatchers(HttpMethod.PUT, "/api/teletriaje/solicitudes/*/prioridad")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())

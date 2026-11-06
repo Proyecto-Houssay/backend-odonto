@@ -83,9 +83,10 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 |---|---|---|
 | **Salud** | `GET /api/health` | Healthcheck técnico de la aplicación. |
 | **Pacientes** | `GET /api/pacientes`, `GET /api/pacientes/{id}`, `POST /api/pacientes`, `PUT /api/pacientes/{id}`, `DELETE /api/pacientes/{id}` | Registro, consulta, actualización y borrado solo si no hay historia clínica ni turnos vinculados. DNI único. |
-| **Historias clínicas** | `GET/POST /api/historias-clinicas`, `GET/PUT /api/historias-clinicas/{id}` | Una historia por paciente existente; consulta opcional `?pacienteId=`. |
-| **Diagnósticos** | `GET/POST /api/diagnosticos`, `GET/PUT /api/diagnosticos/{id}` | Asociados a una historia existente; consulta opcional `?historiaClinicaId=`. |
+| **Historias clínicas** | `GET/POST /api/historias-clinicas`, `GET/PUT /api/historias-clinicas/{id}`, `GET /api/historias-clinicas/{id}/detalle`, `GET /api/historias-clinicas/paciente/{pacienteId}`, `POST /api/historias-clinicas/{id}/diagnosticos` | Una historia por paciente existente; consulta opcional `?pacienteId=` y detalle con diagnósticos y tratamientos. |
+| **Diagnósticos** | `GET/POST /api/diagnosticos`, `GET/PUT /api/diagnosticos/{id}`, `GET /api/diagnosticos/{id}/detalle`, `GET /api/diagnosticos/historia/{historiaClinicaId}`, `POST /api/diagnosticos/{id}/tratamientos`, `PATCH /api/diagnosticos/tratamientos/{id}/estado` | Diagnósticos asociados a una historia existente, detalle con tratamientos y actualización de planes de tratamiento. Estados: `PENDIENTE`, `EN_CURSO`, `COMPLETADO`, `CANCELADO`. |
 | **Tratamientos** | `GET/POST /api/tratamientos`, `GET/PUT /api/tratamientos/{id}` | Asociados a un diagnóstico existente; consulta opcional `?diagnosticoId=`. Estados: `PENDIENTE`, `EN_CURSO`, `COMPLETADO`, `CANCELADO`. |
+| **Diagnóstico por Imagen con IA** | `POST /api/ia/diagnostico-imagen/analizar`, `POST /api/ia/diagnostico-imagen/upload`, `GET /api/ia/diagnostico-imagen/paciente/{pacienteId}`, `GET /api/ia/diagnostico-imagen/{id}`, `GET /api/ia/diagnostico-imagen/catalogo` | Análisis asistido por IA de imágenes dentales, hallazgos de severidad/urgencia e integración con historia clínica. |
 | **Odontólogos** | `GET /api/odontologos`, `GET /api/odontologos/{id}`, `GET /api/odontologos/matricula/{matricula}`, `POST /api/odontologos`, `PUT /api/odontologos/{id}`, `DELETE /api/odontologos/{id}` | Gestión de staff profesional y matrícula única. |
 | **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `GET /api/turnos/disponibilidad/fecha/{fecha}?odontologoId={id}`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación, disponibilidad puntual y franjas libres estimadas. |
@@ -116,8 +117,8 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 
 | Rol | Permisos |
 |---|---|
-| `ADMINISTRADOR` | Acceso administrativo completo, incluida la gestión de usuarios, roles, informes e insumos. |
-| `ODONTOLOGO` | Acceso a pacientes, turnos, historias, diagnósticos y tratamientos; lectura de odontólogos/especialidades. No hay API de recetas. |
+| `ADMINISTRADOR` | Acceso administrativo completo, incluida la gestión de usuarios, roles, informes, insumos, historias clínicas, diagnósticos y diagnóstico por imagen con IA. |
+| `ODONTOLOGO` | Acceso a pacientes, turnos, historias, diagnósticos, tratamientos y diagnóstico por imagen con IA; lectura de odontólogos/especialidades. No hay API de recetas. |
 | `RECEPCIONISTA` | Acceso a pacientes y turnos; lectura de odontólogos y especialidades. Sin acceso a historias clínicas, usuarios, roles, informes o administración. |
 | `PACIENTE` | Acceso al chatbot. No accede a informes, gestión de fuentes ni endpoints clínicos administrativos. |
 
@@ -140,6 +141,8 @@ Las rutas clínicas devuelven DTOs planos; no exponen directamente las entidades
 1. Hacé una copia de seguridad y abrí [docs/mysql-clinical-constraints.sql](docs/mysql-clinical-constraints.sql) en Workbench, con el mismo esquema que usa el backend seleccionado.
 2. Ejecutá **solo las consultas `SELECT` de los pasos 1–3**, no el archivo entero: confirmá el esquema y que las consultas de historias duplicadas y huérfanas devuelvan **cero filas**. Si aparecen filas, detenete; no borres datos para forzar la migración. Comprobá también que no existan ya restricciones equivalentes.
 3. Solo después, seleccioná y ejecutá **el único `ALTER TABLE` del paso 4**. Volvé a ejecutar el `SELECT` del paso 3: deben aparecer `UNIQUE` y `FOREIGN KEY`. Es una operación de una sola vez; no repitas el `ALTER TABLE` si ya se aplicó. No modifica ni borra filas existentes, pero MySQL confirma DDL implícitamente.
+
+> Las rutas originales de colección, consulta por ID y actualización siguen en `ClinicalRecordController`. Los controladores de extensión agregan rutas explícitas `/detalle`, consulta por paciente, diagnósticos anidados y tratamientos; así se evitan mappings duplicados en Spring.
 
 ### Informes e inventario
 
@@ -231,6 +234,19 @@ Para `POST /api/turnos` y `PUT /api/turnos/{id}`, el paciente y el odontólogo d
 }
 ```
 
+### Diagnóstico por Imagen con IA
+
+El backend integra un motor inteligente para el triaje y diagnóstico preliminar asistido por IA de estudios de imágenes dentales:
+
+- **Modalidades admitidas:**
+  - `RADIOGRAFIA_PANORAMICA`: Evaluación general de maxilares, terceros molares retenidos, pérdida ósea generalizada y caries interproximales.
+  - `RADIOGRAFIA_PERIAPICAL`: Evaluación de pieza dental completa, lesiones radiolúcidas periapicales (granulomas, quistes), necrosis pulpar y caries profundas.
+  - `BITE_WING`: Aletas de mordida para detección precoz de caries interproximales y desajuste marginal de restauraciones.
+  - `FOTO_INTRAORAL`: Detección visual de cálculo/sarro subgingival, placa bacteriana y gingivitis marginal.
+  - `TOMOGRAFIA_CONE_BEAM`: Análisis tridimensional (CBCT 3D) de proximidad con el conducto dentario inferior y reabsorción ósea.
+- **Salida estructurada:** Hallazgos con nomenclatura odontológica FDI, severidad (`LEVE`, `MODERADA`, `SEVERA`), nivel de urgencia (`BAJA`, `MEDIA`, `ALTA`, `URGENTE`), índice de severidad (1-10) y roadmap de tratamientos sugeridos.
+- **Integración automática en Historia Clínica:** Mediante `guardarEnHistoria: true`, crea automáticamente un registro `Diagnostico` vinculado a la `HistoriaClinica` del paciente con los `Tratamiento`s en estado `PENDIENTE`.
+
 ## Estructura del proyecto
 
 ```text
@@ -239,6 +255,8 @@ src/main/java/com/proyectohoussay/odonto/
 ├── auth/              # Controladores, servicios y DTOs de login
 ├── config/            # Configuración de OpenAPI / Swagger
 ├── clinicalhistory/   # Historia clínica, diagnósticos y tratamientos (API, servicio y persistencia)
+│   ├── ai/            # Diagnóstico por Imagen con IA (motor, entidad, repositorio, controlador y DTOs)
+│   └── dto/           # DTOs de historias clínicas, diagnósticos y tratamientos
 ├── controller/        # Controladores REST de turnos, odontólogos, especialidades y usuarios
 ├── dto/               # Objetos de transferencia de datos (DTOs)
 ├── exception/         # Manejo centralizado de excepciones
@@ -250,6 +268,7 @@ src/main/java/com/proyectohoussay/odonto/
 docs/
 ├── backend-scaffold.md
 ├── braian-dashboard-integration.md
+├── gestion-personal-backlog.md
 └── swagger-mysql-workflow.md
 ```
 
@@ -265,5 +284,6 @@ docs/
 - [Wiki del proyecto](https://github.com/Proyecto-Houssay/backend-odonto/wiki)
 - [Sprint 0](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Sprint-0)
 - [Stack tecnológico](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Stack-tecnologico)
+- [Backlog: Gestión de Personal](docs/gestion-personal-backlog.md)
 - [`docs/backend-scaffold.md`](docs/backend-scaffold.md)
 - [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md)
