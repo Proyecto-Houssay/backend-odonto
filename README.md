@@ -83,9 +83,10 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 |---|---|---|
 | **Salud** | `GET /api/health` | Healthcheck técnico de la aplicación. |
 | **Pacientes** | `GET /api/pacientes`, `GET /api/pacientes/{id}`, `POST /api/pacientes`, `PUT /api/pacientes/{id}`, `DELETE /api/pacientes/{id}` | Registro, consulta, actualización y borrado solo si no hay historia clínica ni turnos vinculados. DNI único. |
-| **Historias clínicas** | `GET/POST /api/historias-clinicas`, `GET/PUT /api/historias-clinicas/{id}` | Una historia por paciente existente; consulta opcional `?pacienteId=`. |
-| **Diagnósticos** | `GET/POST /api/diagnosticos`, `GET/PUT /api/diagnosticos/{id}` | Asociados a una historia existente; consulta opcional `?historiaClinicaId=`. |
+| **Historias clínicas** | `GET/POST /api/historias-clinicas`, `GET/PUT /api/historias-clinicas/{id}`, `GET /api/historias-clinicas/{id}/detalle`, `GET /api/historias-clinicas/paciente/{pacienteId}`, `POST /api/historias-clinicas/{id}/diagnosticos` | Una historia por paciente existente; consulta opcional `?pacienteId=` y detalle con diagnósticos y tratamientos. |
+| **Diagnósticos** | `GET/POST /api/diagnosticos`, `GET/PUT /api/diagnosticos/{id}`, `GET /api/diagnosticos/{id}/detalle`, `GET /api/diagnosticos/historia/{historiaClinicaId}`, `POST /api/diagnosticos/{id}/tratamientos`, `PATCH /api/diagnosticos/tratamientos/{id}/estado` | Diagnósticos asociados a una historia existente, detalle con tratamientos y actualización de planes de tratamiento. Estados: `PENDIENTE`, `EN_CURSO`, `COMPLETADO`, `CANCELADO`. |
 | **Tratamientos** | `GET/POST /api/tratamientos`, `GET/PUT /api/tratamientos/{id}` | Asociados a un diagnóstico existente; consulta opcional `?diagnosticoId=`. Estados: `PENDIENTE`, `EN_CURSO`, `COMPLETADO`, `CANCELADO`. |
+| **Dr. Annie / Diagnóstico por Imagen con IA** | `POST /api/ia/diagnostico-imagen/analizar`, `POST /api/ia/diagnostico-imagen/upload` | En preparación. Los POST responden HTTP 503 hasta configurar y validar un proveedor real; no generan hallazgos ni guardan diagnósticos. |
 | **Odontólogos** | `GET /api/odontologos`, `GET /api/odontologos/{id}`, `GET /api/odontologos/matricula/{matricula}`, `POST /api/odontologos`, `PUT /api/odontologos/{id}`, `DELETE /api/odontologos/{id}` | Gestión de staff profesional y matrícula única. |
 | **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `GET /api/turnos/disponibilidad/fecha/{fecha}?odontologoId={id}`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación, disponibilidad puntual y franjas libres estimadas. |
@@ -93,7 +94,7 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | **Usuarios** | `GET /api/usuarios`, `GET /api/usuarios/{id}`, `POST /api/usuarios`, `PUT /api/usuarios/{id}`, `DELETE /api/usuarios/{id}` | Gestión de cuentas de usuario. |
 | **Autenticación** | `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/password-reset/request`, `POST /api/auth/password-reset/confirm`, `POST /api/auth/change-password` | Login, registro público con rol fijo `PACIENTE`, recuperación por enlace de correo y cambio de la propia contraseña autenticada. |
 | **Chatbot RAG** | `POST /api/chatbot/ask`, `POST /api/chatbot/knowledge`, `DELETE /api/chatbot/knowledge/{source}` | Respuestas apoyadas en documentos aprobados con citas; chat para pacientes y administración, gestión de fuentes solo para administración. |
-| **Informes e inventario** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones`, `GET /api/reports/anual` | Resumen y reportes con datos persistidos. Todas las rutas requieren `ADMINISTRADOR`. |
+| **Informes e inventario** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones`, `GET /api/reports/anual`, `GET /api/reports/cobros`, `GET /api/reports/ganancias`, `POST /api/finanzas/movimientos` | Resumen y reportes con datos persistidos, incluidos movimientos financieros académicos. Todas las rutas requieren `ADMINISTRADOR`. |
 
 
 > `DELETE /api/turnos/{id}` cancela el turno modificando su estado a `CANCELADO`; no elimina el registro de la base de datos.
@@ -116,8 +117,8 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 
 | Rol | Permisos |
 |---|---|
-| `ADMINISTRADOR` | Acceso administrativo completo, incluida la gestión de usuarios, roles, informes e insumos. |
-| `ODONTOLOGO` | Acceso a pacientes, turnos, historias, diagnósticos y tratamientos; lectura de odontólogos/especialidades. No hay API de recetas. |
+| `ADMINISTRADOR` | Acceso administrativo completo, incluida la gestión de usuarios, roles, informes, insumos, historias clínicas, diagnósticos y diagnóstico por imagen con IA. |
+| `ODONTOLOGO` | Acceso a pacientes, turnos, historias, diagnósticos, tratamientos y diagnóstico por imagen con IA; lectura de odontólogos/especialidades. No hay API de recetas. |
 | `RECEPCIONISTA` | Acceso a pacientes y turnos; lectura de odontólogos y especialidades. Sin acceso a historias clínicas, usuarios, roles, informes o administración. |
 | `PACIENTE` | Acceso al chatbot. No accede a informes, gestión de fuentes ni endpoints clínicos administrativos. |
 
@@ -141,22 +142,27 @@ Las rutas clínicas devuelven DTOs planos; no exponen directamente las entidades
 2. Ejecutá **solo las consultas `SELECT` de los pasos 1–3**, no el archivo entero: confirmá el esquema y que las consultas de historias duplicadas y huérfanas devuelvan **cero filas**. Si aparecen filas, detenete; no borres datos para forzar la migración. Comprobá también que no existan ya restricciones equivalentes.
 3. Solo después, seleccioná y ejecutá **el único `ALTER TABLE` del paso 4**. Volvé a ejecutar el `SELECT` del paso 3: deben aparecer `UNIQUE` y `FOREIGN KEY`. Es una operación de una sola vez; no repitas el `ALTER TABLE` si ya se aplicó. No modifica ni borra filas existentes, pero MySQL confirma DDL implícitamente.
 
+> Las rutas originales de colección, consulta por ID y actualización siguen en `ClinicalRecordController`. Los controladores de extensión agregan rutas explícitas `/detalle`, consulta por paciente, diagnósticos anidados y tratamientos; así se evitan mappings duplicados en Spring.
+
 ### Informes e inventario
 
-Todas las rutas `/api/reports/**` requieren un JWT válido con rol `ADMINISTRADOR`. Sin token (o con token inválido/expirado), la respuesta es HTTP `401`; con otro rol autenticado, HTTP `403`.
+Todas las rutas `/api/reports/**` y `/api/finanzas/**` requieren un JWT válido con rol `ADMINISTRADOR`. Sin token (o con token inválido/expirado), la respuesta es HTTP `401`; con otro rol autenticado, HTTP `403`.
 
 | Método y ruta | Parámetros / request | DTO de respuesta y comportamiento |
 |---|---|---|
-| `GET /api/reports` | Ninguno | Resumen `Map`: `modulo`, `estado`, `totalAtencionesRegistradas`, `totalItemsInventario` y `reportesDisponibles`. Solo enumera reportes con endpoint implementado. |
+| `GET /api/reports` | Ninguno | Resumen `Map`: `modulo`, `estado`, `totalAtencionesRegistradas`, `totalItemsInventario`, `reportesDisponibles` y `reportesFinancierosDisponibles`. Solo enumera reportes con endpoint implementado. |
 | `GET /api/reports/inventario` | Ninguno | Lista `InventarioItemDto`: `id`, `nombre`, `categoria`, `cantidadDisponible`, `unidadMedida`, `estado`. |
 | `POST /api/reports/inventario` | `InsumoRequest`: `nombre`, `categoria`, `cantidadDisponible`, `unidadMedida`, `stockMinimo` | HTTP `201` y un `InventarioItemDto`. |
 | `PUT /api/reports/inventario/{id}` | `id` en la ruta y `InsumoRequest` en el body | HTTP `200` y un `InventarioItemDto`; si el insumo no existe, HTTP `404`. |
 | `GET /api/reports/atenciones?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | `AtencionesReportDto`: `tipo`, `desde`, `hasta`, `totalAtenciones`, `detalle`. El detalle contiene turno, fecha/hora, paciente, odontólogo, motivo y estado. Solo cuenta turnos `ATENDIDO` de hoy o anteriores; nunca cuenta fechas futuras, aunque el turno esté marcado como atendido. |
 | `GET /api/reports/anual?anio=YYYY` | Año calendario obligatorio (entre 1 y 9999) | `AnualReportDto`: `anio`, `totalAtenciones`, `meses`. Incluye los 12 meses; cada `MesAnualReportDto` contiene `mes`, `nombre`, `totalAtenciones`. No cuenta turnos futuros aunque figuren como atendidos. |
+| `GET /api/reports/cobros?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | Lista los movimientos `INGRESO` persistidos en el período, incluyendo su `turnoId`. |
+| `GET /api/reports/ganancias?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | Totales registrados de ingresos, egresos, resultado neto y cantidad de movimientos; `sinRegistros` distingue un período vacío de un resultado cero. |
+| `POST /api/finanzas/movimientos` | `{ "tipo": "INGRESO"|"EGRESO", "fecha": "YYYY-MM-DD", "importe": 12500.00, "concepto": "...", "medioPago": "...", "turnoId": 1 }` | Registra un movimiento y responde HTTP `201`. Un ingreso requiere un turno existente; un egreso no admite `turnoId`. El importe debe ser positivo y la fecha no futura. |
 
 Para el informe por rango, `desde` debe ser anterior o igual a `hasta`. Fechas faltantes o inválidas, rangos invertidos y años fuera del rango producen HTTP `400`. Una escritura de inventario exitosa retorna `201`; lecturas y actualización, `200`.
 
-**Fuera de alcance académico:** no hay endpoints de pagos, cobros o ganancias; tampoco se publican en Swagger. Si una base MySQL local conserva una tabla `pagos` de una versión anterior, este cambio no la borra ni altera sus datos. Las recetas quedan solo como concepto de pruebas, sin endpoint REST público. H2 en memoria se usa para tests y no modifica MySQL.
+**Límite de alcance:** estos endpoints son un registro académico manual para alimentar reportes; no procesan pagos, no integran una pasarela, no emiten comprobantes ni reemplazan facturación. Los importes no prueban que haya ocurrido un pago real. Si una base MySQL local conserva una tabla `pagos` de una versión anterior, este cambio no la borra ni altera sus datos. Las recetas quedan solo como concepto de pruebas, sin endpoint REST público. H2 en memoria se usa para tests y no modifica MySQL.
 
 #### Configuración de JWT
 
@@ -231,6 +237,10 @@ Para `POST /api/turnos` y `PUT /api/turnos/{id}`, el paciente y el odontólogo d
 }
 ```
 
+### Diagnóstico por Imagen con IA
+
+Dr. Annie es el nombre previsto para el asistente. El proveedor clínico aún no está conectado: los endpoints de análisis devuelven HTTP 503 y no procesan ni guardan imágenes, hallazgos, diagnósticos o tratamientos. No subir radiografías hasta que haya un proveedor real con uso clínico y tratamiento de datos validados. Ver [`docs/dr-annie.md`](docs/dr-annie.md).
+
 ## Estructura del proyecto
 
 ```text
@@ -239,6 +249,8 @@ src/main/java/com/proyectohoussay/odonto/
 ├── auth/              # Controladores, servicios y DTOs de login
 ├── config/            # Configuración de OpenAPI / Swagger
 ├── clinicalhistory/   # Historia clínica, diagnósticos y tratamientos (API, servicio y persistencia)
+│   ├── ai/            # Diagnóstico por Imagen con IA (motor, entidad, repositorio, controlador y DTOs)
+│   └── dto/           # DTOs de historias clínicas, diagnósticos y tratamientos
 ├── controller/        # Controladores REST de turnos, odontólogos, especialidades y usuarios
 ├── dto/               # Objetos de transferencia de datos (DTOs)
 ├── exception/         # Manejo centralizado de excepciones
@@ -250,6 +262,7 @@ src/main/java/com/proyectohoussay/odonto/
 docs/
 ├── backend-scaffold.md
 ├── braian-dashboard-integration.md
+├── gestion-personal-backlog.md
 └── swagger-mysql-workflow.md
 ```
 
@@ -265,5 +278,7 @@ docs/
 - [Wiki del proyecto](https://github.com/Proyecto-Houssay/backend-odonto/wiki)
 - [Sprint 0](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Sprint-0)
 - [Stack tecnológico](https://github.com/Proyecto-Houssay/backend-odonto/wiki/Stack-tecnologico)
+- [Backlog: Gestión de Personal](docs/gestion-personal-backlog.md)
 - [`docs/backend-scaffold.md`](docs/backend-scaffold.md)
 - [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md)
+- [`docs/dr-annie.md`](docs/dr-annie.md)
