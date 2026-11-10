@@ -124,9 +124,13 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 
 `POST /api/auth/login`, `POST /api/auth/register`, las dos rutas `password-reset` y `GET /api/health` son públicos. `POST /api/chatbot/ask` requiere rol `PACIENTE` o `ADMINISTRADOR`; las rutas `/api/chatbot/knowledge` requieren `ADMINISTRADOR`. El cambio de contraseña sigue protegido; el resto de endpoints requiere autenticación y se autoriza según la matriz. Cualquier usuario autenticado puede cambiar **solo su propia** contraseña: la identidad se obtiene del JWT, no de un ID enviado por el cliente. Un JWT ya emitido puede seguir vigente hasta sus 15 minutos de expiración después del cambio.
 
-### Chatbot con RAG
+### Chatbot con RAG y Fuentes Aprobadas
 
-El asistente busca fragmentos en documentos Markdown aprobados y devuelve la respuesta junto con `citas` (`id`, `documento`, `version`, `fragmento`). Si no encuentra evidencia suficiente, informa esa limitación; no diagnostica ni recomienda medicamentos. Las fuentes versionadas administradas por la API se guardan en `CHATBOT_KNOWLEDGE_DIRECTORY` (por defecto `./data/knowledge`) y se vuelven a indexar al iniciar. La carga requiere `OPENAI_API_KEY`; sin esa clave el backend omite embeddings y la administración de documentos responde `503`.
+El asistente busca fragmentos en documentos Markdown aprobados y devuelve la respuesta junto con citas (id, documento, ersion, ragmento). Si no encuentra evidencia suficiente, informa esa limitación; no diagnostica ni recomienda medicamentos. Cuenta con arquitectura dual según la configuración del entorno:
+- **Modo Autónomo de Fuentes Aprobadas (por defecto sin API key):** Al iniciar, carga en memoria las 4 fuentes oficiales (precios-nomenclador.md, protocolos-urgencia.md, especialidades-servicios.md, aq-clinica.md) y responde con citas y triaje clínico exacto de forma determinística sin depender de servicios externos ni incurrir en costos de API.
+- **Modo Spring AI / OpenAI:** Si se configura OPENAI_API_KEY en el .env, indexa embeddings semánticos en VectorStore y genera respuestas conversacionales mediante el LLM configurado (OPENAI_MODEL:gpt-4o-mini).
+
+El estado del proveedor y las fuentes cargadas pueden consultarse públicamente en GET /api/chatbot/config o GET /api/chatbot/status. Las fuentes versionadas administradas por la API se guardan en CHATBOT_KNOWLEDGE_DIRECTORY (por defecto ./data/knowledge) y se vuelven a indexar al iniciar. La administración remota de documentos mediante API (POST /api/chatbot/knowledge) requiere rol ADMINISTRADOR y clave de embeddings activa.
 
 `POST /api/chatbot/knowledge` recibe `source`, `version` y contenido Markdown, y `DELETE /api/chatbot/knowledge/{source}` retira una fuente administrada. Ambos endpoints requieren JWT de `ADMINISTRADOR`. Las fuentes del directorio del repositorio son de solo lectura.
 
