@@ -113,6 +113,30 @@ class PublicRegistrationIntegrationTest {
     }
 
     @Test
+    void passwordResetAcceptsUsernameAndStillSendsOnlyToTheRegisteredEmail() throws Exception {
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"ana\",\"nombre\":\"Ana\",\"apellido\":\"Nieto\",\"email\":\"ana@example.com\",\"password\":\"" + PASSWORD + "\"}"))
+                .andExpect(status().isCreated());
+        given(emailService.isConfigured()).willReturn(true);
+        String[] recipient = new String[1];
+        doAnswer(invocation -> {
+            recipient[0] = invocation.getArgument(0);
+            return true;
+        }).when(emailService).sendPasswordReset(anyString(), anyString(), anyString());
+
+        String knownResponse = mockMvc.perform(post("/api/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"identifier\":\"ana\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String unknownResponse = mockMvc.perform(post("/api/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"identifier\":\"unknown\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        assertThat(unknownResponse).isEqualTo(knownResponse);
+        assertThat(recipient[0]).isEqualTo("ana@example.com");
+        assertThat(resetTokenRepository.count()).isEqualTo(1);
+    }
+
+    @Test
     void passwordResetUsesOneTimeTokenAndDoesNotRevealWhetherEmailExists() throws Exception {
         String registration = """
                 {"username":"ana","nombre":"Ana","apellido":"Nieto","email":"ana@example.com","password":"%s"}

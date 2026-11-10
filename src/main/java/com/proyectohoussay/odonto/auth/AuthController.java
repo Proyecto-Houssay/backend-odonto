@@ -52,7 +52,7 @@ public class AuthController {
     @PostMapping("/password-reset/request")
     public ResponseEntity<PasswordResetRequestResponse> requestPasswordReset(
             @Valid @RequestBody PasswordResetRequest request) {
-        return ResponseEntity.ok(accountService.requestPasswordReset(request.email()));
+        return ResponseEntity.ok(accountService.requestPasswordReset(request.identifier()));
     }
 
     @PostMapping("/password-reset/confirm")
