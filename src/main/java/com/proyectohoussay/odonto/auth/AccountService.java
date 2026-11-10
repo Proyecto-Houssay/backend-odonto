@@ -17,6 +17,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Locale;
@@ -56,7 +57,7 @@ public class AccountService {
         }
 
         Usuario user = new Usuario(username, request.nombre().trim(), request.apellido().trim(), email,
-                passwordEncoder.encode(request.password()), UserRole.RECEPCIONISTA.name(), true);
+                passwordEncoder.encode(request.password()), UserRole.PACIENTE.name(), true);
         try {
             user = usuarioRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException exception) {
@@ -70,16 +71,18 @@ public class AccountService {
     }
 
     @Transactional
-    public PasswordResetRequestResponse requestPasswordReset(String email) {
+    public PasswordResetRequestResponse requestPasswordReset(String identifier) {
         boolean emailConfigured = emailService.isConfigured();
         if (emailConfigured) {
-            usuarioRepository.findByEmailIgnoreCase(email.trim())
+            String normalized = identifier.trim();
+            usuarioRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(normalized, normalized)
                     .filter(Usuario::isActivo)
                     .ifPresent(user -> {
                         resetTokenRepository.deleteAllByUsuario(user);
                         String rawToken = createRawToken();
                         String tokenHash = hashToken(rawToken);
-                        resetTokenRepository.save(new PasswordResetToken(user, tokenHash, Instant.now().plus(RESET_TOKEN_LIFETIME)));
+                        resetTokenRepository.save(new PasswordResetToken(user, tokenHash,
+                                Instant.now().truncatedTo(ChronoUnit.MICROS).plus(RESET_TOKEN_LIFETIME)));
                         String resetUrl = frontendBaseUrl + "/?token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
                         if (!emailService.sendPasswordReset(user.getEmail(), user.getNombre(), resetUrl)) {
                             resetTokenRepository.deleteAllByUsuario(user);
@@ -87,7 +90,7 @@ public class AccountService {
                     });
         }
         return new PasswordResetRequestResponse(
-                "Si el correo corresponde a una cuenta activa y el envío está disponible, vas a recibir un enlace de recuperación.",
+                "Si la cuenta existe, está activa y el envío está disponible, vas a recibir un enlace de recuperación en el correo registrado.",
                 emailConfigured);
     }
 

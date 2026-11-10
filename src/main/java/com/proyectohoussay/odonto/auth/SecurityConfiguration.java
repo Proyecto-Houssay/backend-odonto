@@ -71,20 +71,28 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/password-reset/request",
                                 "/api/auth/password-reset/confirm", "/api/health").permitAll()
+                        .requestMatchers("/api/auth/change-password").authenticated()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers("/api/usuarios/**", "/api/reports/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
+                        .requestMatchers("/api/admin/vinculos-paciente/**").hasRole(UserRole.ADMINISTRADOR.name())
+                        .requestMatchers("/api/portal-paciente/**").hasRole(UserRole.PACIENTE.name())
+                        .requestMatchers("/api/seguimiento/**")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
                         .requestMatchers(HttpMethod.GET, "/api/odontologos/**", "/api/especialidades/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/api/odontologos/**", "/api/especialidades/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers("/api/pacientes/**", "/api/turnos/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
+                        .requestMatchers(HttpMethod.GET, "/api/odontograma", "/api/odontograma/**")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/api/odontograma", "/api/odontograma/**", "/api/historias-clinicas/**", "/api/historias/**", "/api/diagnosticos/**",
                                 "/api/tratamientos/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
-                        .anyRequest().authenticated())
+                        .anyRequest().hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name()))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
         return http.build();

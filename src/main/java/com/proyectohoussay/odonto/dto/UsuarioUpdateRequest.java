@@ -23,7 +23,7 @@ public record UsuarioUpdateRequest(
         String email,
         @NotBlank(message = "El rol es obligatorio.")
         @Size(max = 30)
-        @Pattern(regexp = "(?i)ADMINISTRADOR|ODONTOLOGO|RECEPCIONISTA", message = "El rol no es válido.")
+        @Pattern(regexp = "(?i)ADMINISTRADOR|ODONTOLOGO|RECEPCIONISTA|PACIENTE", message = "El rol no es válido.")
         String rol,
         @NotNull(message = "El estado activo es obligatorio.")
         Boolean activo,

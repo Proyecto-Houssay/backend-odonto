@@ -4,6 +4,8 @@ API REST para un proyecto académico de gestión de un consultorio odontológico
 
 **Odontograma académico:** presupuesto ilustrativo firmado e inmutable para pacientes existentes. Ver [prueba manual, contrato y comprobación en Workbench](docs/odontograma-academico.md). No incorpora cobros ni sustituye la historia clínica.
 
+**Portal del paciente y seguimiento:** el alta pública crea `PACIENTE`; la persona completa su ficha, señala una pieza FDI y envía observaciones/foto opcional. Un odontólogo revisa cada reporte. Ver [flujo, privacidad y prueba manual](docs/portal-paciente-seguimiento.md). No existe diagnóstico automático ni análisis de imagen por IA.
+
 ## Stack tecnológico
 
 - **Java:** 17
@@ -82,7 +84,10 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | Módulo | Tipo / Rutas | Descripción |
 |---|---|---|
 | **Salud** | `GET /api/health` | Healthcheck técnico de la aplicación. |
-| **Pacientes** | `GET /api/pacientes`, `GET /api/pacientes/{id}`, `POST /api/pacientes`, `PUT /api/pacientes/{id}`, `DELETE /api/pacientes/{id}` | Registro, consulta, actualización y borrado solo si no hay historia clínica ni turnos vinculados. DNI único. |
+| **Pacientes** | `GET /api/pacientes`, `GET /api/pacientes/{id}`, `POST /api/pacientes`, `PUT /api/pacientes/{id}`, `DELETE /api/pacientes/{id}` | Registro, consulta, actualización y borrado solo si no hay datos vinculados. DNI único. |
+| **Portal del paciente** | `GET/POST/PUT /api/portal-paciente/perfil`, `GET/POST /api/portal-paciente/reportes`, `GET /api/portal-paciente/reportes/{id}` | Perfil propio, actualización de teléfono y reportes por pieza; acceso solo a la cuenta vinculada. |
+| **Seguimiento clínico** | `GET /api/seguimiento/reportes`, `GET /api/seguimiento/reportes/{id}`, `PUT /api/seguimiento/reportes/{id}/revision` | Bandeja, foto y revisión profesional; odontólogo o administrador. |
+| **Vínculo de cuenta existente** | `PUT /api/admin/vinculos-paciente/{userId}` | Asociación administrativa de una cuenta `PACIENTE` con una ficha existente, tras verificar identidad y DNI. |
 | **Historias clínicas** | `GET/POST /api/historias-clinicas`, `GET/PUT /api/historias-clinicas/{id}` | Una historia por paciente existente; consulta opcional `?pacienteId=`. |
 | **Diagnósticos** | `GET/POST /api/diagnosticos`, `GET/PUT /api/diagnosticos/{id}` | Asociados a una historia existente; consulta opcional `?historiaClinicaId=`. |
 | **Tratamientos** | `GET/POST /api/tratamientos`, `GET/PUT /api/tratamientos/{id}` | Asociados a un diagnóstico existente; consulta opcional `?diagnosticoId=`. Estados: `PENDIENTE`, `EN_CURSO`, `COMPLETADO`, `CANCELADO`. |
@@ -90,7 +95,7 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
 | **Usuarios** | `GET /api/usuarios`, `GET /api/usuarios/{id}`, `POST /api/usuarios`, `PUT /api/usuarios/{id}`, `DELETE /api/usuarios/{id}` | Gestión de cuentas de usuario. |
-| **Autenticación** | `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/password-reset/request`, `POST /api/auth/password-reset/confirm`, `POST /api/auth/change-password` | Login, registro público con rol fijo `RECEPCIONISTA`, recuperación por enlace de correo y cambio de la propia contraseña autenticada. |
+| **Autenticación** | `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/password-reset/request`, `POST /api/auth/password-reset/confirm`, `POST /api/auth/change-password` | Login, registro público con rol fijo `PACIENTE`, recuperación por enlace de correo y cambio de la propia contraseña autenticada. |
 | **Informes e inventario** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones`, `GET /api/reports/anual` | Resumen y reportes con datos persistidos. Todas las rutas requieren `ADMINISTRADOR`. |
 
 
@@ -99,8 +104,8 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 ### Usuarios y autenticación
 
 - `POST /api/usuarios` crea cuentas y almacena la contraseña con BCrypt. Las respuestas REST de usuarios no incluyen la contraseña ni su hash. El alta administrativa requiere rol `ADMINISTRADOR`.
-- `POST /api/auth/register` crea una cuenta pública con `username`, `nombre`, `apellido`, `email` y `password`; el backend asigna siempre `RECEPCIONISTA` y estado activo, aunque el cliente envíe campos extra como rol. Usuario y correo deben ser únicos. La contraseña se almacena con BCrypt y se valida contra el límite de 72 bytes UTF-8. La respuesta `201` informa si el correo de bienvenida se envió; no se inicia sesión automáticamente.
-- `POST /api/auth/password-reset/request` recibe `{"email":"persona@example.com"}`. Devuelve el mismo mensaje para cuentas existentes e inexistentes, sin confirmar si el correo está registrado. Con SMTP habilitado envía un enlace de un solo uso que vence en 30 minutos; el token sin procesar no se guarda en la base.
+- `POST /api/auth/register` crea una cuenta pública con `username`, `nombre`, `apellido`, `email` y `password`; el backend asigna siempre `PACIENTE` y estado activo, aunque el cliente envíe campos extra como rol. Las cuentas del personal se crean o cambian únicamente desde la administración. Las cuentas creadas anteriormente como `RECEPCIONISTA` no se convierten automáticamente. Usuario y correo deben ser únicos. La contraseña se almacena con BCrypt y se valida contra el límite de 72 bytes UTF-8. La respuesta `201` informa si el correo de bienvenida se envió; no se inicia sesión automáticamente.
+- `POST /api/auth/password-reset/request` recibe `{"identifier":"usuario_o_correo"}`; `email` sigue aceptándose como alias para clientes anteriores. Devuelve el mismo mensaje para cuentas existentes e inexistentes, sin revelar el correo asociado. Con SMTP habilitado envía un enlace al correo registrado que vence en 30 minutos; el token sin procesar no se guarda en la base.
 - `POST /api/auth/password-reset/confirm` recibe `{"token":"...","newPassword":"..."}` y devuelve `204` si restablece la clave. Un token vencido, usado o inválido recibe `400`. Después de un restablecimiento el enlace no puede volver a usarse. Este flujo no elimina ni debilita el requisito de contraseña actual de `POST /api/auth/change-password`.
 - `PUT /api/usuarios/{id}` actualiza los datos de perfil y estado, pero no permite cambiar ni borrar la contraseña. Cada usuario autenticado cambia su propia clave con `POST /api/auth/change-password`, enviando `currentPassword` y `newPassword`. Se exige la contraseña actual; la nueva debe ser distinta, tener al menos 8 caracteres y no superar 72 bytes UTF-8 por el límite de BCrypt. La respuesta exitosa es `204` sin secretos.
 - `POST /api/auth/login` recibe `usernameOrEmail` y `password`, busca el usuario persistido, compara con BCrypt y rechaza credenciales incorrectas, cuentas inexistentes o inactivas con el mismo error genérico. En caso de éxito responde con `token`, `tokenType: Bearer` y `expiresIn: 900`.
@@ -113,12 +118,13 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | `ADMINISTRADOR` | Acceso administrativo completo, incluida la gestión de usuarios, roles, informes e insumos. |
 | `ODONTOLOGO` | Acceso a pacientes, turnos, historias, diagnósticos y tratamientos; lectura de odontólogos/especialidades. No hay API de recetas. |
 | `RECEPCIONISTA` | Acceso a pacientes y turnos; lectura de odontólogos y especialidades. Sin acceso a historias clínicas, usuarios, roles, informes o administración. |
+| `PACIENTE` | Solo su ficha y sus reportes a través de `/api/portal-paciente/**`, además del cambio de su contraseña. No puede acceder a listados de otros pacientes, odontogramas clínicos ni bandeja profesional. |
 
 `POST /api/auth/login`, `POST /api/auth/register`, las dos rutas `password-reset` y `GET /api/health` son públicos. El cambio de contraseña sigue protegido; el resto de endpoints requiere autenticación y se autoriza según la matriz. Cualquier usuario autenticado puede cambiar **solo su propia** contraseña: la identidad se obtiene del JWT, no de un ID enviado por el cliente. Un JWT ya emitido puede seguir vigente hasta sus 15 minutos de expiración después del cambio.
 
 #### Correo de bienvenida y recuperación local
 
-El envío de correo está desactivado por defecto. Sin SMTP, el alta se guarda igualmente y la respuesta dice que el correo no se envió; la recuperación mantiene una respuesta genérica y avisa que el envío no está configurado. Para recibir correos, configurá estas variables solo en el `.env` local ignorado por Git (o en el entorno privado de Spring Boot): `APP_MAIL_ENABLED=true`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, `MAIL_SMTP_AUTH` y `MAIL_SMTP_STARTTLS_ENABLE`. Usá los datos SMTP y, cuando el proveedor lo exija, una contraseña de aplicación; no pongas credenciales en el frontend ni las compartas en capturas. `APP_FRONTEND_BASE_URL` define dónde abre el enlace de recuperación y por defecto es `http://localhost:5174`. Reiniciá Spring Boot tras cambiar las variables. `.env.example` contiene únicamente campos vacíos/de demostración y no envía correo real.
+El envío de correo está desactivado por defecto. Sin SMTP, el alta se guarda igualmente y la respuesta dice que el correo no se envió; la recuperación mantiene una respuesta genérica y avisa que el envío no está configurado. Para Gmail seguí [la guía local paso a paso](docs/gmail-smtp.md). Las credenciales van solo en el `.env` ignorado por Git; `APP_FRONTEND_BASE_URL` debe coincidir con el puerto real de Vite. Reiniciá Spring Boot tras cambiarlas. `.env.example` contiene únicamente campos vacíos/de demostración y no envía correo real.
 
 Las rutas clínicas devuelven DTOs planos; no exponen directamente las entidades JPA ni permiten reasignar una historia a otro paciente, un diagnóstico a otra historia o un tratamiento a otro diagnóstico mediante `PUT`. No se ofrece borrado de registros clínicos para preservar la evolución del paciente. Una referencia inexistente responde `404` y una segunda historia para el mismo paciente responde `409`. La creación de historia y el borrado de paciente bloquean la misma fila de paciente durante la transacción para evitar una carrera entre ambas operaciones de la API. Para proteger también las operaciones SQL externas, la base MySQL existente necesita las restricciones siguientes.
 
