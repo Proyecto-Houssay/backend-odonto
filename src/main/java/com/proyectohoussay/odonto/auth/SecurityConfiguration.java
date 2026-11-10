@@ -81,6 +81,7 @@ public class SecurityConfiguration {
                                 "/api/auth/password-reset/confirm",
                                 "/api/health"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/chatbot/config", "/api/chatbot/status").permitAll()
                         .requestMatchers("/api/chatbot/knowledge", "/api/chatbot/knowledge/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers(HttpMethod.POST, "/api/chatbot/ask")
@@ -95,6 +96,10 @@ public class SecurityConfiguration {
                         ).permitAll()
                         .requestMatchers("/api/usuarios/**", "/api/reports/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
+                        .requestMatchers("/api/admin/vinculos-paciente/**").hasRole(UserRole.ADMINISTRADOR.name())
+                        .requestMatchers("/api/portal-paciente/**").hasRole(UserRole.PACIENTE.name())
+                        .requestMatchers("/api/seguimiento/**")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/odontologos/**",
@@ -111,12 +116,21 @@ public class SecurityConfiguration {
                                 UserRole.ODONTOLOGO.name(),
                                 UserRole.RECEPCIONISTA.name())
                         .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/odontograma",
+                                "/api/odontograma/**")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name())
+                        .requestMatchers(
                                 "/api/odontograma",
                                 "/api/odontograma/**",
                                 "/api/historias-clinicas/**",
                                 "/api/historias/**",
                                 "/api/diagnosticos/**",
-                                "/api/tratamientos/**")
+                                "/api/tratamientos/**",
+                                "/api/ia/**")
                         .hasAnyRole(
                                 UserRole.ADMINISTRADOR.name(),
                                 UserRole.ODONTOLOGO.name())

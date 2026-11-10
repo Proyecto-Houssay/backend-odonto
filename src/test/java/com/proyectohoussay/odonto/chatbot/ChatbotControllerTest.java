@@ -14,9 +14,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -57,6 +59,23 @@ class ChatbotControllerTest {
                 .andExpect(jsonPath("$.citas[0].documento").value("faq.md — Horarios"))
                 .andExpect(jsonPath("$.citas[0].version").value("1"))
                 .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void getConfig_retornaEstadoDeProveedorYFuentes() throws Exception {
+        when(chatbotService.obtenerEstadoConfiguracion()).thenReturn(Map.of(
+                "proveedor", "Motor Autónomo de Fuentes Aprobadas (Local RAG)",
+                "apiKeyConfigurada", false,
+                "estado", "LISTO",
+                "fuentesAprobadasCargadas", 4,
+                "totalSeccionesIndexadas", 18,
+                "documentos", List.of("faq-clinica.md", "precios-nomenclador.md")
+        ));
+
+        mockMvc.perform(get("/api/chatbot/config"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("LISTO"))
+                .andExpect(jsonPath("$.fuentesAprobadasCargadas").value(4));
     }
 
     @Test

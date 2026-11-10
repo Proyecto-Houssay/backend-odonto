@@ -11,7 +11,9 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.text.Normalizer;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -21,10 +23,10 @@ import java.util.Map;
  *
  * El flujo es:
  * 1. El usuario envía un mensaje.
- * 2. Se busca en el VectorStore las secciones más relevantes de la knowledge base.
- * 3. Se inyectan esas secciones como contexto en el prompt del LLM.
- * 4. El LLM genera una respuesta fundamentada en datos reales de la clínica.
- * 5. Se clasifica la intención y se sugieren acciones al usuario.
+ * 2. Se clasifica la intención y se evalúa si hay un proveedor de IA configurado.
+ * 3. Si no hay proveedor configurado o faltan fuentes aprobadas, orienta al paciente sin alucinar.
+ * 4. Si el proveedor está listo, busca fragmentos en VectorStore, inyecta contexto no confiable
+ *    y genera una respuesta con citas documentales.
  */
 @Service
 public class ChatbotService {
@@ -32,12 +34,16 @@ public class ChatbotService {
     private static final Logger log = LoggerFactory.getLogger(ChatbotService.class);
     private static final int TOP_K_RESULTS = 5;
     private static final String SIN_EVIDENCIA = "No tengo información suficiente en las fuentes aprobadas para responder esa consulta. No puedo brindar un diagnóstico; podés consultar con el equipo odontológico.";
+    private static final String RESPUESTA_SALUDO = "¡Hola! Soy el asistente de NovaDent. Puedo orientarte para consultar tus turnos registrados, revisar tu odontograma o responder preguntas cuando haya fuentes aprobadas de la clínica. No brindo diagnósticos ni invento horarios o precios.";
 
     private final ChatClient chatClient;
     private final VectorStore vectorStore;
 
     @Value("${app.chatbot.minimum-similarity:0.65}")
     private double minimumSimilarity;
+
+    @Value("${spring.ai.openai.api-key:mock-key-for-local-dev}")
+    private String apiKey;
 
     public ChatbotService(ChatClient chatClient, VectorStore vectorStore) {
         this.chatClient = chatClient;
@@ -50,6 +56,11 @@ public class ChatbotService {
      */
     public ChatResponse procesarMensaje(ChatRequest request) {
         log.info("Procesando consulta del asistente (longitud: {})", request.mensaje().length());
+        String intencion = clasificarIntencion(request.mensaje());
+        List<String> acciones = generarAccionesSugeridas(intencion);
+        if ("saludo".equals(intencion) || "odontograma".equals(intencion) || !proveedorConfigurado()) {
+            return ChatResponse.conAcciones(respuestaSinEvidencia(intencion), intencion, acciones);
+        }
 
         try {
             SearchRequest searchRequest = SearchRequest.builder()
@@ -59,7 +70,7 @@ public class ChatbotService {
                     .build();
             List<Document> documentos = vectorStore.similaritySearch(searchRequest);
             if (documentos == null || documentos.isEmpty()) {
-                return ChatResponse.simple(SIN_EVIDENCIA, "consulta_general");
+                return ChatResponse.conAcciones(respuestaSinEvidencia(intencion), intencion, acciones);
             }
 
             List<ChatResponse.CitaDocumento> citas = documentos.stream()
@@ -78,31 +89,47 @@ public class ChatbotService {
                     .content();
 
             if (respuesta == null || respuesta.isBlank()) {
-                return ChatResponse.simple(SIN_EVIDENCIA, "consulta_general");
+                return ChatResponse.conAcciones(respuestaSinEvidencia(intencion), intencion, acciones);
             }
-
-            // Clasificar intención y generar acciones sugeridas
-            String intencion = clasificarIntencion(request.mensaje());
-            List<String> acciones = generarAccionesSugeridas(intencion);
 
             log.info("Respuesta generada exitosamente. Intención: {}", intencion);
             return ChatResponse.conCitas(respuesta, intencion, acciones, citas);
 
         } catch (Exception e) {
             log.error("Error al procesar consulta del chatbot ({})", e.getClass().getSimpleName());
-            return ChatResponse.simple(
-                "No se pudo procesar la consulta en este momento. Reintentá más tarde.",
-                "error"
-            );
+            return ChatResponse.conAcciones(respuestaSinEvidencia(intencion), intencion, acciones);
         }
+    }
+
+    public boolean proveedorConfigurado() {
+        return apiKey == null || (!apiKey.isBlank() && !apiKey.startsWith("mock-key"));
+    }
+
+    private String respuestaSinEvidencia(String intencion) {
+        return switch (intencion) {
+            case "saludo" -> RESPUESTA_SALUDO;
+            case "turno" -> "Ahora no puedo confirmar los horarios ni la disponibilidad porque no hay una fuente vigente aprobada. Consultá tus turnos registrados o comunicate con recepción.";
+            case "odontograma" -> "Este asistente no puede evaluar síntomas ni diagnosticar. Registrá lo que observás y consultá con un odontólogo para una evaluación profesional.";
+            default -> SIN_EVIDENCIA;
+        };
+    }
+
+    public Map<String, Object> obtenerEstadoConfiguracion() {
+        boolean configurado = proveedorConfigurado();
+        return Map.of(
+                "proveedor", configurado ? "OpenAI (Spring AI)" : "Sin configurar (requiere OPENAI_API_KEY)",
+                "proveedorConfigurado", configurado,
+                "estado", configurado ? "ACTIVO" : "PENDIENTE_CONFIGURACION",
+                "fuentesAprobadas", List.of("especialidades-servicios.md", "faq-clinica.md", "precios-nomenclador.md", "protocolos-urgencia.md")
+        );
     }
 
     /**
      * Clasifica la intención del mensaje del usuario basándose en palabras clave.
-     * En producción, esto podría ser otro modelo de IA o NLP más sofisticado.
      */
     String clasificarIntencion(String mensaje) {
-        String lower = mensaje.toLowerCase();
+        String lower = mensaje.toLowerCase(Locale.ROOT);
+        String normalized = normalizar(mensaje);
 
         // Precios y costos
         if (containsAny(lower, "precio", "costo", "cuánto sale", "cuanto sale",
@@ -113,28 +140,60 @@ public class ChatbotService {
 
         // Turnos
         if (containsAny(lower, "turno", "cita", "agendar", "reservar", "disponib",
-                "horario", "cancelar turno", "cambiar turno")) {
+                "horario", "cancelar turno", "cambiar turno", "atienden", "abren", "días de atención")
+                || containsAny(normalized, "dias de atencion")) {
             return "turno";
+        }
+
+        // Síntomas o dolor clínico -> odontograma / derivación
+        if (containsAny(lower, "odontograma", "diente", "pieza dental", "dolor", "molestia", "síntoma", "sintoma")) {
+            return "odontograma";
         }
 
         // Tratamientos y servicios
         if (containsAny(lower, "tratamiento", "blanqueamiento", "ortodoncia",
-                "implante", "conducto", "corona", "prótesis", "limpieza",
-                "brackets", "carilla", "extracción", "muela de juicio",
+                "implante", "conducto", "corona", "prótesis", "protesis", "limpieza",
+                "brackets", "carilla", "extracción", "extraccion", "muela de juicio",
                 "endodoncia", "periodoncia")) {
             return "tratamiento";
+        }
+
+        if (esSaludoOConsultaDeAyuda(normalized)) {
+            return "saludo";
         }
 
         // Información general
         return "consulta_general";
     }
 
+    private boolean esSaludoOConsultaDeAyuda(String normalized) {
+        String clean = normalized.replaceAll("[^a-z0-9\\s]", " ").replaceAll("\\s+", " ").trim();
+        if (clean.isEmpty()) {
+            return false;
+        }
+        return clean.matches("^(hola|buenas|buen dia|buenos dias|buenas tardes|buenas noches|que tal|como estas|gracias|muchas gracias|ayuda)"
+                + "(\\s+(como estas|que tal|buen dia|buenos dias|buenas tardes|buenas noches|gracias|por favor|asistente|novadent))*$")
+                || clean.contains("en que me podes ayudar")
+                || clean.contains("que podes hacer")
+                || clean.contains("como funciona el asistente");
+    }
+
+    private static String normalizar(String text) {
+        return Normalizer.normalize(text == null ? "" : text, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT);
+    }
+
     /**
      * Genera acciones sugeridas para el frontend según la intención detectada.
      */
     private List<String> generarAccionesSugeridas(String intencion) {
-        // Las acciones solo se agregarán cuando haya rutas reales y permisos definidos.
-        return List.of();
+        return switch (intencion) {
+            case "saludo" -> List.of("/mis-turnos", "/mi-odontograma", "/");
+            case "turno" -> List.of("/mis-turnos");
+            case "odontograma" -> List.of("/mi-odontograma", "/");
+            default -> List.of();
+        };
     }
 
     private boolean containsAny(String text, String... keywords) {
