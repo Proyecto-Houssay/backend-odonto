@@ -2,13 +2,17 @@ package com.proyectohoussay.odonto.chatbot;
 
 import com.proyectohoussay.odonto.chatbot.dto.ChatRequest;
 import com.proyectohoussay.odonto.chatbot.dto.ChatResponse;
-import org.springframework.ai.document.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
@@ -18,15 +22,8 @@ import java.util.Map;
 
 /**
  * Servicio principal del chatbot odontológico.
- * Utiliza Spring AI con RAG (Retrieval-Augmented Generation) para responder
- * consultas de pacientes basándose en la base de conocimiento de la clínica.
- *
- * El flujo es:
- * 1. El usuario envía un mensaje.
- * 2. Se clasifica la intención y se evalúa si hay un proveedor de IA configurado.
- * 3. Si no hay proveedor configurado o faltan fuentes aprobadas, orienta al paciente sin alucinar.
- * 4. Si el proveedor está listo, busca fragmentos en VectorStore, inyecta contexto no confiable
- *    y genera una respuesta con citas documentales.
+ * Combina Spring AI con RAG sobre fuentes aprobadas y acceso en vivo a la agenda real
+ * (odontólogos activos, horarios disponibles y reserva directa de turnos).
  */
 @Service
 public class ChatbotService {
@@ -34,10 +31,11 @@ public class ChatbotService {
     private static final Logger log = LoggerFactory.getLogger(ChatbotService.class);
     private static final int TOP_K_RESULTS = 5;
     private static final String SIN_EVIDENCIA = "No tengo información suficiente en las fuentes aprobadas para responder esa consulta. No puedo brindar un diagnóstico; podés consultar con el equipo odontológico.";
-    private static final String RESPUESTA_SALUDO = "¡Hola! Soy el asistente de NovaDent. Puedo orientarte para consultar tus turnos registrados, revisar tu odontograma o responder preguntas cuando haya fuentes aprobadas de la clínica. No brindo diagnósticos ni invento horarios o precios.";
+    private static final String RESPUESTA_SALUDO = "¡Hola! Soy el asistente de NovaDent. Puedo ayudarte a consultar los doctores disponibles, ver horarios libres y sacar un turno, revisar tu próximo turno o abrir tu odontograma. No brindo diagnósticos ni invento precios.";
 
     private final ChatClient chatClient;
     private final VectorStore vectorStore;
+    private final ChatbotAgendaService chatbotAgendaService;
 
     @Value("${app.chatbot.minimum-similarity:0.65}")
     private double minimumSimilarity;
@@ -46,18 +44,33 @@ public class ChatbotService {
     private String apiKey;
 
     public ChatbotService(ChatClient chatClient, VectorStore vectorStore) {
+        this(chatClient, vectorStore, null);
+    }
+
+    @Autowired
+    public ChatbotService(ChatClient chatClient, VectorStore vectorStore, ChatbotAgendaService chatbotAgendaService) {
         this.chatClient = chatClient;
         this.vectorStore = vectorStore;
+        this.chatbotAgendaService = chatbotAgendaService;
     }
 
     /**
-     * Procesa un mensaje del usuario usando RAG.
-     * Busca contexto relevante en la knowledge base y genera una respuesta.
+     * Procesa un mensaje del usuario combinando agenda real (doctores y turnos) y RAG con fuentes aprobadas.
      */
     public ChatResponse procesarMensaje(ChatRequest request) {
         log.info("Procesando consulta del asistente (longitud: {})", request.mensaje().length());
         String intencion = clasificarIntencion(request.mensaje());
         List<String> acciones = generarAccionesSugeridas(intencion);
+
+        if ("doctores".equals(intencion) && chatbotAgendaService != null) {
+            AuthContextInfo auth = extraerUsuarioAutenticado();
+            return chatbotAgendaService.responderConsultaDoctores(auth.userId(), auth.role());
+        }
+        if ("turno".equals(intencion) && chatbotAgendaService != null) {
+            AuthContextInfo auth = extraerUsuarioAutenticado();
+            return chatbotAgendaService.responderConsultaOReservaTurnos(request.mensaje(), auth.userId(), auth.role());
+        }
+
         if ("saludo".equals(intencion) || "odontograma".equals(intencion) || !proveedorConfigurado()) {
             return ChatResponse.conAcciones(respuestaSinEvidencia(intencion), intencion, acciones);
         }
@@ -117,9 +130,10 @@ public class ChatbotService {
     public Map<String, Object> obtenerEstadoConfiguracion() {
         boolean configurado = proveedorConfigurado();
         return Map.of(
-                "proveedor", configurado ? "OpenAI (Spring AI)" : "Sin configurar (requiere OPENAI_API_KEY)",
+                "proveedor", configurado ? "OpenAI (Spring AI)" : "Agenda en vivo + fuentes locales",
                 "proveedorConfigurado", configurado,
-                "estado", configurado ? "ACTIVO" : "PENDIENTE_CONFIGURACION",
+                "agendaConectada", chatbotAgendaService != null,
+                "estado", configurado ? "ACTIVO" : "LISTO_CON_AGENDA",
                 "fuentesAprobadas", List.of("especialidades-servicios.md", "faq-clinica.md", "precios-nomenclador.md", "protocolos-urgencia.md")
         );
     }
@@ -138,9 +152,20 @@ public class ChatbotService {
             return "precio";
         }
 
-        // Turnos
-        if (containsAny(lower, "turno", "cita", "agendar", "reservar", "disponib",
-                "horario", "cancelar turno", "cambiar turno", "atienden", "abren", "días de atención")
+        boolean mencionaDoctor = containsAny(normalized,
+                "doctor", "doctora", "doctores", "doctoras",
+                "odontologo", "odontologa", "odontologos", "odontologas",
+                "dentista", "dentistas", "profesional", "profesionales", "medico", "medicos");
+        boolean mencionaTurnoExplicito = containsAny(normalized,
+                "turno", "cita", "agendar", "reservar", "reservame", "sacar", "sacame",
+                "anotame", "horario", "cancelar turno", "cambiar turno");
+
+        if (mencionaDoctor && !mencionaTurnoExplicito) {
+            return "doctores";
+        }
+
+        // Turnos y disponibilidad
+        if (mencionaTurnoExplicito || containsAny(lower, "disponib", "atienden", "abren", "días de atención")
                 || containsAny(normalized, "dias de atencion")) {
             return "turno";
         }
@@ -190,7 +215,7 @@ public class ChatbotService {
     private List<String> generarAccionesSugeridas(String intencion) {
         return switch (intencion) {
             case "saludo" -> List.of("/mis-turnos", "/mi-odontograma", "/");
-            case "turno" -> List.of("/mis-turnos");
+            case "turno", "doctores" -> List.of("/mis-turnos");
             case "odontograma" -> List.of("/mi-odontograma", "/");
             default -> List.of();
         };
@@ -222,5 +247,24 @@ public class ChatbotService {
                         + doc.getText() + "\n[/DOCUMENTO]")
                 .reduce((a, b) -> a + "\n\n" + b)
                 .orElse("");
+    }
+
+    private AuthContextInfo extraerUsuarioAutenticado() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+            Long userId = null;
+            try {
+                String claim = jwt.getClaimAsString("userId");
+                if (claim != null) {
+                    userId = Long.valueOf(claim);
+                }
+            } catch (RuntimeException ignored) {
+            }
+            return new AuthContextInfo(userId, jwt.getClaimAsString("role"));
+        }
+        return new AuthContextInfo(null, null);
+    }
+
+    private record AuthContextInfo(Long userId, String role) {
     }
 }

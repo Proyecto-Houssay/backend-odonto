@@ -63,12 +63,24 @@ class ChatbotServiceTest {
     @ValueSource(strings = {
         "Quiero sacar un turno para la semana que viene",
         "¿Hay disponibilidad de citas para mañana?",
+        "¿Qué turnos tienen disponibles?",
         "Necesito cancelar mi turno de las 15 hs",
         "Hola, buenas tardes, ¿qué días atienden?"
     })
     void clasificarIntencion_deberiaDetectarTurnos(String mensaje) {
         String intencion = chatbotService.clasificarIntencion(mensaje);
         assertEquals("turno", intencion);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "¿Qué doctores disponibles hay?",
+        "¿Con qué odontólogos cuentan en la clínica?",
+        "Hola, ¿qué profesionales atienden?"
+    })
+    void clasificarIntencion_deberiaDetectarDoctores(String mensaje) {
+        String intencion = chatbotService.clasificarIntencion(mensaje);
+        assertEquals("doctores", intencion);
     }
 
     @ParameterizedTest
