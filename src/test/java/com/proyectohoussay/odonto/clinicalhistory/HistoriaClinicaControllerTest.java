@@ -1,6 +1,6 @@
 package com.proyectohoussay.odonto.clinicalhistory;
 
-import com.proyectohoussay.odonto.clinicalhistory.dto.HistoriaClinicaRequest;
+import com.proyectohoussay.odonto.clinicalhistory.dto.HistoriaClinicaResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,10 +11,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -33,35 +33,28 @@ class HistoriaClinicaControllerTest {
     private HistoriaClinicaService service;
 
     @Test
-    @DisplayName("POST /api/historias-clinicas creates and returns 201 Created")
-    void postCreatesHistoriaClinica() throws Exception {
-        HistoriaClinica historia = new HistoriaClinica(LocalDate.now(), 5L, "Sin antecedentes");
-        when(service.crearHistoriaClinica(any(HistoriaClinicaRequest.class))).thenReturn(historia);
-
-        mockMvc.perform(post("/api/historias-clinicas")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "pacienteId": 5,
-                                  "observaciones": "Sin antecedentes"
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.pacienteId").value(5))
-                .andExpect(jsonPath("$.observaciones").value("Sin antecedentes"));
-
-        verify(service).crearHistoriaClinica(any(HistoriaClinicaRequest.class));
-    }
-
-    @Test
     @DisplayName("GET /api/historias-clinicas/paciente/{pacienteId} returns 200 OK")
     void getPorPacienteIdReturnsHistoriaClinica() throws Exception {
-        HistoriaClinica historia = new HistoriaClinica(LocalDate.now(), 5L, "Sin antecedentes");
-        when(service.obtenerPorPacienteId(5L)).thenReturn(historia);
+        HistoriaClinicaResponse historia = new HistoriaClinicaResponse(null, LocalDate.now(), 5L,
+                "Sin antecedentes", List.of());
+        when(service.obtenerDetallePorPacienteId(5L)).thenReturn(historia);
 
         mockMvc.perform(get("/api/historias-clinicas/paciente/5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pacienteId").value(5));
+    }
+
+    @Test
+    @DisplayName("GET /api/historias-clinicas/{id}/detalle returns complete clinical history")
+    void getDetalleReturnsHistoriaClinica() throws Exception {
+        HistoriaClinicaResponse historia = new HistoriaClinicaResponse(10L, LocalDate.now(), 5L,
+                "Sin antecedentes", List.of());
+        when(service.obtenerDetallePorId(10L)).thenReturn(historia);
+
+        mockMvc.perform(get("/api/historias-clinicas/10/detalle"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pacienteId").value(5))
+                .andExpect(jsonPath("$.observaciones").value("Sin antecedentes"));
     }
 
     @Test

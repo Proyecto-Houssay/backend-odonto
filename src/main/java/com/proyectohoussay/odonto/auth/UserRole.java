@@ -6,7 +6,8 @@ import java.util.Optional;
 public enum UserRole {
     ADMINISTRADOR,
     ODONTOLOGO,
-    RECEPCIONISTA;
+    RECEPCIONISTA,
+    PACIENTE;
 
     public static Optional<UserRole> from(String value) {
         if (value == null || value.isBlank()) {

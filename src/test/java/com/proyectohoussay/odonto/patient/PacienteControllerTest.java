@@ -5,7 +5,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
@@ -17,6 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @WebMvcTest(PacienteController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -173,5 +178,46 @@ class PacienteControllerTest {
                 .andExpect(content().string("La fecha de nacimiento es obligatoria"));
 
         verifyNoInteractions(pacienteService);
+    }
+
+    @Test
+    void getReturnsDtoAndNotFoundWhenMissing() throws Exception {
+        Paciente patient = new Paciente();
+        patient.setNombre("Ana");
+        patient.setApellido("Pérez");
+        patient.setDni("12345678");
+        patient.setEmail("ana@example.com");
+        patient.setFechaNacimiento(LocalDate.of(1990, 1, 1));
+        when(pacienteService.listarPacientes()).thenReturn(List.of(patient));
+        when(pacienteService.obtenerPaciente(9L)).thenThrow(new PacienteNoEncontradoException(9L));
+
+        mockMvc.perform(get("/api/pacientes"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nombre").value("Ana"));
+        mockMvc.perform(get("/api/pacientes/9"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void putValidatesAndDeleteReturnsNoContent() throws Exception {
+        Paciente patient = new Paciente();
+        patient.setNombre("Ana");
+        patient.setApellido("Pérez");
+        patient.setDni("12345678");
+        patient.setEmail("ana@example.com");
+        patient.setFechaNacimiento(LocalDate.of(1990, 1, 1));
+        when(pacienteService.actualizarPaciente(org.mockito.ArgumentMatchers.eq(5L), any(Paciente.class)))
+                .thenReturn(patient);
+
+        mockMvc.perform(put("/api/pacientes/5").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"Ana","apellido":"Pérez","dni":"12345678",
+                                 "email":"ana@example.com","fechaNacimiento":"1990-01-01"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dni").value("12345678"));
+        mockMvc.perform(delete("/api/pacientes/5"))
+                .andExpect(status().isNoContent());
+        verify(pacienteService).eliminarPaciente(5L);
     }
 }

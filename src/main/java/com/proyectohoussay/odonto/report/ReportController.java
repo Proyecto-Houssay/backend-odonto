@@ -6,6 +6,7 @@ import com.proyectohoussay.odonto.dto.MovimientoInventarioDto;
 import com.proyectohoussay.odonto.dto.MovimientoInventarioRequest;
 import com.proyectohoussay.odonto.dto.AnualReportDto;
 import com.proyectohoussay.odonto.dto.AtencionesReportDto;
+import com.proyectohoussay.odonto.dto.MovimientoFinancieroDto;
 import com.proyectohoussay.odonto.service.ReportService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
@@ -84,5 +85,19 @@ public class ReportController {
     @GetMapping("/anual")
     public ResponseEntity<AnualReportDto> obtenerReporteAnual(@RequestParam int anio) {
         return ResponseEntity.ok(reportService.obtenerReporteAnual(anio));
+    }
+
+    @GetMapping("/ganancias")
+    public ResponseEntity<Map<String, Object>> obtenerReporteGanancias(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return ResponseEntity.ok(reportService.obtenerReporteGanancias(desde, hasta));
+    }
+
+    @GetMapping("/cobros")
+    public ResponseEntity<List<MovimientoFinancieroDto>> obtenerCobros(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return ResponseEntity.ok(reportService.obtenerCobros(desde, hasta));
     }
 }

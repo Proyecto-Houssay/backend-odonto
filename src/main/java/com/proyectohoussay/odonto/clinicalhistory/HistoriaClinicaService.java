@@ -2,6 +2,7 @@ package com.proyectohoussay.odonto.clinicalhistory;
 
 import com.proyectohoussay.odonto.clinicalhistory.dto.DiagnosticoDto;
 import com.proyectohoussay.odonto.clinicalhistory.dto.HistoriaClinicaRequest;
+import com.proyectohoussay.odonto.clinicalhistory.dto.HistoriaClinicaResponse;
 import com.proyectohoussay.odonto.clinicalhistory.dto.TratamientoDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,9 +51,19 @@ public class HistoriaClinicaService {
     }
 
     @Transactional(readOnly = true)
+    public HistoriaClinicaResponse obtenerDetallePorId(Long id) {
+        return HistoriaClinicaResponse.de(obtenerPorId(id));
+    }
+
+    @Transactional(readOnly = true)
     public HistoriaClinica obtenerPorPacienteId(Long pacienteId) {
         return historiaClinicaRepository.findByPacienteId(pacienteId)
                 .orElseThrow(() -> new IllegalArgumentException("Historia clínica para el paciente ID " + pacienteId + " no encontrada."));
+    }
+
+    @Transactional(readOnly = true)
+    public HistoriaClinicaResponse obtenerDetallePorPacienteId(Long pacienteId) {
+        return HistoriaClinicaResponse.de(obtenerPorPacienteId(pacienteId));
     }
 
     @Transactional
@@ -85,9 +96,21 @@ public class HistoriaClinicaService {
     }
 
     @Transactional(readOnly = true)
+    public List<DiagnosticoDto> listarDiagnosticoDtosPorHistoria(Long historiaClinicaId) {
+        return diagnosticoRepository.findAllByHistoriaClinicaId(historiaClinicaId).stream()
+                .map(DiagnosticoDto::de)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public Diagnostico obtenerDiagnosticoPorId(Long id) {
         return diagnosticoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Diagnóstico con ID " + id + " no encontrado."));
+    }
+
+    @Transactional(readOnly = true)
+    public DiagnosticoDto obtenerDetalleDiagnosticoPorId(Long id) {
+        return DiagnosticoDto.de(obtenerDiagnosticoPorId(id));
     }
 
     @Transactional

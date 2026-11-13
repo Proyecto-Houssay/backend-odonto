@@ -1,6 +1,10 @@
 # Novadent — Backend
 
-API REST para un proyecto académico de gestión de un consultorio odontológico (IEFI). Pagos y facturación están fuera de alcance; receta se reserva para pruebas y no es una función REST de uso habitual. El backend utiliza Java 17, Spring Boot 3.5.6, Spring Web, Bean Validation y Spring Data JPA. MySQL es la base predeterminada; H2 en memoria también ofrece un perfil temporal para demostraciones locales.
+API REST para un proyecto académico de gestión de un consultorio odontológico (IEFI). Pagos y facturación están fuera de alcance; receta se reserva para pruebas y no es una función REST de uso habitual. El backend utiliza Java 17, Spring Boot 3.5.6, Spring Web, Bean Validation y Spring Data JPA. MySQL es la base predeterminada de la aplicación; H2 en memoria se reserva para pruebas automatizadas.
+
+**Odontograma académico:** presupuesto ilustrativo firmado e inmutable para pacientes existentes. Ver [prueba manual, contrato y comprobación en Workbench](docs/odontograma-academico.md). No incorpora cobros ni sustituye la historia clínica.
+
+**Portal del paciente y seguimiento:** el alta pública crea `PACIENTE`; la persona completa su ficha, señala una pieza FDI y envía observaciones/foto opcional. Un odontólogo revisa cada reporte. Ver [flujo, privacidad y prueba manual](docs/portal-paciente-seguimiento.md). No existe diagnóstico automático ni análisis de imagen por IA.
 
 ## Stack tecnológico
 
@@ -12,7 +16,7 @@ API REST para un proyecto académico de gestión de un consultorio odontológico
 - **Persistencia:** Spring Data JPA / Hibernate
 - **Validaciones:** Jakarta Bean Validation
 - **Base predeterminada de la aplicación:** MySQL 8.4 con Connector/J. Docker Compose guarda sus datos en un volumen local nombrado.
-- **Base demo y de pruebas:** H2 en memoria, aislada del MySQL local y sin persistencia al cerrar la aplicación.
+- **Base de pruebas:** H2 en memoria (`jdbc:h2:mem:odontodb`), aislada del MySQL local.
 - **Build tool:** Maven Wrapper (`mvnw` / `mvnw.cmd`)
 
 ## Ejecución y pruebas
@@ -42,31 +46,6 @@ Al iniciar la aplicación, el servidor queda disponible en `http://localhost:808
 
 La aplicación usa MySQL de manera predeterminada. Podés usar el contenedor de desarrollo **o** una instalación local de MySQL; Docker no es obligatorio si MySQL ya está funcionando. Las pruebas automatizadas usan H2 y no requieren MySQL.
 
-#### Demostración rápida sin Docker ni MySQL
-
-El perfil `demo` usa una base H2 temporal. En una base nueva crea un administrador con las credenciales que ingreses. Los datos demo se borran al cerrar el backend.
-
-```powershell
-$secretBytes = New-Object byte[] 32
-[Security.Cryptography.RandomNumberGenerator]::Fill($secretBytes)
-$env:JWT_SECRET_BASE64 = [Convert]::ToBase64String($secretBytes)
-$env:SPRING_PROFILES_ACTIVE = "demo,bootstrap-admin"
-$env:BOOTSTRAP_ADMIN_USERNAME = "admin"
-$env:BOOTSTRAP_ADMIN_EMAIL = "admin@example.com"
-$securePassword = Read-Host "Contraseña inicial del administrador" -AsSecureString
-$passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
-try {
-    $env:BOOTSTRAP_ADMIN_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordPointer)
-    .\mvnw.cmd spring-boot:run
-} finally {
-    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($passwordPointer)
-    Remove-Item Env:JWT_SECRET_BASE64, Env:SPRING_PROFILES_ACTIVE, Env:BOOTSTRAP_ADMIN_USERNAME, Env:BOOTSTRAP_ADMIN_EMAIL, Env:BOOTSTRAP_ADMIN_PASSWORD -ErrorAction SilentlyContinue
-    Remove-Variable secretBytes, securePassword, passwordPointer -ErrorAction SilentlyContinue
-}
-```
-
-Con el servidor en marcha, abrí `http://127.0.0.1:5173/` e iniciá sesión con `admin@example.com` y la contraseña que ingresaste. El frontend ya usa el proxy `/api` hacia el backend en el puerto `8080`.
-
 #### Windows (PowerShell)
 
 ```powershell
@@ -83,9 +62,9 @@ docker compose ps
 ./mvnw spring-boot:run
 ```
 
-Ejecutá los comandos desde la raíz de `backend-odonto`, donde está `mvnw.cmd`. Solo si todavía no existe `.env`, copiá `.env.example` a `.env` y configurá tus credenciales locales; **no sobrescribas** un `.env` existente. Si usás Docker, esperá a que MySQL figure como `healthy`; si ya usás MySQL instalado en Windows, omití `docker compose up -d` y `docker compose ps`, pero comprobá que el servidor, puerto, base y usuario coincidan con tu `.env`. El archivo `.env` contiene credenciales locales y se ignora en Git; `.env.example` solo tiene valores de demostración. Spring Boot importa el `.env` local al iniciar y también acepta las mismas variables desde el entorno.
+Ejecutá los comandos desde la raíz de `backend-odonto`, donde está `mvnw.cmd`. Solo si todavía no existe `.env`, copiá `.env.example` a `.env` y configurá tus credenciales locales; **no sobrescribas** un `.env` existente. Si usás Docker, esperá a que MySQL figure como `healthy`; si ya usás MySQL instalado en Windows, omití `docker compose up -d` y `docker compose ps`, pero comprobá que el servidor, puerto, base y usuario coincidan con tu `.env`. El archivo `.env` contiene credenciales locales y se ignora en Git; `.env.example` solo tiene valores de demostración. Spring Boot importa el `.env` local al iniciar y también acepta las mismas variables desde el entorno. **Las variables de entorno ya definidas en la terminal tienen prioridad sobre `.env`**: si la conexión MySQL devuelve `Access denied` pese a que Workbench conecta, comprobá si esa terminal conserva un `MYSQL_PASSWORD` viejo; no publiques su valor.
 
-En el contenedor de desarrollo, el usuario `novadent_app` se limita a la base configurada en `MYSQL_DATABASE`, y MySQL escucha únicamente en `127.0.0.1`. Configurá la aplicación con un usuario dedicado, no con `root`. El esquema se actualiza con Hibernate (`ddl-auto=update`), sin migraciones versionadas, por lo que esta configuración es para desarrollo/demo y no para producción.
+En el contenedor de desarrollo, el usuario `novadent_app` se limita a la base configurada en `MYSQL_DATABASE`, y MySQL escucha únicamente en `127.0.0.1`. Configurá la aplicación con un usuario dedicado, no con `root`. El esquema se actualiza con Hibernate (`ddl-auto=update`), sin migraciones versionadas, por lo que esta configuración es para desarrollo/demo y no para producción. **`ddl-auto=update` no garantiza agregar restricciones nuevas a tablas MySQL existentes**: para la unicidad y referencia de historia clínica, seguí la migración manual de abajo.
 
 Si usás el contenedor, para detenerlo sin borrar datos ejecutá `docker compose down`. **`docker compose down -v` elimina el volumen y borra permanentemente sus datos.** Para iniciar otra vez, repetí `docker compose up -d` y luego iniciá la aplicación con el comando indicado arriba.
 
@@ -105,56 +84,94 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | Módulo | Tipo / Rutas | Descripción |
 |---|---|---|
 | **Salud** | `GET /api/health` | Healthcheck técnico de la aplicación. |
-| **Pacientes** | `POST /api/pacientes` | Registro y validación de pacientes con DNI único. |
-| **Historias Clínicas** | `POST /api/historias-clinicas`, `GET /api/historias-clinicas/{id}`, `GET /api/historias-clinicas/paciente/{pacienteId}`, `POST /api/historias-clinicas/{id}/diagnosticos` | Gestión de historias clínicas y fichas odontológicas con evolución clínica. |
-| **Diagnósticos y Tratamientos** | `POST /api/diagnosticos`, `GET /api/diagnosticos/{id}`, `GET /api/diagnosticos/historia/{historiaClinicaId}`, `POST /api/diagnosticos/{id}/tratamientos`, `PATCH /api/diagnosticos/tratamientos/{id}/estado` | Registro de diagnósticos odontológicos y actualización de planes de tratamiento. |
-| **Imágenes dentales y orientación ortodóncica** | `POST /api/ia/diagnostico-imagen/analizar`, `POST /api/ia/diagnostico-imagen/upload`, `POST /api/ia/diagnostico-imagen/orientacion-ortodoncia`, `GET /api/ia/diagnostico-imagen/paciente/{pacienteId}`, `GET /api/ia/diagnostico-imagen/{id}`, `GET /api/ia/diagnostico-imagen/catalogo` | Análisis DR. ANNIE de radiografías panorámicas, orientación por arcada y búsqueda de ortodoncistas activos. Requiere clave API y URL HTTPS de la imagen accesible por el proveedor. |
+| **Pacientes** | `GET /api/pacientes`, `GET /api/pacientes/{id}`, `POST /api/pacientes`, `PUT /api/pacientes/{id}`, `DELETE /api/pacientes/{id}` | Registro, consulta, actualización y borrado solo si no hay historia clínica, turnos ni datos vinculados. DNI único. |
+| **Portal del paciente** | `GET/POST/PUT /api/portal-paciente/perfil`, `GET/POST /api/portal-paciente/reportes`, `GET /api/portal-paciente/reportes/{id}` | Perfil propio, actualización de teléfono y reportes por pieza; acceso solo a la cuenta vinculada. |
+| **Seguimiento clínico** | `GET /api/seguimiento/reportes`, `GET /api/seguimiento/reportes/{id}`, `PUT /api/seguimiento/reportes/{id}/revision` | Bandeja, foto y revisión profesional; odontólogo o administrador. |
+| **Vínculo de cuenta existente** | `PUT /api/admin/vinculos-paciente/{userId}` | Asociación administrativa de una cuenta `PACIENTE` con una ficha existente, tras verificar identidad y DNI. |
+| **Historias clínicas** | `GET/POST /api/historias-clinicas`, `GET/PUT /api/historias-clinicas/{id}`, `GET /api/historias-clinicas/{id}/detalle`, `GET /api/historias-clinicas/paciente/{pacienteId}`, `POST /api/historias-clinicas/{id}/diagnosticos` | Una historia por paciente existente; consulta opcional `?pacienteId=` y detalle con diagnósticos y tratamientos. |
+| **Diagnósticos** | `GET/POST /api/diagnosticos`, `GET/PUT /api/diagnosticos/{id}`, `GET /api/diagnosticos/{id}/detalle`, `GET /api/diagnosticos/historia/{historiaClinicaId}`, `POST /api/diagnosticos/{id}/tratamientos`, `PATCH /api/diagnosticos/tratamientos/{id}/estado` | Diagnósticos asociados a una historia existente, detalle con tratamientos y actualización de planes de tratamiento. Estados: `PENDIENTE`, `EN_CURSO`, `COMPLETADO`, `CANCELADO`. |
+| **Tratamientos** | `GET/POST /api/tratamientos`, `GET/PUT /api/tratamientos/{id}` | Asociados a un diagnóstico existente; consulta opcional `?diagnosticoId=`. Estados: `PENDIENTE`, `EN_CURSO`, `COMPLETADO`, `CANCELADO`. |
+| **Dr. Annie / Diagnóstico por Imagen con IA** | `POST /api/ia/diagnostico-imagen/analizar`, `POST /api/ia/diagnostico-imagen/upload` | En preparación. Los POST responden HTTP 503 hasta configurar y validar un proveedor real; no generan hallazgos ni guardan diagnósticos. |
 | **Odontólogos** | `GET /api/odontologos`, `GET /api/odontologos/{id}`, `GET /api/odontologos/matricula/{matricula}`, `POST /api/odontologos`, `PUT /api/odontologos/{id}`, `DELETE /api/odontologos/{id}` | Gestión de staff profesional y matrícula única. |
 | **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
-| **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
+| **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `GET /api/turnos/disponibilidad/fecha/{fecha}?odontologoId={id}`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación, disponibilidad puntual y franjas libres estimadas. |
+| **Teletriaje** | `GET /api/teletriaje/citas/agenda?desde=YYYY-MM-DD&hasta=YYYY-MM-DD[&odontologoId={id}]`, `POST /api/teletriaje/reservas` | Agenda de teleconsultas con consentimiento y estado de sala; el enlace se entrega solo cuando es funcional. La reserva completa crea solicitud y turno en una sola transacción. Requiere rol `ADMINISTRADOR`, `ODONTOLOGO` o `RECEPCIONISTA`; admite rangos de hasta 46 días. |
 | **Usuarios** | `GET /api/usuarios`, `GET /api/usuarios/{id}`, `POST /api/usuarios`, `PUT /api/usuarios/{id}`, `DELETE /api/usuarios/{id}` | Gestión de cuentas de usuario. |
-| **Autenticación** | `POST /api/auth/login` | Autentica credenciales persistidas y devuelve un JWT Bearer de 15 minutos. |
-| **Informes e inventario** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones`, `GET /api/reports/anual` | Resumen y reportes con datos persistidos. Todas las rutas requieren `ADMINISTRADOR`. |
+| **Autenticación** | `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/password-reset/request`, `POST /api/auth/password-reset/confirm`, `POST /api/auth/change-password` | Login, registro público con rol fijo `PACIENTE`, recuperación por enlace de correo y cambio de la propia contraseña autenticada. |
+| **Chatbot RAG** | `POST /api/chatbot/ask`, `POST /api/chatbot/knowledge`, `DELETE /api/chatbot/knowledge/{source}` | Respuestas apoyadas en documentos aprobados con citas; chat para pacientes y administración, gestión de fuentes solo para administración. |
+| **Informes e inventario** | `GET /api/reports`, `GET /api/reports/inventario`, `POST /api/reports/inventario`, `PUT /api/reports/inventario/{id}`, `GET /api/reports/atenciones`, `GET /api/reports/anual`, `GET /api/reports/cobros`, `GET /api/reports/ganancias`, `POST /api/finanzas/movimientos` | Resumen y reportes con datos persistidos, incluidos movimientos financieros académicos. Todas las rutas requieren `ADMINISTRADOR`. |
 
 
 > `DELETE /api/turnos/{id}` cancela el turno modificando su estado a `CANCELADO`; no elimina el registro de la base de datos.
 
+> `GET /api/turnos/disponibilidad/fecha/{fecha}?odontologoId={id}` estima franjas de 30 minutos dentro del horario institucional (lunes a viernes 08:00–20:00, sábados 09:00–14:00). No hay horarios individuales por profesional persistidos todavía. Excluye turnos no cancelados y horarios pasados del día actual; toda reserva vuelve a validar disponibilidad en el servidor.
+
+> `POST /api/teletriaje/reservas` recibe `{ "solicitud": { "pacienteId": 1, "motivoConsulta": "...", "prioridadSugerida": "VERDE", "signosAlarma": false, "origen": "AUTONOMO" }, "reserva": { "odontologoId": 1, "fecha": "YYYY-MM-DD", "hora": "HH:mm:ss", "motivo": "...", "consentimientoInformado": true, "requiereVideollamada": true } }`. Si el profesional o el horario no están disponibles, la operación completa se revierte y no deja una solicitud huérfana. El consentimiento queda asociado a la cita; el enlace de videollamada solo existe si el proveedor está configurado.
+
 ### Usuarios y autenticación
 
-- `POST /api/usuarios` crea cuentas y almacena la contraseña con BCrypt. Las respuestas REST de usuarios no incluyen la contraseña ni su hash. El alta requiere rol `ADMINISTRADOR`; no existe registro público.
-- `PUT /api/usuarios/{id}` actualiza los datos de perfil y estado, pero no permite cambiar ni borrar la contraseña. El cambio de contraseña requiere un flujo explícito que todavía no está implementado.
-- `POST /api/auth/login` recibe `usernameOrEmail` y `password`, busca el usuario persistido, compara con BCrypt y rechaza credenciales incorrectas, cuentas inexistentes o inactivas con el mismo error genérico. En caso de éxito responde con `token`, `tokenType: Bearer` y `expiresIn: 900`.
+- `POST /api/usuarios` crea cuentas y almacena la contraseña con BCrypt. Las respuestas REST de usuarios no incluyen la contraseña ni su hash. El alta administrativa requiere rol `ADMINISTRADOR`.
+- `POST /api/auth/register` crea una cuenta pública con `username`, `nombre`, `apellido`, `email` y `password`; el backend asigna siempre `PACIENTE` y estado activo, aunque el cliente envíe campos extra como rol. Las cuentas del personal se crean o cambian únicamente desde la administración. Las cuentas creadas anteriormente como `RECEPCIONISTA` no se convierten automáticamente. Usuario y correo deben ser únicos. La contraseña se almacena con BCrypt y se valida contra el límite de 72 bytes UTF-8. La respuesta `201` informa si el correo de bienvenida se envió; no se inicia sesión automáticamente.
+- `POST /api/auth/password-reset/request` recibe `{"identifier":"usuario_o_correo"}`; `email` sigue aceptándose como alias para compatibilidad. Devuelve el mismo mensaje para cuentas existentes e inexistentes, sin revelar el correo asociado. Con SMTP habilitado envía un enlace al correo registrado que vence en 30 minutos; el token sin procesar no se guarda en la base.
+- `POST /api/auth/password-reset/confirm` recibe `{"token":"...","newPassword":"..."}` y devuelve `204` si restablece la clave. Un token vencido, usado o inválido recibe `400`. Después de un restablecimiento el enlace no puede volver a usarse. Este flujo no elimina ni debilita el requisito de contraseña actual de `POST /api/auth/change-password`.
+- `PUT /api/usuarios/{id}` actualiza los datos de perfil y estado, pero no permite cambiar ni borrar la contraseña. Cada usuario autenticado cambia su propia clave con `POST /api/auth/change-password`, enviando `currentPassword` y `newPassword`. Se exige la contraseña actual; la nueva debe ser distinta, tener al menos 8 caracteres y no superar 72 bytes UTF-8 por el límite de BCrypt. La respuesta exitosa es `204` sin secretos.
+- `POST /api/auth/login` recibe `usernameOrEmail` y `password`, busca el usuario persistido, compara con BCrypt y rechaza credenciales incorrectas, cuentas inexistentes o inactivas con el mismo error genérico. En caso de éxito responde con `token`, `tokenType: Bearer`, `expiresIn: 900` y el `role` del usuario.
 - Las rutas protegidas reciben el JWT en `Authorization: Bearer <token>`. La API es stateless: tokens inválidos o expirados reciben `401`; un usuario autenticado sin el rol requerido recibe `403`.
 
 #### Matriz de roles
 
 | Rol | Permisos |
 |---|---|
-| `ADMINISTRADOR` | Acceso administrativo completo, incluida la gestión de usuarios, roles, informes, historias clínicas, diagnósticos e IA. |
-| `ODONTOLOGO` | Acceso a pacientes y turnos, lectura de odontólogos/especialidades y acceso completo a historias clínicas, diagnósticos, tratamientos y al módulo de Diagnóstico por Imagen con IA. |
+| `ADMINISTRADOR` | Acceso administrativo completo, incluida la gestión de usuarios, roles, informes, insumos, historias clínicas, diagnósticos y diagnóstico por imagen con IA. |
+| `ODONTOLOGO` | Acceso a pacientes, turnos, historias, diagnósticos, tratamientos y diagnóstico por imagen con IA; lectura de odontólogos/especialidades. No hay API de recetas. |
 | `RECEPCIONISTA` | Acceso a pacientes y turnos; lectura de odontólogos y especialidades. Sin acceso a historias clínicas, usuarios, roles, informes o administración. |
+| `PACIENTE` | Acceso al chatbot (`/api/chatbot/ask`), su ficha y reportes propios en `/api/portal-paciente/**`, y cambio de contraseña. No accede a reportes administrativos, gestión de fuentes ni historias de otros pacientes. |
 
-`POST /api/auth/login` y `GET /api/health` son públicos. Todos los demás endpoints requieren autenticación y se autorizan según la matriz.
+`POST /api/auth/login`, `POST /api/auth/register`, las dos rutas `password-reset` y `GET /api/health` son públicos. `POST /api/chatbot/ask` requiere rol `PACIENTE` o `ADMINISTRADOR`; las rutas `/api/chatbot/knowledge` requieren `ADMINISTRADOR`. El cambio de contraseña sigue protegido; el resto de endpoints requiere autenticación y se autoriza según la matriz. Cualquier usuario autenticado puede cambiar **solo su propia** contraseña: la identidad se obtiene del JWT, no de un ID enviado por el cliente. Un JWT ya emitido puede seguir vigente hasta sus 15 minutos de expiración después del cambio.
+
+### Chatbot con RAG y Fuentes Aprobadas
+
+El asistente busca fragmentos en documentos Markdown aprobados y devuelve la respuesta junto con citas (id, documento, ersion, ragmento). Si no encuentra evidencia suficiente, informa esa limitación; no diagnostica ni recomienda medicamentos. Cuenta con arquitectura dual según la configuración del entorno:
+- **Modo Autónomo de Fuentes Aprobadas (por defecto sin API key):** Al iniciar, carga en memoria las 4 fuentes oficiales (precios-nomenclador.md, protocolos-urgencia.md, especialidades-servicios.md, aq-clinica.md) y responde con citas y triaje clínico exacto de forma determinística sin depender de servicios externos ni incurrir en costos de API.
+- **Modo Spring AI / OpenAI:** Si se configura OPENAI_API_KEY en el .env, indexa embeddings semánticos en VectorStore y genera respuestas conversacionales mediante el LLM configurado (OPENAI_MODEL:gpt-4o-mini).
+
+El estado del proveedor y las fuentes cargadas pueden consultarse públicamente en GET /api/chatbot/config o GET /api/chatbot/status. Las fuentes versionadas administradas por la API se guardan en CHATBOT_KNOWLEDGE_DIRECTORY (por defecto ./data/knowledge) y se vuelven a indexar al iniciar. La administración remota de documentos mediante API (POST /api/chatbot/knowledge) requiere rol ADMINISTRADOR y clave de embeddings activa.
+
+`POST /api/chatbot/knowledge` recibe `source`, `version` y contenido Markdown, y `DELETE /api/chatbot/knowledge/{source}` retira una fuente administrada. Ambos endpoints requieren JWT de `ADMINISTRADOR`. Las fuentes del directorio del repositorio son de solo lectura.
+
+#### Correo de bienvenida y recuperación local
+
+El envío de correo está desactivado por defecto. Sin SMTP, el alta se guarda igualmente y la respuesta dice que el correo no se envió; la recuperación mantiene una respuesta genérica y avisa que el envío no está configurado. Para Gmail seguí [la guía local paso a paso](docs/gmail-smtp.md). Las credenciales van solo en el `.env` ignorado por Git; `APP_FRONTEND_BASE_URL` debe coincidir con el puerto real de Vite. Reiniciá Spring Boot tras cambiarlas. `.env.example` contiene únicamente campos vacíos/de demostración y no envía correo real.
+
+Las rutas clínicas devuelven DTOs planos; no exponen directamente las entidades JPA ni permiten reasignar una historia a otro paciente, un diagnóstico a otra historia o un tratamiento a otro diagnóstico mediante `PUT`. No se ofrece borrado de registros clínicos para preservar la evolución del paciente. Una referencia inexistente responde `404` y una segunda historia para el mismo paciente responde `409`. La creación de historia y el borrado de paciente bloquean la misma fila de paciente durante la transacción para evitar una carrera entre ambas operaciones de la API. Para proteger también las operaciones SQL externas, la base MySQL existente necesita las restricciones siguientes.
+
+#### Migración MySQL única de historia clínica
+
+1. Hacé una copia de seguridad y abrí [docs/mysql-clinical-constraints.sql](docs/mysql-clinical-constraints.sql) en Workbench, con el mismo esquema que usa el backend seleccionado.
+2. Ejecutá **solo las consultas `SELECT` de los pasos 1–3**, no el archivo entero: confirmá el esquema y que las consultas de historias duplicadas y huérfanas devuelvan **cero filas**. Si aparecen filas, detenete; no borres datos para forzar la migración. Comprobá también que no existan ya restricciones equivalentes.
+3. Solo después, seleccioná y ejecutá **el único `ALTER TABLE` del paso 4**. Volvé a ejecutar el `SELECT` del paso 3: deben aparecer `UNIQUE` y `FOREIGN KEY`. Es una operación de una sola vez; no repitas el `ALTER TABLE` si ya se aplicó. No modifica ni borra filas existentes, pero MySQL confirma DDL implícitamente.
+
+> Las rutas originales de colección, consulta por ID y actualización siguen en `ClinicalRecordController`. Los controladores de extensión agregan rutas explícitas `/detalle`, consulta por paciente, diagnósticos anidados y tratamientos; así se evitan mappings duplicados en Spring.
 
 ### Informes e inventario
 
-Todas las rutas `/api/reports/**` requieren un JWT válido con rol `ADMINISTRADOR`. Sin token (o con token inválido/expirado), la respuesta es HTTP `401`; con otro rol autenticado, HTTP `403`.
+Todas las rutas `/api/reports/**` y `/api/finanzas/**` requieren un JWT válido con rol `ADMINISTRADOR`. Sin token (o con token inválido/expirado), la respuesta es HTTP `401`; con otro rol autenticado, HTTP `403`.
 
 | Método y ruta | Parámetros / request | DTO de respuesta y comportamiento |
 |---|---|---|
-| `GET /api/reports` | Ninguno | Resumen `Map`: `modulo`, `estado`, `totalAtencionesRegistradas`, `totalItemsInventario` y `reportesDisponibles`. Solo enumera reportes con endpoint implementado. |
-| `GET /api/reports/inventario` | Ninguno | Lista `InventarioItemDto`: `id`, `nombre`, `categoria`, `cantidadDisponible`, `unidadMedida`, `stockMinimo`, `estado`. |
+| `GET /api/reports` | Ninguno | Resumen `Map`: `modulo`, `estado`, `totalAtencionesRegistradas`, `totalItemsInventario`, `reportesDisponibles` y `reportesFinancierosDisponibles`. Solo enumera reportes con endpoint implementado. |
+| `GET /api/reports/inventario` | Ninguno | Lista `InventarioItemDto`: `id`, `nombre`, `categoria`, `cantidadDisponible`, `unidadMedida`, `estado`. |
 | `POST /api/reports/inventario` | `InsumoRequest`: `nombre`, `categoria`, `cantidadDisponible`, `unidadMedida`, `stockMinimo` | HTTP `201` y un `InventarioItemDto`. |
 | `PUT /api/reports/inventario/{id}` | `id` en la ruta y `InsumoRequest` en el body | HTTP `200` y un `InventarioItemDto`; si el insumo no existe, HTTP `404`. |
-| `GET /api/reports/inventario/bajo-stock` | Ninguno | Insumos cuyo stock actual es igual o menor al mínimo configurado. |
-| `POST /api/reports/inventario/{id}/movimientos` | `tipo` (`INGRESO` o `CONSUMO`), `cantidad` positiva y `motivo` | Registra el movimiento, actualiza existencias de forma atómica y devuelve stock anterior y resultante. Rechaza consumos mayores al stock disponible con HTTP `409`. |
-| `GET /api/reports/inventario/{id}/movimientos` | `id` del insumo | Historial de movimientos más recientes primero. |
 | `GET /api/reports/atenciones?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | `AtencionesReportDto`: `tipo`, `desde`, `hasta`, `totalAtenciones`, `detalle`. El detalle contiene turno, fecha/hora, paciente, odontólogo, motivo y estado. Solo cuenta turnos `ATENDIDO` de hoy o anteriores; nunca cuenta fechas futuras, aunque el turno esté marcado como atendido. |
 | `GET /api/reports/anual?anio=YYYY` | Año calendario obligatorio (entre 1 y 9999) | `AnualReportDto`: `anio`, `totalAtenciones`, `meses`. Incluye los 12 meses; cada `MesAnualReportDto` contiene `mes`, `nombre`, `totalAtenciones`. No cuenta turnos futuros aunque figuren como atendidos. |
+| `GET /api/reports/cobros?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | Lista los movimientos `INGRESO` persistidos en el período, incluyendo su `turnoId`. |
+| `GET /api/reports/ganancias?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | Totales registrados de ingresos, egresos, resultado neto y cantidad de movimientos; `sinRegistros` distingue un período vacío de un resultado cero. |
+| `POST /api/finanzas/movimientos` | `{ "tipo": "INGRESO"|"EGRESO", "fecha": "YYYY-MM-DD", "importe": 12500.00, "concepto": "...", "medioPago": "...", "turnoId": 1 }` | Registra un movimiento y responde HTTP `201`. Un ingreso requiere un turno existente; un egreso no admite `turnoId`. El importe debe ser positivo y la fecha no futura. |
 
 Para el informe por rango, `desde` debe ser anterior o igual a `hasta`. Fechas faltantes o inválidas, rangos invertidos y años fuera del rango producen HTTP `400`. Una escritura de inventario exitosa retorna `201`; lecturas y actualización, `200`.
 
-**Fuera de alcance académico:** no hay endpoints de pagos, cobros o ganancias; tampoco se publican en Swagger. Si una base MySQL local conserva una tabla `pagos` de una versión anterior, este cambio no la borra ni altera sus datos. Las recetas quedan solo como concepto de pruebas, sin endpoint REST público. H2 en memoria se usa para tests y no modifica MySQL.
+**Límite de alcance:** estos endpoints son un registro académico manual para alimentar reportes; no procesan pagos, no integran una pasarela, no emiten comprobantes ni reemplazan facturación. Los importes no prueban que haya ocurrido un pago real. Si una base MySQL local conserva una tabla `pagos` de una versión anterior, este cambio no la borra ni altera sus datos. Las recetas quedan solo como concepto de pruebas, sin endpoint REST público. H2 en memoria se usa para tests y no modifica MySQL.
 
 #### Configuración de JWT
 
@@ -229,28 +246,9 @@ Para `POST /api/turnos` y `PUT /api/turnos/{id}`, el paciente y el odontólogo d
 }
 ```
 
-### Imágenes dentales y orientación ortodóncica
+### Diagnóstico por Imagen con IA
 
-`POST /api/ia/diagnostico-imagen/analizar` integra DR. ANNIE Insights para radiografías panorámicas. Envíe `imagenUrl` con una URL HTTPS accesible por el proveedor, por ejemplo:
-
-```json
-{
-  "tipoImagen": "RADIOGRAFIA_PANORAMICA",
-  "imagenUrl": "https://almacen-seguro.example/radiografia-panoramica.jpg",
-  "pacienteId": 42,
-  "guardarEnHistoria": true
-}
-```
-
-El resultado incluye el JSON original del proveedor en `resultadoProveedor` y se guarda en el historial de imágenes. Para pruebas locales, `.env.example` trae la clave sandbox pública de HCDS (límite de 10 solicitudes/minuto y respuestas con marca de agua); pedí una clave de producción a HCDS y configurala solo en el backend. El endpoint panorámico detecta hallazgos generales; no decide si hacen falta brackets. La orientación para brackets usa aparte la cobertura que selecciona el profesional. La integración actual cubre panorámicas; periapicales, bite-wing, fotos y CBCT quedan deshabilitados hasta contar con endpoints compatibles.
-
-#### Carga privada de radiografías
-
-Para analizar un archivo local, configurá un bucket privado AWS S3, Cloudflare R2 o MinIO en el `.env` del backend y activá `S3_STORAGE_ENABLED=true`. Completá `S3_BUCKET`, `S3_ACCESS_KEY` y `S3_SECRET_KEY`. Para AWS, dejá `S3_ENDPOINT` vacío y configurá la región real del bucket. Para R2, usá `S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com` y `S3_REGION=auto`. Para MinIO, usá un endpoint HTTPS público y `S3_PATH_STYLE_ACCESS=true`; un MinIO en localhost no es accesible para DR. ANNIE. No hagas público el bucket.
-
-Al pulsar analizar, el backend sube el archivo con una clave aleatoria, crea una URL firmada de lectura por 15 minutos, llama a DR. ANNIE y elimina el objeto al finalizar la llamada. La pantalla pide autorización antes de enviar la imagen. `S3_PRESIGNED_URL_TTL_SECONDS` admite entre 60 y 3600 segundos. El endpoint `/catalogo` indica `almacenamientoDisponible` para mostrar el modo apropiado en Novadent.
-
-`POST /api/ia/diagnostico-imagen/orientacion-ortodoncia` recibe `coberturaObservada` (`SUPERIOR`, `INFERIOR`, `AMBAS` o `INDETERMINADA`) y devuelve alternativas para conversar con un especialista junto con ortodoncistas activos del directorio. Esa cobertura la carga quien revisó el estudio: ni el proveedor ni el endpoint determinan automáticamente si hacen falta brackets o placas. La elección de aparato y arcadas requiere examen clínico y planificación del ortodoncista.
+Dr. Annie es el nombre previsto para el asistente. El proveedor clínico aún no está conectado: los endpoints de análisis devuelven HTTP 503 y no procesan ni guardan imágenes, hallazgos, diagnósticos o tratamientos. No subir radiografías hasta que haya un proveedor real con uso clínico y tratamiento de datos validados. Ver [`docs/dr-annie.md`](docs/dr-annie.md).
 
 ## Estructura del proyecto
 
@@ -259,7 +257,7 @@ src/main/java/com/proyectohoussay/odonto/
 ├── BackendOdontoApplication.java
 ├── auth/              # Controladores, servicios y DTOs de login
 ├── config/            # Configuración de OpenAPI / Swagger
-├── clinicalhistory/   # Historia clínica, diagnósticos, tratamientos y controladores REST
+├── clinicalhistory/   # Historia clínica, diagnósticos y tratamientos (API, servicio y persistencia)
 │   ├── ai/            # Diagnóstico por Imagen con IA (motor, entidad, repositorio, controlador y DTOs)
 │   └── dto/           # DTOs de historias clínicas, diagnósticos y tratamientos
 ├── controller/        # Controladores REST de turnos, odontólogos, especialidades y usuarios
@@ -292,3 +290,4 @@ docs/
 - [Backlog: Gestión de Personal](docs/gestion-personal-backlog.md)
 - [`docs/backend-scaffold.md`](docs/backend-scaffold.md)
 - [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md)
+- [`docs/dr-annie.md`](docs/dr-annie.md)

@@ -7,16 +7,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import java.util.List;
-import io.swagger.v3.oas.annotations.Operation;
-import com.proyectohoussay.odonto.dto.PacienteCompletoDto;
 
 @RestController
 @RequestMapping("/api/pacientes")
@@ -30,10 +29,9 @@ public class PacienteController {
     }
 
     @PostMapping
-    @Operation(summary = "Registrar paciente")
-    public ResponseEntity<String> registrarPaciente(@Valid @RequestBody Paciente paciente) {
+    public ResponseEntity<String> registrarPaciente(@Valid @RequestBody PacienteRequest paciente) {
         try {
-            pacienteService.registrarPaciente(paciente);
+            pacienteService.registrarPaciente(paciente.toEntity());
             return ResponseEntity.ok("Paciente registrado correctamente");
         } catch (PacienteDuplicadoException exception) {
             return ResponseEntity.status(409)
@@ -42,52 +40,39 @@ public class PacienteController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar pacientes")
-    public List<PacienteCompletoDto> listarPacientes() {
-        return pacienteService.listarPacientes().stream().map(PacienteCompletoDto::de).toList();
-    }
-
-    @GetMapping("/buscar")
-    @Operation(summary = "Buscar pacientes por nombre o apellido")
-    public List<PacienteCompletoDto> buscar(@RequestParam String termino) {
-        return pacienteService.buscar(termino).stream().map(PacienteCompletoDto::de).toList();
-    }
-
-    @GetMapping("/dni/{dni}")
-    @Operation(summary = "Buscar paciente por DNI")
-    public ResponseEntity<?> obtenerPorDni(@PathVariable String dni) {
-        try { return ResponseEntity.ok(PacienteCompletoDto.de(pacienteService.obtenerPorDni(dni))); }
-        catch (IllegalArgumentException e) { return ResponseEntity.notFound().build(); }
+    public List<PacienteResponse> listarPacientes() {
+        return pacienteService.listarPacientes().stream().map(PacienteResponse::de).toList();
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Obtener ficha completa de paciente")
-    public ResponseEntity<?> obtenerPorId(@PathVariable Long id) {
-        try { return ResponseEntity.ok(PacienteCompletoDto.de(pacienteService.obtenerPorId(id))); }
-        catch (IllegalArgumentException e) { return ResponseEntity.notFound().build(); }
+    public PacienteResponse obtenerPaciente(@PathVariable Long id) {
+        return PacienteResponse.de(pacienteService.obtenerPaciente(id));
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Actualizar datos demográficos y clínicos del paciente")
-    public ResponseEntity<?> actualizar(@PathVariable Long id, @Valid @RequestBody Paciente paciente) {
-        try { return ResponseEntity.ok(PacienteCompletoDto.de(pacienteService.actualizarPaciente(id, paciente))); }
-        catch (PacienteDuplicadoException e) { return ResponseEntity.status(409).body(e.getMessage()); }
-        catch (IllegalArgumentException e) { return ResponseEntity.notFound().build(); }
+    public PacienteResponse actualizarPaciente(@PathVariable Long id, @Valid @RequestBody PacienteRequest request) {
+        return PacienteResponse.de(pacienteService.actualizarPaciente(id, request.toEntity()));
     }
 
-    @PutMapping("/{id}/cobertura")
-    @Operation(summary = "Actualizar cobertura médica del paciente")
-    public ResponseEntity<?> actualizarCobertura(@PathVariable Long id, @RequestBody CoberturaRequest request) {
-        try { return ResponseEntity.ok(PacienteCompletoDto.de(pacienteService.actualizarCobertura(id, request.obraSocialId(),
-                request.numeroAfiliado(), request.plan(), request.particular()))); }
-        catch (IllegalArgumentException e) { return ResponseEntity.badRequest().body(e.getMessage()); }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarPaciente(@PathVariable Long id) {
+        pacienteService.eliminarPaciente(id);
+        return ResponseEntity.noContent().build();
     }
 
-    @PutMapping("/{id}/alertas")
-    @Operation(summary = "Actualizar alertas médicas del paciente")
-    public ResponseEntity<?> actualizarAlertas(@PathVariable Long id, @RequestBody List<String> alertas) {
-        try { return ResponseEntity.ok(PacienteCompletoDto.de(pacienteService.actualizarAlertasMedicas(id, alertas))); }
-        catch (IllegalArgumentException e) { return ResponseEntity.badRequest().body(e.getMessage()); }
+    @ExceptionHandler(PacienteNoEncontradoException.class)
+    public ResponseEntity<String> handleNotFound(PacienteNoEncontradoException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+    }
+
+    @ExceptionHandler({PacienteDuplicadoException.class, PacienteConDatosVinculadosException.class})
+    public ResponseEntity<String> handleConflict(RuntimeException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<String> handleUnreadable(HttpMessageNotReadableException exception) {
+        return ResponseEntity.badRequest().body("El cuerpo de la solicitud no es válido");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

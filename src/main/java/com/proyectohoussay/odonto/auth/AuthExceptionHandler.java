@@ -30,4 +30,25 @@ public class AuthExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new AuthErrorResponse("El cuerpo de la solicitud es inválido."));
     }
+
+    @ExceptionHandler(InvalidCurrentPasswordException.class)
+    public ResponseEntity<AuthErrorResponse> handleIncorrectCurrentPassword(InvalidCurrentPasswordException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new AuthErrorResponse("La contraseña actual es incorrecta."));
+    }
+
+    @ExceptionHandler(DuplicateAccountException.class)
+    public ResponseEntity<AuthErrorResponse> handleDuplicateAccount(DuplicateAccountException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new AuthErrorResponse(exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidPasswordResetTokenException.class)
+    public ResponseEntity<AuthErrorResponse> handleInvalidPasswordResetToken(InvalidPasswordResetTokenException exception) {
+        return ResponseEntity.badRequest().body(new AuthErrorResponse(exception.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<AuthErrorResponse> handleInvalidNewPassword(IllegalArgumentException exception) {
+        return ResponseEntity.badRequest().body(new AuthErrorResponse(exception.getMessage()));
+    }
 }

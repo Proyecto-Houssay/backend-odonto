@@ -19,6 +19,10 @@ public interface TurnoRepository extends JpaRepository<Turno, Long> {
 
     List<Turno> findByPacienteId(Long pacienteId);
 
+    List<Turno> findByPacienteIdOrderByFechaAscHoraAscIdAsc(Long pacienteId);
+
+    boolean existsByPacienteId(Long pacienteId);
+
     List<Turno> findByFechaAndOdontologoId(LocalDate fecha, Long odontologoId);
 
     List<Turno> findByFechaBetweenAndEstadoIgnoreCaseOrderByFechaAscHoraAsc(

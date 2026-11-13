@@ -2,7 +2,6 @@ package com.proyectohoussay.odonto.clinicalhistory;
 
 import com.proyectohoussay.odonto.clinicalhistory.dto.DiagnosticoDto;
 import com.proyectohoussay.odonto.clinicalhistory.dto.DiagnosticoRequest;
-import com.proyectohoussay.odonto.clinicalhistory.dto.HistoriaClinicaRequest;
 import com.proyectohoussay.odonto.clinicalhistory.dto.HistoriaClinicaResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -36,25 +35,16 @@ public class HistoriaClinicaController {
         this.historiaClinicaService = historiaClinicaService;
     }
 
-    @Operation(summary = "Crear historia clínica", description = "Abre una nueva historia clínica asociada a un paciente.")
-    @PostMapping
-    public ResponseEntity<HistoriaClinicaResponse> crear(@Valid @RequestBody HistoriaClinicaRequest request) {
-        HistoriaClinica creada = historiaClinicaService.crearHistoriaClinica(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(HistoriaClinicaResponse.de(creada));
-    }
-
-    @Operation(summary = "Obtener historia clínica por ID", description = "Recupera la historia clínica completa con sus diagnósticos y tratamientos.")
-    @GetMapping("/{id}")
+    @Operation(summary = "Obtener detalle completo de historia clínica", description = "Recupera una historia clínica con sus diagnósticos y tratamientos sin alterar la ruta existente por ID.")
+    @GetMapping("/{id}/detalle")
     public ResponseEntity<HistoriaClinicaResponse> obtenerPorId(@PathVariable Long id) {
-        HistoriaClinica historia = historiaClinicaService.obtenerPorId(id);
-        return ResponseEntity.ok(HistoriaClinicaResponse.de(historia));
+        return ResponseEntity.ok(historiaClinicaService.obtenerDetallePorId(id));
     }
 
     @Operation(summary = "Obtener historia clínica por ID de paciente", description = "Recupera la historia clínica del paciente indicado.")
     @GetMapping("/paciente/{pacienteId}")
     public ResponseEntity<HistoriaClinicaResponse> obtenerPorPacienteId(@PathVariable Long pacienteId) {
-        HistoriaClinica historia = historiaClinicaService.obtenerPorPacienteId(pacienteId);
-        return ResponseEntity.ok(HistoriaClinicaResponse.de(historia));
+        return ResponseEntity.ok(historiaClinicaService.obtenerDetallePorPacienteId(pacienteId));
     }
 
     @Operation(summary = "Agregar diagnóstico a historia clínica", description = "Registra un nuevo diagnóstico odontológico y sus tratamientos asociados en la historia clínica.")

@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.proyectohoussay.odonto.patient.Paciente;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.regex.Pattern;
@@ -48,11 +50,16 @@ public class Usuario {
 
     @NotBlank(message = "El rol es obligatorio.")
     @Size(max = 30)
-    @jakarta.validation.constraints.Pattern(regexp = "(?i)ADMINISTRADOR|ODONTOLOGO|RECEPCIONISTA", message = "El rol no es válido.")
+    @jakarta.validation.constraints.Pattern(regexp = "(?i)ADMINISTRADOR|ODONTOLOGO|RECEPCIONISTA|PACIENTE", message = "El rol no es válido.")
     @Column(nullable = false, length = 30)
     private String rol;
     private boolean activo = true;
     private String telefono;
+
+    @JsonIgnore
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "paciente_id", unique = true)
+    private Paciente paciente;
 
     public Usuario() {
     }
@@ -135,6 +142,15 @@ public class Usuario {
 
     public String getTelefono() {
         return telefono;
+    }
+
+    @JsonIgnore
+    public Paciente getPaciente() {
+        return paciente;
+    }
+
+    public void setPaciente(Paciente paciente) {
+        this.paciente = paciente;
     }
 
     public void setTelefono(String telefono) {

@@ -13,6 +13,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AuthServiceTest {
 
@@ -76,5 +78,34 @@ class AuthServiceTest {
     void rejectsBlankCredentialsWithoutQueryingRepository() {
         assertThat(authService.authenticate(" ", RAW_PASSWORD)).isEmpty();
         assertThat(authService.authenticate(USERNAME, " ")).isEmpty();
+    }
+
+    @Test
+    void changesOnlyAuthenticatedUsersPasswordAfterCheckingCurrentPassword() {
+        when(usuarioRepository.findByUsername(USERNAME)).thenReturn(Optional.of(activeUser));
+        when(usuarioRepository.save(activeUser)).thenReturn(activeUser);
+
+        authService.changePassword(USERNAME, RAW_PASSWORD, "nueva-clave-segura");
+
+        assertThat(passwordEncoder.matches("nueva-clave-segura", activeUser.getPassword())).isTrue();
+        verify(usuarioRepository).save(activeUser);
+    }
+
+    @Test
+    void rejectsIncorrectCurrentPasswordWithoutChangingStoredHash() {
+        when(usuarioRepository.findByUsername(USERNAME)).thenReturn(Optional.of(activeUser));
+        String oldHash = activeUser.getPassword();
+
+        assertThatThrownBy(() -> authService.changePassword(USERNAME, "incorrecta", "nueva-clave-segura"))
+                .isInstanceOf(InvalidCurrentPasswordException.class);
+        assertThat(activeUser.getPassword()).isEqualTo(oldHash);
+    }
+
+    @Test
+    void rejectsNewPasswordOverBcryptUtf8Limit() {
+        when(usuarioRepository.findByUsername(USERNAME)).thenReturn(Optional.of(activeUser));
+
+        assertThatThrownBy(() -> authService.changePassword(USERNAME, RAW_PASSWORD, "á".repeat(37)))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

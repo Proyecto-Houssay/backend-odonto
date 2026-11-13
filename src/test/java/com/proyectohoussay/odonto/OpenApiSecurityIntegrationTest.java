@@ -9,7 +9,10 @@ import com.proyectohoussay.odonto.patient.PacienteController;
 import com.proyectohoussay.odonto.controller.PersonalController;
 import com.proyectohoussay.odonto.clinicalhistory.HistoriaClinicaController;
 import com.proyectohoussay.odonto.clinicalhistory.DiagnosticoController;
+import com.proyectohoussay.odonto.clinicalhistory.ClinicalRecordController;
 import com.proyectohoussay.odonto.clinicalhistory.ai.DiagnosticoImagenController;
+import com.proyectohoussay.odonto.report.MovimientoFinancieroController;
+import com.proyectohoussay.odonto.report.ReportController;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
@@ -73,14 +76,41 @@ class OpenApiSecurityIntegrationTest {
     }
 
     @Test
+    void financialMovementCreationRequiresBearerAuth() {
+        assertTrue(mapsPost(MovimientoFinancieroController.class, "/api/finanzas/movimientos"));
+        assertBearerAuthRequired(MovimientoFinancieroController.class);
+    }
+
+    @Test
+    void financialReportsAreDocumentedAsAuthenticatedEndpoints() {
+        assertTrue(mapsGet(ReportController.class, "/api/reports/cobros"));
+        assertTrue(mapsGet(ReportController.class, "/api/reports/ganancias"));
+        assertBearerAuthRequired(ReportController.class);
+    }
+
+    @Test
     void clinicalHistoryRequiresBearerAuth() {
-        assertTrue(mapsPost(HistoriaClinicaController.class, "/api/historias-clinicas"));
-        assertBearerAuthRequired(HistoriaClinicaController.class);
+        assertTrue(mapsPost(ClinicalRecordController.class, "/api/historias-clinicas"));
+        assertBearerAuthRequired(ClinicalRecordController.class);
     }
 
     @Test
     void diagnosisManagementRequiresBearerAuth() {
-        assertTrue(mapsPost(DiagnosticoController.class, "/api/diagnosticos"));
+        assertTrue(mapsPost(ClinicalRecordController.class, "/api/diagnosticos"));
+        assertBearerAuthRequired(ClinicalRecordController.class);
+    }
+
+    @Test
+    void clinicalHistoryExtensionsRequireBearerAuth() {
+        assertTrue(mapsGet(HistoriaClinicaController.class, "/api/historias-clinicas/{id}/detalle"));
+        assertTrue(mapsPost(HistoriaClinicaController.class, "/api/historias-clinicas/{id}/diagnosticos"));
+        assertBearerAuthRequired(HistoriaClinicaController.class);
+    }
+
+    @Test
+    void diagnosisExtensionsRequireBearerAuth() {
+        assertTrue(mapsGet(DiagnosticoController.class, "/api/diagnosticos/{id}/detalle"));
+        assertTrue(mapsPost(DiagnosticoController.class, "/api/diagnosticos/{id}/tratamientos"));
         assertBearerAuthRequired(DiagnosticoController.class);
     }
 

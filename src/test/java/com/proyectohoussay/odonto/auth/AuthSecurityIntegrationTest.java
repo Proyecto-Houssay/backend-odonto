@@ -2,6 +2,10 @@ package com.proyectohoussay.odonto.auth;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.proyectohoussay.odonto.chatbot.ChatbotService;
+import com.proyectohoussay.odonto.chatbot.dto.ChatRequest;
+import com.proyectohoussay.odonto.chatbot.dto.ChatResponse;
+import com.proyectohoussay.odonto.chatbot.rag.KnowledgeAdminService;
 import com.proyectohoussay.odonto.model.Usuario;
 import com.proyectohoussay.odonto.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -21,6 +26,9 @@ import java.time.Instant;
 import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -46,12 +54,19 @@ class AuthSecurityIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @MockitoBean
+    private ChatbotService chatbotService;
+
+    @MockitoBean
+    private KnowledgeAdminService knowledgeAdminService;
+
     @BeforeEach
     void setUp() {
         usuarioRepository.deleteAll();
         saveUser("admin", "admin@example.com", "ADMINISTRADOR", true);
         saveUser("dentist", "dentist@example.com", "ODONTOLOGO", true);
         saveUser("reception", "reception@example.com", "RECEPCIONISTA", true);
+        saveUser("patient", "patient@example.com", "PACIENTE", true);
         saveUser("disabled", "disabled@example.com", "RECEPCIONISTA", false);
     }
 
@@ -63,6 +78,7 @@ class AuthSecurityIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.expiresIn").value(900))
+                .andExpect(jsonPath("$.role").value("ODONTOLOGO"))
                 .andReturn();
 
         JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
@@ -107,6 +123,29 @@ class AuthSecurityIntegrationTest {
     }
 
     @Test
+    void registrationAndPasswordResetArePublicButAuthenticatedPasswordChangeRemainsProtected() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"public-user\",\"nombre\":\"Public\",\"apellido\":\"User\",\"email\":\"public-user@example.com\",\"password\":\"test-password-123\"}"))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"missing@example.com\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"not-a-valid-token\",\"newPassword\":\"new-password-123\"}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"new-password-123\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void openApiDocumentationIsPublicWhileBusinessEndpointsRemainProtected() throws Exception {
         mockMvc.perform(get("/swagger-ui.html"))
                 .andExpect(status().is3xxRedirection());
@@ -144,6 +183,10 @@ class AuthSecurityIntegrationTest {
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/historias-clinicas").header("Authorization", bearer(token)))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/diagnosticos").header("Authorization", bearer(token)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/tratamientos").header("Authorization", bearer(token)))
+                .andExpect(status().isForbidden());
         mockMvc.perform(post("/api/usuarios")
                         .header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -164,6 +207,12 @@ class AuthSecurityIntegrationTest {
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/reports").header("Authorization", bearer(dentistToken)))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/historias-clinicas").header("Authorization", bearer(dentistToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/diagnosticos").header("Authorization", bearer(dentistToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/tratamientos").header("Authorization", bearer(dentistToken)))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -190,12 +239,113 @@ class AuthSecurityIntegrationTest {
 
         String dentistToken = loginAndGetToken("dentist");
         String receptionistToken = loginAndGetToken("reception");
+        String patientToken = loginAndGetToken("patient");
         for (String uri : new String[]{resumen, inventario, atenciones, anual}) {
             mockMvc.perform(get(uri).header("Authorization", bearer(dentistToken)))
                     .andExpect(status().isForbidden());
             mockMvc.perform(get(uri).header("Authorization", bearer(receptionistToken)))
                     .andExpect(status().isForbidden());
+            mockMvc.perform(get(uri).header("Authorization", bearer(patientToken)))
+                    .andExpect(status().isForbidden());
         }
+    }
+
+    @Test
+    void financialMovementEndpointIsAvailableOnlyToAdministrators() throws Exception {
+        String movementRequest = """
+                {"tipo":"EGRESO","fecha":"%s","importe":2500.00,"concepto":"Materiales"}
+                """.formatted(java.time.LocalDate.now());
+
+        mockMvc.perform(post("/api/finanzas/movimientos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(movementRequest))
+                .andExpect(status().isUnauthorized());
+
+        String receptionistToken = loginAndGetToken("reception");
+        mockMvc.perform(post("/api/finanzas/movimientos")
+                        .header("Authorization", bearer(receptionistToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(movementRequest))
+                .andExpect(status().isForbidden());
+
+        String administratorToken = loginAndGetToken("admin");
+        mockMvc.perform(post("/api/finanzas/movimientos")
+                        .header("Authorization", bearer(administratorToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void chatbotAllowsPatientsAndAdministratorsButRejectsAnonymousStaffAndNonAdminKnowledgeChanges() throws Exception {
+        when(chatbotService.procesarMensaje(any(ChatRequest.class)))
+                .thenReturn(ChatResponse.simple("Respuesta respaldada por fuentes.", "consulta_general"));
+        String chatRequest = "{\"mensaje\":\"¿Qué horarios tienen?\"}";
+        String knowledgeRequest = "{\"source\":\"faq\",\"version\":\"1\",\"content\":\"## Horarios\\nAtención de lunes a viernes.\"}";
+
+        mockMvc.perform(post("/api/chatbot/ask")
+                        .contentType(MediaType.APPLICATION_JSON).content(chatRequest))
+                .andExpect(status().isUnauthorized());
+
+        String patientToken = loginAndGetToken("patient");
+        mockMvc.perform(post("/api/chatbot/ask")
+                        .header("Authorization", bearer(patientToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(chatRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.respuesta").value("Respuesta respaldada por fuentes."));
+        mockMvc.perform(post("/api/chatbot/knowledge")
+                        .header("Authorization", bearer(patientToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(knowledgeRequest))
+                .andExpect(status().isForbidden());
+
+        String dentistToken = loginAndGetToken("dentist");
+        mockMvc.perform(post("/api/chatbot/ask")
+                        .header("Authorization", bearer(dentistToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(chatRequest))
+                .andExpect(status().isForbidden());
+
+        String administratorToken = loginAndGetToken("admin");
+        mockMvc.perform(post("/api/chatbot/ask")
+                        .header("Authorization", bearer(administratorToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(chatRequest))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/chatbot/knowledge")
+                        .header("Authorization", bearer(administratorToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(knowledgeRequest))
+                .andExpect(status().isNoContent());
+        verify(knowledgeAdminService).ingest(any());
+    }
+
+    @Test
+    void authenticatedUserCanChangeOnlyOwnPasswordWithoutReturningSecrets() throws Exception {
+        String token = loginAndGetToken("dentist");
+        String newPassword = "new-secure-password-123";
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"" + newPassword + "\"}"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"wrong-password\",\"newPassword\":\"" + newPassword + "\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(newPassword))));
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"" + newPassword + "\"}"))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson("dentist", PASSWORD)))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson("dentist", newPassword)))
+                .andExpect(status().isOk());
     }
 
     private void saveUser(String username, String email, String role, boolean active) {

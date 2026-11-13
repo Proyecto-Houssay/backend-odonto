@@ -1,5 +1,6 @@
 package com.proyectohoussay.odonto.clinicalhistory;
 
+import com.proyectohoussay.odonto.clinicalhistory.dto.DiagnosticoDto;
 import com.proyectohoussay.odonto.clinicalhistory.dto.TratamientoDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,32 +36,25 @@ class DiagnosticoControllerTest {
     private HistoriaClinicaService service;
 
     @Test
-    @DisplayName("POST /api/diagnosticos creates diagnosis and returns 201 Created")
-    void postCreatesDiagnostico() throws Exception {
-        Diagnostico diagnostico = new Diagnostico(LocalDate.now(), "Caries oclusal");
-        when(service.agregarDiagnostico(eq(2L), any(), eq("Caries oclusal"), any())).thenReturn(diagnostico);
-
-        mockMvc.perform(post("/api/diagnosticos")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "historiaClinicaId": 2,
-                                  "descripcion": "Caries oclusal"
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.descripcion").value("Caries oclusal"));
-    }
-
-    @Test
     @DisplayName("GET /api/diagnosticos/historia/{historiaClinicaId} lists diagnoses")
     void getListarPorHistoriaReturnsList() throws Exception {
-        Diagnostico d = new Diagnostico(LocalDate.now(), "Gingivitis");
-        when(service.listarDiagnosticosPorHistoria(2L)).thenReturn(List.of(d));
+        DiagnosticoDto d = new DiagnosticoDto(null, LocalDate.now(), "Gingivitis", 2L, List.of());
+        when(service.listarDiagnosticoDtosPorHistoria(2L)).thenReturn(List.of(d));
 
         mockMvc.perform(get("/api/diagnosticos/historia/2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].descripcion").value("Gingivitis"));
+    }
+
+    @Test
+    @DisplayName("GET /api/diagnosticos/{id}/detalle returns diagnosis with treatment details")
+    void getDetalleReturnsDiagnostico() throws Exception {
+        DiagnosticoDto diagnostico = new DiagnosticoDto(7L, LocalDate.now(), "Caries oclusal", 2L, List.of());
+        when(service.obtenerDetalleDiagnosticoPorId(7L)).thenReturn(diagnostico);
+
+        mockMvc.perform(get("/api/diagnosticos/7/detalle"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.descripcion").value("Caries oclusal"));
     }
 
     @Test

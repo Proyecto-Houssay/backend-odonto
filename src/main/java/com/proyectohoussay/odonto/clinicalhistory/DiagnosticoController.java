@@ -39,31 +39,16 @@ public class DiagnosticoController {
         this.historiaClinicaService = historiaClinicaService;
     }
 
-    @Operation(summary = "Registrar diagnóstico", description = "Crea un nuevo diagnóstico asociado a una historia clínica existente.")
-    @PostMapping
-    public ResponseEntity<DiagnosticoDto> crear(@Valid @RequestBody DiagnosticoRequest request) {
-        Diagnostico diagnostico = historiaClinicaService.agregarDiagnostico(
-                request.historiaClinicaId(),
-                request.fecha(),
-                request.descripcion(),
-                request.tratamientos()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(DiagnosticoDto.de(diagnostico));
-    }
-
-    @Operation(summary = "Obtener diagnóstico por ID", description = "Recupera un diagnóstico odontológico junto a sus tratamientos.")
-    @GetMapping("/{id}")
+    @Operation(summary = "Obtener detalle completo de diagnóstico", description = "Recupera un diagnóstico con sus tratamientos sin alterar la ruta existente por ID.")
+    @GetMapping("/{id}/detalle")
     public ResponseEntity<DiagnosticoDto> obtenerPorId(@PathVariable Long id) {
-        Diagnostico diagnostico = historiaClinicaService.obtenerDiagnosticoPorId(id);
-        return ResponseEntity.ok(DiagnosticoDto.de(diagnostico));
+        return ResponseEntity.ok(historiaClinicaService.obtenerDetalleDiagnosticoPorId(id));
     }
 
     @Operation(summary = "Listar diagnósticos por historia clínica", description = "Obtiene todos los diagnósticos registrados para una historia clínica específica.")
     @GetMapping("/historia/{historiaClinicaId}")
     public ResponseEntity<List<DiagnosticoDto>> listarPorHistoria(@PathVariable Long historiaClinicaId) {
-        List<DiagnosticoDto> diagnosticos = historiaClinicaService.listarDiagnosticosPorHistoria(historiaClinicaId).stream()
-                .map(DiagnosticoDto::de)
-                .toList();
+        List<DiagnosticoDto> diagnosticos = historiaClinicaService.listarDiagnosticoDtosPorHistoria(historiaClinicaId);
         return ResponseEntity.ok(diagnosticos);
     }
 

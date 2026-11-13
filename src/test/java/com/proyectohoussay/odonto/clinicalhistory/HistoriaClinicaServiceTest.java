@@ -88,6 +88,22 @@ class HistoriaClinicaServiceTest {
     }
 
     @Test
+    @DisplayName("should map a complete history detail to DTO while loading its clinical relations")
+    void shouldReturnClinicalHistoryDetail() {
+        HistoriaClinica historia = new HistoriaClinica(LocalDate.now(), 1L, "Observaciones");
+        Diagnostico diagnostico = new Diagnostico(LocalDate.now(), "Caries pieza 16");
+        diagnostico.agregarTratamiento(new Tratamiento("Obturación", LocalDate.now(), EstadoTratamiento.PENDIENTE));
+        historia.agregarDiagnostico(diagnostico);
+        when(historiaClinicaRepository.findById(10L)).thenReturn(Optional.of(historia));
+
+        var detalle = service.obtenerDetallePorId(10L);
+
+        assertEquals(1L, detalle.pacienteId());
+        assertEquals("Caries pieza 16", detalle.diagnosticos().get(0).descripcion());
+        assertEquals("Obturación", detalle.diagnosticos().get(0).tratamientos().get(0).descripcion());
+    }
+
+    @Test
     @DisplayName("should update treatment status")
     void shouldUpdateTreatmentStatus() {
         Tratamiento t = new Tratamiento("Endodoncia", LocalDate.now(), EstadoTratamiento.PENDIENTE);

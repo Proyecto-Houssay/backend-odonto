@@ -3,6 +3,7 @@ package com.proyectohoussay.odonto.controller;
 import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.dto.TurnoRequest;
 import com.proyectohoussay.odonto.dto.TurnoResponse;
+import com.proyectohoussay.odonto.dto.DisponibilidadAgendaResponse;
 import com.proyectohoussay.odonto.exception.TurnoNoEncontradoException;
 import com.proyectohoussay.odonto.service.TurnoService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -86,6 +87,18 @@ public class TurnoController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime hora) {
         boolean disponible = turnoService.comprobarDisponibilidad(odontologoId, fecha, hora);
         return ResponseEntity.ok(disponible);
+    }
+
+    @GetMapping("/disponibilidad/fecha/{fecha}")
+    public ResponseEntity<?> listarHorariosDisponibles(
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam Long odontologoId) {
+        try {
+            DisponibilidadAgendaResponse horarios = turnoService.listarHorariosDisponibles(odontologoId, fecha);
+            return ResponseEntity.ok(horarios);
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
     }
 
     @PostMapping
