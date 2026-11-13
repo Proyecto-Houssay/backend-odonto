@@ -2,6 +2,8 @@ package com.proyectohoussay.odonto;
 
 import com.proyectohoussay.odonto.model.Especialidad;
 import com.proyectohoussay.odonto.model.Odontologo;
+import com.proyectohoussay.odonto.model.DiaSemana;
+import com.proyectohoussay.odonto.model.DisponibilidadHoraria;
 import com.proyectohoussay.odonto.repository.EspecialidadRepository;
 import com.proyectohoussay.odonto.repository.OdontologoRepository;
 import org.junit.jupiter.api.Test;
@@ -94,5 +96,35 @@ public class OdontologoRepositoryTest {
         assertThat(esp2.getOdontologos()).contains(o);
         assertThat(odontologoRepository.findById(odontologoId).orElseThrow().getEspecialidad().getId())
                 .isEqualTo(esp2.getId());
+    }
+
+    @Test
+    void persistsWeeklyAvailability() {
+        Especialidad esp = especialidadRepository.save(new Especialidad("Odontopediatría", "Atención infantil"));
+        Odontologo odontologo = new Odontologo("Laura", "Díaz", "MN-65432", null, null, esp);
+        odontologo.setConsultorio("Box 2");
+        odontologo.setDisponibilidades(java.util.List.of(
+                new DisponibilidadHoraria(DiaSemana.MIERCOLES, java.time.LocalTime.of(9, 0), java.time.LocalTime.of(13, 0), 30)));
+        odontologoRepository.saveAndFlush(odontologo);
+
+        Odontologo persisted = odontologoRepository.findById(odontologo.getId()).orElseThrow();
+        assertThat(persisted.getConsultorio()).isEqualTo("Box 2");
+        assertThat(persisted.getDisponibilidades()).hasSize(1);
+        assertThat(persisted.getDisponibilidades().get(0).getHoraInicio()).isEqualTo(java.time.LocalTime.of(9, 0));
+    }
+
+    @Test
+    void detectsOverlappingAvailabilityForTheSameConsultorio() {
+        Especialidad esp = especialidadRepository.save(new Especialidad("Endodoncia", "Conductos"));
+        Odontologo odontologo = new Odontologo("María", "León", "MN-66551", null, null, esp);
+        odontologo.setConsultorio("Box A");
+        odontologo.setDisponibilidades(java.util.List.of(
+                new DisponibilidadHoraria(DiaSemana.JUEVES, java.time.LocalTime.of(9, 0), java.time.LocalTime.of(12, 0), 30)));
+        odontologoRepository.saveAndFlush(odontologo);
+
+        assertThat(odontologoRepository.existeSolapamientoConsultorio("Box A", DiaSemana.JUEVES,
+                java.time.LocalTime.of(11, 0), java.time.LocalTime.of(13, 0), null)).isTrue();
+        assertThat(odontologoRepository.existeSolapamientoConsultorio("Box B", DiaSemana.JUEVES,
+                java.time.LocalTime.of(11, 0), java.time.LocalTime.of(13, 0), null)).isFalse();
     }
 }

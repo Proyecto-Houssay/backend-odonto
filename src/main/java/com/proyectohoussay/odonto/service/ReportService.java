@@ -5,13 +5,20 @@ import com.proyectohoussay.odonto.dto.AtencionResumenDto;
 import com.proyectohoussay.odonto.dto.AtencionesReportDto;
 import com.proyectohoussay.odonto.dto.InventarioItemDto;
 import com.proyectohoussay.odonto.dto.InsumoRequest;
+import com.proyectohoussay.odonto.dto.MovimientoInventarioDto;
+import com.proyectohoussay.odonto.dto.MovimientoInventarioRequest;
 import com.proyectohoussay.odonto.dto.MesAnualReportDto;
 import com.proyectohoussay.odonto.model.Insumo;
+import com.proyectohoussay.odonto.model.MovimientoInventario;
+import com.proyectohoussay.odonto.model.TipoMovimientoInventario;
 import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.repository.InsumoRepository;
+import com.proyectohoussay.odonto.repository.MovimientoInventarioRepository;
 import com.proyectohoussay.odonto.repository.TurnoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
@@ -30,33 +37,104 @@ public class ReportService {
 
     private final InsumoRepository insumoRepository;
     private final TurnoRepository turnoRepository;
+    private final MovimientoInventarioRepository movimientoInventarioRepository;
+
+    @Autowired
+    public ReportService(InsumoRepository insumoRepository, TurnoRepository turnoRepository,
+                         MovimientoInventarioRepository movimientoInventarioRepository) {
+        this.insumoRepository = insumoRepository;
+        this.turnoRepository = turnoRepository;
+        this.movimientoInventarioRepository = movimientoInventarioRepository;
+    }
+
+    /** Retained for existing direct callers and unit fixtures. */
     public ReportService(InsumoRepository insumoRepository, TurnoRepository turnoRepository) {
         this.insumoRepository = insumoRepository;
         this.turnoRepository = turnoRepository;
+        this.movimientoInventarioRepository = null;
     }
 
     public List<InventarioItemDto> obtenerReporteInventario() {
         return insumoRepository.findAll().stream()
-                .map(insumo -> new InventarioItemDto(insumo.getId(), insumo.getNombre(), insumo.getCategoria(),
-                        insumo.getCantidadDisponible(), insumo.getUnidadMedida(), insumo.getEstado()))
+                .map(this::aDto)
                 .toList();
     }
 
+    public List<InventarioItemDto> obtenerInsumosBajoStock() {
+        return insumoRepository.findAll().stream()
+                .filter(insumo -> insumo.getCantidadDisponible() <= insumo.getStockMinimo())
+                .map(this::aDto)
+                .toList();
+    }
+
+    @Transactional
+    public MovimientoInventarioDto registrarMovimiento(Long insumoId, MovimientoInventarioRequest request) {
+        if (request.tipo() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El tipo de movimiento es obligatorio.");
+        }
+        Insumo insumo = insumoRepository.findByIdForUpdate(insumoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Insumo no encontrado"));
+        int anterior = insumo.getCantidadDisponible();
+        int nuevoStock;
+        if (request.tipo() == TipoMovimientoInventario.INGRESO) {
+            try {
+                nuevoStock = Math.addExact(anterior, request.cantidad());
+            } catch (ArithmeticException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cantidad excede el máximo de stock permitido.");
+            }
+        } else {
+            if (request.cantidad() > anterior) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Stock insuficiente para registrar el consumo.");
+            }
+            nuevoStock = anterior - request.cantidad();
+        }
+        insumo.setCantidadDisponible(nuevoStock);
+        insumoRepository.save(insumo);
+        MovimientoInventario movimiento = movimientoInventarioRepository.save(new MovimientoInventario(
+                insumo, request.tipo(), request.cantidad(), anterior, nuevoStock, request.motivo()));
+        return aMovimientoDto(movimiento);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MovimientoInventarioDto> obtenerMovimientos(Long insumoId) {
+        if (!insumoRepository.existsById(insumoId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Insumo no encontrado");
+        }
+        return movimientoInventarioRepository.findAllByInsumoIdOrderByFechaHoraDesc(insumoId).stream()
+                .map(this::aMovimientoDto)
+                .toList();
+    }
+
+    @Transactional
     public InventarioItemDto registrarInsumo(InsumoRequest request) {
         Insumo insumo = new Insumo(request.nombre(), request.categoria(),
                 request.cantidadDisponible(), request.unidadMedida(), request.stockMinimo());
-        return aDto(insumoRepository.save(insumo));
+        Insumo guardado = insumoRepository.save(insumo);
+        if (movimientoInventarioRepository != null && guardado.getCantidadDisponible() > 0) {
+            movimientoInventarioRepository.save(new MovimientoInventario(guardado, TipoMovimientoInventario.INGRESO,
+                    guardado.getCantidadDisponible(), 0, guardado.getCantidadDisponible(), "Stock inicial al registrar el insumo"));
+        }
+        return aDto(guardado);
     }
 
+    @Transactional
     public InventarioItemDto actualizarInsumo(Long id, InsumoRequest request) {
-        Insumo insumo = insumoRepository.findById(id)
+        Insumo insumo = insumoRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Insumo no encontrado"));
+        int stockAnterior = insumo.getCantidadDisponible();
         insumo.setNombre(request.nombre());
         insumo.setCategoria(request.categoria());
         insumo.setCantidadDisponible(request.cantidadDisponible());
         insumo.setUnidadMedida(request.unidadMedida());
         insumo.setStockMinimo(request.stockMinimo());
-        return aDto(insumoRepository.save(insumo));
+        Insumo actualizado = insumoRepository.save(insumo);
+        int delta = request.cantidadDisponible() - stockAnterior;
+        if (movimientoInventarioRepository != null && delta != 0) {
+            TipoMovimientoInventario tipo = delta > 0 ? TipoMovimientoInventario.INGRESO : TipoMovimientoInventario.CONSUMO;
+            movimientoInventarioRepository.save(new MovimientoInventario(actualizado, tipo, Math.abs(delta),
+                    stockAnterior, actualizado.getCantidadDisponible(), "Ajuste de stock desde edición del insumo"));
+        }
+        return aDto(actualizado);
     }
 
     public AtencionesReportDto obtenerReporteAtenciones(LocalDate desde, LocalDate hasta) {
@@ -118,6 +196,13 @@ public class ReportService {
 
     private InventarioItemDto aDto(Insumo insumo) {
         return new InventarioItemDto(insumo.getId(), insumo.getNombre(), insumo.getCategoria(),
-                insumo.getCantidadDisponible(), insumo.getUnidadMedida(), insumo.getEstado());
+                insumo.getCantidadDisponible(), insumo.getUnidadMedida(), insumo.getStockMinimo(), insumo.getEstado());
+    }
+
+    private MovimientoInventarioDto aMovimientoDto(MovimientoInventario movimiento) {
+        return new MovimientoInventarioDto(movimiento.getId(), movimiento.getInsumo().getId(),
+                movimiento.getInsumo().getNombre(), movimiento.getTipo(), movimiento.getCantidad(),
+                movimiento.getStockAnterior(), movimiento.getStockResultante(), movimiento.getMotivo(),
+                movimiento.getFechaHora());
     }
 }

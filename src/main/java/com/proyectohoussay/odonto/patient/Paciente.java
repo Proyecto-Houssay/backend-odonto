@@ -5,14 +5,29 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.OrderColumn;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
+@Table(name = "pacientes")
 public class Paciente {
 
     @Id
@@ -38,6 +53,34 @@ public class Paciente {
     @NotNull(message = "La fecha de nacimiento es obligatoria")
     @PastOrPresent(message = "La fecha de nacimiento no puede ser futura")
     private LocalDate fechaNacimiento;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "obra_social_id")
+    private ObraSocial obraSocial;
+
+    @Column(name = "numero_afiliado", length = 50)
+    private String numeroAfiliado;
+
+    @Column(name = "plan_cobertura", length = 100)
+    private String planCobertura;
+
+    @Column(nullable = false)
+    private boolean particular = true;
+
+    @Embedded
+    private ContactoEmergencia contactoEmergencia;
+
+    @ElementCollection
+    @CollectionTable(name = "paciente_alertas_medicas", joinColumns = @JoinColumn(name = "paciente_id"))
+    @OrderColumn(name = "orden")
+    @Column(name = "alerta", nullable = false, length = 200)
+    private List<String> alertasMedicas = new ArrayList<>();
+
+    @Column(name = "creado_en", nullable = false, updatable = false)
+    private LocalDateTime creadoEn;
+
+    @Column(name = "actualizado_en", nullable = false)
+    private LocalDateTime actualizadoEn;
 
     public Paciente() {
     }
@@ -93,4 +136,31 @@ public class Paciente {
     public void setFechaNacimiento(LocalDate fechaNacimiento) {
         this.fechaNacimiento = fechaNacimiento;
     }
+
+    public ObraSocial getObraSocial() { return obraSocial; }
+    public void setObraSocial(ObraSocial obraSocial) { this.obraSocial = obraSocial; }
+    public String getNumeroAfiliado() { return numeroAfiliado; }
+    public void setNumeroAfiliado(String numeroAfiliado) { this.numeroAfiliado = numeroAfiliado; }
+    public String getPlanCobertura() { return planCobertura; }
+    public void setPlanCobertura(String planCobertura) { this.planCobertura = planCobertura; }
+    public boolean isParticular() { return particular; }
+    public void setParticular(boolean particular) { this.particular = particular; }
+    public ContactoEmergencia getContactoEmergencia() { return contactoEmergencia; }
+    public void setContactoEmergencia(ContactoEmergencia contactoEmergencia) { this.contactoEmergencia = contactoEmergencia; }
+    public List<String> getAlertasMedicas() { return alertasMedicas; }
+    public void setAlertasMedicas(List<String> alertasMedicas) {
+        this.alertasMedicas = alertasMedicas == null ? new ArrayList<>() : new ArrayList<>(alertasMedicas);
+    }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
+    public LocalDateTime getActualizadoEn() { return actualizadoEn; }
+
+    @PrePersist
+    void alCrear() {
+        LocalDateTime ahora = LocalDateTime.now();
+        creadoEn = ahora;
+        actualizadoEn = ahora;
+    }
+
+    @PreUpdate
+    void alActualizar() { actualizadoEn = LocalDateTime.now(); }
 }

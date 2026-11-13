@@ -4,6 +4,7 @@ package com.proyectohoussay.odonto.clinicalhistory.ai;
  * Urgency level for dental treatment prioritized by the AI diagnostic module.
  */
 public enum NivelUrgencia {
+    NO_EVALUADA("No evaluada", "El resultado automatizado no determina prioridad clínica; requiere revisión profesional."),
     BAJA("Baja", "Control preventivo rutinario o mantenimiento higiénico."),
     MEDIA("Media", "Tratamiento programable a corto o mediano plazo."),
     ALTA("Alta", "Atención prioritaria para evitar progreso a daño pulpar o pérdida ósea severa."),

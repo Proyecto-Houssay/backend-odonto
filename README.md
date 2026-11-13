@@ -1,6 +1,6 @@
 # Novadent — Backend
 
-API REST para un proyecto académico de gestión de un consultorio odontológico (IEFI). Pagos y facturación están fuera de alcance; receta se reserva para pruebas y no es una función REST de uso habitual. El backend utiliza Java 17, Spring Boot 3.5.6, Spring Web, Bean Validation y Spring Data JPA. MySQL es la base predeterminada de la aplicación; H2 en memoria se reserva para pruebas automatizadas.
+API REST para un proyecto académico de gestión de un consultorio odontológico (IEFI). Pagos y facturación están fuera de alcance; receta se reserva para pruebas y no es una función REST de uso habitual. El backend utiliza Java 17, Spring Boot 3.5.6, Spring Web, Bean Validation y Spring Data JPA. MySQL es la base predeterminada; H2 en memoria también ofrece un perfil temporal para demostraciones locales.
 
 ## Stack tecnológico
 
@@ -12,7 +12,7 @@ API REST para un proyecto académico de gestión de un consultorio odontológico
 - **Persistencia:** Spring Data JPA / Hibernate
 - **Validaciones:** Jakarta Bean Validation
 - **Base predeterminada de la aplicación:** MySQL 8.4 con Connector/J. Docker Compose guarda sus datos en un volumen local nombrado.
-- **Base de pruebas:** H2 en memoria (`jdbc:h2:mem:odontodb`), aislada del MySQL local.
+- **Base demo y de pruebas:** H2 en memoria, aislada del MySQL local y sin persistencia al cerrar la aplicación.
 - **Build tool:** Maven Wrapper (`mvnw` / `mvnw.cmd`)
 
 ## Ejecución y pruebas
@@ -41,6 +41,31 @@ Al iniciar la aplicación, el servidor queda disponible en `http://localhost:808
 ### Iniciar la aplicación (MySQL predeterminada)
 
 La aplicación usa MySQL de manera predeterminada. Podés usar el contenedor de desarrollo **o** una instalación local de MySQL; Docker no es obligatorio si MySQL ya está funcionando. Las pruebas automatizadas usan H2 y no requieren MySQL.
+
+#### Demostración rápida sin Docker ni MySQL
+
+El perfil `demo` usa una base H2 temporal. En una base nueva crea un administrador con las credenciales que ingreses. Los datos demo se borran al cerrar el backend.
+
+```powershell
+$secretBytes = New-Object byte[] 32
+[Security.Cryptography.RandomNumberGenerator]::Fill($secretBytes)
+$env:JWT_SECRET_BASE64 = [Convert]::ToBase64String($secretBytes)
+$env:SPRING_PROFILES_ACTIVE = "demo,bootstrap-admin"
+$env:BOOTSTRAP_ADMIN_USERNAME = "admin"
+$env:BOOTSTRAP_ADMIN_EMAIL = "admin@example.com"
+$securePassword = Read-Host "Contraseña inicial del administrador" -AsSecureString
+$passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
+try {
+    $env:BOOTSTRAP_ADMIN_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordPointer)
+    .\mvnw.cmd spring-boot:run
+} finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($passwordPointer)
+    Remove-Item Env:JWT_SECRET_BASE64, Env:SPRING_PROFILES_ACTIVE, Env:BOOTSTRAP_ADMIN_USERNAME, Env:BOOTSTRAP_ADMIN_EMAIL, Env:BOOTSTRAP_ADMIN_PASSWORD -ErrorAction SilentlyContinue
+    Remove-Variable secretBytes, securePassword, passwordPointer -ErrorAction SilentlyContinue
+}
+```
+
+Con el servidor en marcha, abrí `http://127.0.0.1:5173/` e iniciá sesión con `admin@example.com` y la contraseña que ingresaste. El frontend ya usa el proxy `/api` hacia el backend en el puerto `8080`.
 
 #### Windows (PowerShell)
 
@@ -83,7 +108,7 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | **Pacientes** | `POST /api/pacientes` | Registro y validación de pacientes con DNI único. |
 | **Historias Clínicas** | `POST /api/historias-clinicas`, `GET /api/historias-clinicas/{id}`, `GET /api/historias-clinicas/paciente/{pacienteId}`, `POST /api/historias-clinicas/{id}/diagnosticos` | Gestión de historias clínicas y fichas odontológicas con evolución clínica. |
 | **Diagnósticos y Tratamientos** | `POST /api/diagnosticos`, `GET /api/diagnosticos/{id}`, `GET /api/diagnosticos/historia/{historiaClinicaId}`, `POST /api/diagnosticos/{id}/tratamientos`, `PATCH /api/diagnosticos/tratamientos/{id}/estado` | Registro de diagnósticos odontológicos y actualización de planes de tratamiento. |
-| **Diagnóstico por Imagen con IA** | `POST /api/ia/diagnostico-imagen/analizar`, `POST /api/ia/diagnostico-imagen/upload`, `GET /api/ia/diagnostico-imagen/paciente/{pacienteId}`, `GET /api/ia/diagnostico-imagen/{id}`, `GET /api/ia/diagnostico-imagen/catalogo` | Análisis asistido por IA de radiografías (panorámicas, periapicales, bite-wing, CBCT 3D) y fotos intraorales, detección de patologías, cálculo de severidad/urgencia e integración automática en historia clínica. |
+| **Imágenes dentales y orientación ortodóncica** | `POST /api/ia/diagnostico-imagen/analizar`, `POST /api/ia/diagnostico-imagen/upload`, `POST /api/ia/diagnostico-imagen/orientacion-ortodoncia`, `GET /api/ia/diagnostico-imagen/paciente/{pacienteId}`, `GET /api/ia/diagnostico-imagen/{id}`, `GET /api/ia/diagnostico-imagen/catalogo` | Análisis DR. ANNIE de radiografías panorámicas, orientación por arcada y búsqueda de ortodoncistas activos. Requiere clave API y URL HTTPS de la imagen accesible por el proveedor. |
 | **Odontólogos** | `GET /api/odontologos`, `GET /api/odontologos/{id}`, `GET /api/odontologos/matricula/{matricula}`, `POST /api/odontologos`, `PUT /api/odontologos/{id}`, `DELETE /api/odontologos/{id}` | Gestión de staff profesional y matrícula única. |
 | **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación de turnos y verificación de disponibilidad. |
@@ -118,9 +143,12 @@ Todas las rutas `/api/reports/**` requieren un JWT válido con rol `ADMINISTRADO
 | Método y ruta | Parámetros / request | DTO de respuesta y comportamiento |
 |---|---|---|
 | `GET /api/reports` | Ninguno | Resumen `Map`: `modulo`, `estado`, `totalAtencionesRegistradas`, `totalItemsInventario` y `reportesDisponibles`. Solo enumera reportes con endpoint implementado. |
-| `GET /api/reports/inventario` | Ninguno | Lista `InventarioItemDto`: `id`, `nombre`, `categoria`, `cantidadDisponible`, `unidadMedida`, `estado`. |
+| `GET /api/reports/inventario` | Ninguno | Lista `InventarioItemDto`: `id`, `nombre`, `categoria`, `cantidadDisponible`, `unidadMedida`, `stockMinimo`, `estado`. |
 | `POST /api/reports/inventario` | `InsumoRequest`: `nombre`, `categoria`, `cantidadDisponible`, `unidadMedida`, `stockMinimo` | HTTP `201` y un `InventarioItemDto`. |
 | `PUT /api/reports/inventario/{id}` | `id` en la ruta y `InsumoRequest` en el body | HTTP `200` y un `InventarioItemDto`; si el insumo no existe, HTTP `404`. |
+| `GET /api/reports/inventario/bajo-stock` | Ninguno | Insumos cuyo stock actual es igual o menor al mínimo configurado. |
+| `POST /api/reports/inventario/{id}/movimientos` | `tipo` (`INGRESO` o `CONSUMO`), `cantidad` positiva y `motivo` | Registra el movimiento, actualiza existencias de forma atómica y devuelve stock anterior y resultante. Rechaza consumos mayores al stock disponible con HTTP `409`. |
+| `GET /api/reports/inventario/{id}/movimientos` | `id` del insumo | Historial de movimientos más recientes primero. |
 | `GET /api/reports/atenciones?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | Fechas obligatorias en formato ISO; límites inclusivos | `AtencionesReportDto`: `tipo`, `desde`, `hasta`, `totalAtenciones`, `detalle`. El detalle contiene turno, fecha/hora, paciente, odontólogo, motivo y estado. Solo cuenta turnos `ATENDIDO` de hoy o anteriores; nunca cuenta fechas futuras, aunque el turno esté marcado como atendido. |
 | `GET /api/reports/anual?anio=YYYY` | Año calendario obligatorio (entre 1 y 9999) | `AnualReportDto`: `anio`, `totalAtenciones`, `meses`. Incluye los 12 meses; cada `MesAnualReportDto` contiene `mes`, `nombre`, `totalAtenciones`. No cuenta turnos futuros aunque figuren como atendidos. |
 
@@ -201,18 +229,28 @@ Para `POST /api/turnos` y `PUT /api/turnos/{id}`, el paciente y el odontólogo d
 }
 ```
 
-### Diagnóstico por Imagen con IA
+### Imágenes dentales y orientación ortodóncica
 
-El backend integra un motor inteligente para el triaje y diagnóstico preliminar asistido por IA de estudios de imágenes dentales:
+`POST /api/ia/diagnostico-imagen/analizar` integra DR. ANNIE Insights para radiografías panorámicas. Envíe `imagenUrl` con una URL HTTPS accesible por el proveedor, por ejemplo:
 
-- **Modalidades admitidas:**
-  - `RADIOGRAFIA_PANORAMICA`: Evaluación general de maxilares, terceros molares retenidos, pérdida ósea generalizada y caries interproximales.
-  - `RADIOGRAFIA_PERIAPICAL`: Evaluación de pieza dental completa, lesiones radiolúcidas periapicales (granulomas, quistes), necrosis pulpar y caries profundas.
-  - `BITE_WING`: Aletas de mordida para detección precoz de caries interproximales y desajuste marginal de restauraciones.
-  - `FOTO_INTRAORAL`: Detección visual de cálculo/sarro subgingival, placa bacteriana y gingivitis marginal.
-  - `TOMOGRAFIA_CONE_BEAM`: Análisis tridimensional (CBCT 3D) de proximidad con el conducto dentario inferior y reabsorción ósea.
-- **Salida estructurada:** Hallazgos con nomenclatura odontológica FDI, severidad (`LEVE`, `MODERADA`, `SEVERA`), nivel de urgencia (`BAJA`, `MEDIA`, `ALTA`, `URGENTE`), índice de severidad (1-10) y roadmap de tratamientos sugeridos.
-- **Integración automática en Historia Clínica:** Mediante `guardarEnHistoria: true`, crea automáticamente un registro `Diagnostico` vinculado a la `HistoriaClinica` del paciente con los `Tratamiento`s en estado `PENDIENTE`.
+```json
+{
+  "tipoImagen": "RADIOGRAFIA_PANORAMICA",
+  "imagenUrl": "https://almacen-seguro.example/radiografia-panoramica.jpg",
+  "pacienteId": 42,
+  "guardarEnHistoria": true
+}
+```
+
+El resultado incluye el JSON original del proveedor en `resultadoProveedor` y se guarda en el historial de imágenes. Para pruebas locales, `.env.example` trae la clave sandbox pública de HCDS (límite de 10 solicitudes/minuto y respuestas con marca de agua); pedí una clave de producción a HCDS y configurala solo en el backend. El endpoint panorámico detecta hallazgos generales; no decide si hacen falta brackets. La orientación para brackets usa aparte la cobertura que selecciona el profesional. La integración actual cubre panorámicas; periapicales, bite-wing, fotos y CBCT quedan deshabilitados hasta contar con endpoints compatibles.
+
+#### Carga privada de radiografías
+
+Para analizar un archivo local, configurá un bucket privado AWS S3, Cloudflare R2 o MinIO en el `.env` del backend y activá `S3_STORAGE_ENABLED=true`. Completá `S3_BUCKET`, `S3_ACCESS_KEY` y `S3_SECRET_KEY`. Para AWS, dejá `S3_ENDPOINT` vacío y configurá la región real del bucket. Para R2, usá `S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com` y `S3_REGION=auto`. Para MinIO, usá un endpoint HTTPS público y `S3_PATH_STYLE_ACCESS=true`; un MinIO en localhost no es accesible para DR. ANNIE. No hagas público el bucket.
+
+Al pulsar analizar, el backend sube el archivo con una clave aleatoria, crea una URL firmada de lectura por 15 minutos, llama a DR. ANNIE y elimina el objeto al finalizar la llamada. La pantalla pide autorización antes de enviar la imagen. `S3_PRESIGNED_URL_TTL_SECONDS` admite entre 60 y 3600 segundos. El endpoint `/catalogo` indica `almacenamientoDisponible` para mostrar el modo apropiado en Novadent.
+
+`POST /api/ia/diagnostico-imagen/orientacion-ortodoncia` recibe `coberturaObservada` (`SUPERIOR`, `INFERIOR`, `AMBAS` o `INDETERMINADA`) y devuelve alternativas para conversar con un especialista junto con ortodoncistas activos del directorio. Esa cobertura la carga quien revisó el estudio: ni el proveedor ni el endpoint determinan automáticamente si hacen falta brackets o placas. La elección de aparato y arcadas requiere examen clínico y planificación del ortodoncista.
 
 ## Estructura del proyecto
 

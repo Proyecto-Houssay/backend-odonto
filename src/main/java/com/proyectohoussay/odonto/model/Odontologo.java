@@ -4,6 +4,10 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "odontologos")
@@ -37,6 +41,28 @@ public class Odontologo {
     private String telefono;
 
     private boolean activo = true;
+
+    @Size(max = 50, message = "El consultorio no puede superar los 50 caracteres.")
+    @Column(length = 50)
+    private String consultorio;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_profesional", nullable = false, length = 20)
+    private EstadoProfesional estadoProfesional = EstadoProfesional.ACTIVO;
+
+    @ElementCollection
+    @CollectionTable(name = "odontologo_disponibilidades", joinColumns = @JoinColumn(name = "odontologo_id"))
+    @Valid
+    private List<DisponibilidadHoraria> disponibilidades = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(name = "odontologo_especialidades",
+            joinColumns = @JoinColumn(name = "odontologo_id"),
+            inverseJoinColumns = @JoinColumn(name = "especialidad_id"))
+    private List<Especialidad> especialidadesAdicionales = new ArrayList<>();
+
+    @Column(name = "usuario_id")
+    private Long usuarioId;
 
     @NotNull(message = "La especialidad es obligatoria.")
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
@@ -110,6 +136,11 @@ public class Odontologo {
 
     public void setActivo(boolean activo) {
         this.activo = activo;
+        if (!activo) {
+            this.estadoProfesional = EstadoProfesional.INACTIVO;
+        } else if (this.estadoProfesional == EstadoProfesional.INACTIVO) {
+            this.estadoProfesional = EstadoProfesional.ACTIVO;
+        }
     }
 
     public Especialidad getEspecialidad() {
@@ -128,5 +159,29 @@ public class Odontologo {
         if (especialidad != null) {
             especialidad.addOdontologo(this);
         }
+    }
+
+    public Long getUsuarioId() {
+        return usuarioId;
+    }
+
+    public void setUsuarioId(Long usuarioId) {
+        this.usuarioId = usuarioId;
+    }
+
+    public String getConsultorio() { return consultorio; }
+    public void setConsultorio(String consultorio) { this.consultorio = consultorio; }
+    public EstadoProfesional getEstadoProfesional() { return estadoProfesional; }
+    public void setEstadoProfesional(EstadoProfesional estadoProfesional) {
+        this.estadoProfesional = estadoProfesional;
+        this.activo = estadoProfesional == EstadoProfesional.ACTIVO;
+    }
+    public List<DisponibilidadHoraria> getDisponibilidades() { return disponibilidades; }
+    public void setDisponibilidades(List<DisponibilidadHoraria> disponibilidades) {
+        this.disponibilidades = disponibilidades == null ? new ArrayList<>() : new ArrayList<>(disponibilidades);
+    }
+    public List<Especialidad> getEspecialidadesAdicionales() { return especialidadesAdicionales; }
+    public void setEspecialidadesAdicionales(List<Especialidad> especialidades) {
+        this.especialidadesAdicionales = especialidades == null ? new ArrayList<>() : new ArrayList<>(especialidades);
     }
 }

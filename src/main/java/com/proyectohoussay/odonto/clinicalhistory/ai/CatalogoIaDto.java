@@ -10,8 +10,13 @@ public record CatalogoIaDto(
         List<PatologiaInfo> patologias,
         List<UrgenciaInfo> nivelesUrgencia,
         String versionModelo,
-        String estadoServicio
+        String estadoServicio,
+        boolean almacenamientoDisponible
 ) {
+    public CatalogoIaDto(List<TipoImagenInfo> tiposImagen, List<PatologiaInfo> patologias,
+                         List<UrgenciaInfo> nivelesUrgencia, String versionModelo, String estadoServicio) {
+        this(tiposImagen, patologias, nivelesUrgencia, versionModelo, estadoServicio, false);
+    }
     public record TipoImagenInfo(TipoImagenDental tipo, String nombre, String descripcion) {
         public static TipoImagenInfo de(TipoImagenDental tipo) {
             return new TipoImagenInfo(tipo, tipo.getNombreLegible(), tipo.getDescripcion());

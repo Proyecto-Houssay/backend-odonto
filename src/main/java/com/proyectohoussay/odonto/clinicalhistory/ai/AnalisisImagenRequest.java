@@ -19,6 +19,14 @@ public record AnalisisImagenRequest(
 
         boolean guardarEnHistoria,
 
-        String nombreArchivo
+        String nombreArchivo,
+
+        String imagenUrl
 ) {
+    public AnalisisImagenRequest(TipoImagenDental tipoImagen, String imagenBase64, Long pacienteId,
+                                 Long historiaClinicaId, String observacionesOdontologo,
+                                 boolean guardarEnHistoria, String nombreArchivo) {
+        this(tipoImagen, imagenBase64, pacienteId, historiaClinicaId, observacionesOdontologo,
+                guardarEnHistoria, nombreArchivo, null);
+    }
 }

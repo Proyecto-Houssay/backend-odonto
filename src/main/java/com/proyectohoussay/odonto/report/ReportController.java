@@ -2,6 +2,8 @@ package com.proyectohoussay.odonto.report;
 
 import com.proyectohoussay.odonto.dto.InventarioItemDto;
 import com.proyectohoussay.odonto.dto.InsumoRequest;
+import com.proyectohoussay.odonto.dto.MovimientoInventarioDto;
+import com.proyectohoussay.odonto.dto.MovimientoInventarioRequest;
 import com.proyectohoussay.odonto.dto.AnualReportDto;
 import com.proyectohoussay.odonto.dto.AtencionesReportDto;
 import com.proyectohoussay.odonto.service.ReportService;
@@ -43,6 +45,22 @@ public class ReportController {
     @GetMapping("/inventario")
     public ResponseEntity<List<InventarioItemDto>> obtenerReporteInventario() {
         return ResponseEntity.ok(reportService.obtenerReporteInventario());
+    }
+
+    @GetMapping("/inventario/bajo-stock")
+    public ResponseEntity<List<InventarioItemDto>> obtenerInsumosBajoStock() {
+        return ResponseEntity.ok(reportService.obtenerInsumosBajoStock());
+    }
+
+    @GetMapping("/inventario/{id}/movimientos")
+    public ResponseEntity<List<MovimientoInventarioDto>> obtenerMovimientos(@PathVariable Long id) {
+        return ResponseEntity.ok(reportService.obtenerMovimientos(id));
+    }
+
+    @PostMapping("/inventario/{id}/movimientos")
+    public ResponseEntity<MovimientoInventarioDto> registrarMovimiento(
+            @PathVariable Long id, @Valid @RequestBody MovimientoInventarioRequest request) {
+        return ResponseEntity.status(201).body(reportService.registrarMovimiento(id, request));
     }
 
     @PostMapping("/inventario")

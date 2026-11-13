@@ -6,6 +6,7 @@ import com.proyectohoussay.odonto.controller.TurnoController;
 import com.proyectohoussay.odonto.controller.UsuarioController;
 import com.proyectohoussay.odonto.health.HealthController;
 import com.proyectohoussay.odonto.patient.PacienteController;
+import com.proyectohoussay.odonto.controller.PersonalController;
 import com.proyectohoussay.odonto.clinicalhistory.HistoriaClinicaController;
 import com.proyectohoussay.odonto.clinicalhistory.DiagnosticoController;
 import com.proyectohoussay.odonto.clinicalhistory.ai.DiagnosticoImagenController;
@@ -57,6 +58,12 @@ class OpenApiSecurityIntegrationTest {
     void userManagementRequiresBearerAuth() {
         assertTrue(mapsPost(UsuarioController.class, "/api/usuarios"));
         assertBearerAuthRequired(UsuarioController.class);
+    }
+
+    @Test
+    void personalManagementRequiresBearerAuth() {
+        assertTrue(mapsPost(PersonalController.class, "/api/personal"));
+        assertBearerAuthRequired(PersonalController.class);
     }
 
     @Test

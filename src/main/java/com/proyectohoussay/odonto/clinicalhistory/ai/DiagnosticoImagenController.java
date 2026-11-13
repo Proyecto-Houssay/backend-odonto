@@ -2,6 +2,7 @@ package com.proyectohoussay.odonto.clinicalhistory.ai;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import org.springframework.beans.factory.annotation.Autowired;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.proyectohoussay.odonto.repository.OdontologoRepository;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -30,40 +32,67 @@ import java.util.List;
 @RequestMapping("/api/ia/diagnostico-imagen")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Diagnóstico por Imagen con IA", description = "Análisis automatizado de radiografías y fotografías dentales asistido por IA")
+@Tag(name = "Diagnóstico por Imagen con IA", description = "Recepción de estudios dentales y orientación informativa para evaluación profesional")
 public class DiagnosticoImagenController {
 
     private final DiagnosticoImagenService diagnosticoImagenService;
+    @Autowired(required = false)
+    private OdontologoRepository odontologoRepository;
 
     public DiagnosticoImagenController(DiagnosticoImagenService diagnosticoImagenService) {
         this.diagnosticoImagenService = diagnosticoImagenService;
     }
 
-    @Operation(summary = "Analizar imagen dental en formato Base64", description = "Procesa una radiografía o foto dental en Base64, detecta patologías con IA y sugiere tratamientos.")
+    @Operation(summary = "Orientación inicial para ortodoncia", description = "Recibe la cobertura observada por un profesional, sugiere opciones para conversar y lista ortodoncistas activos. No interpreta radiografías ni indica un tratamiento definitivo.")
+    @PostMapping("/orientacion-ortodoncia")
+    public ResponseEntity<OrientacionOrtodonciaResponse> orientarOrtodoncia(@Valid @RequestBody OrientacionOrtodonciaRequest request) {
+        var cobertura = request.coberturaObservada();
+        String alcance = switch (cobertura) {
+            case SUPERIOR -> "Arcada superior";
+            case INFERIOR -> "Arcada inferior";
+            case AMBAS -> "Arcadas superior e inferior";
+            case INDETERMINADA -> "Cobertura por determinar en consulta";
+        };
+        var profesionales = (odontologoRepository == null ? List.<com.proyectohoussay.odonto.model.Odontologo>of() : odontologoRepository.findAllByActivoTrue()).stream()
+                .filter(o -> o.getEspecialidad() != null && o.getEspecialidad().getNombre() != null
+                        && o.getEspecialidad().getNombre().toLowerCase().contains("ortodon"))
+                .map(o -> new OrientacionOrtodonciaResponse.ProfesionalOrtodoncia(
+                        o.getId(), o.getNombre() + " " + o.getApellido(), o.getEmail(), o.getTelefono(), o.getEspecialidad().getNombre()))
+                .toList();
+        var response = new OrientacionOrtodonciaResponse(
+                alcance,
+                "La cobertura indicada requiere valoración clínica; una radiografía por sí sola no permite decidir si hacen falta brackets o placas ni en qué arcada.",
+                List.of("Brackets fijos (metálicos o estéticos), si el ortodoncista los considera adecuados.",
+                        "Placas alineadoras removibles, si el caso y la colaboración del paciente lo permiten.",
+                        "Placa de contención, únicamente cuando corresponda a una indicación de retención."),
+                "Odontólogo/a especialista en Ortodoncia",
+                profesionales,
+                "Orientación informativa, no diagnóstico ni prescripción. El tipo de aparato y la cobertura se definen con examen clínico, radiografías completas y planificación del ortodoncista."
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Analizar radiografía panorámica", description = "Envía una imagenUrl HTTPS accesible al proveedor DR. ANNIE. La integración actual admite panorámicas y devuelve el resultado bruto del proveedor para revisión profesional.")
     @PostMapping("/analizar")
     public ResponseEntity<AnalisisImagenResponse> analizar(@Valid @RequestBody AnalisisImagenRequest request) {
         AnalisisImagenResponse response = diagnosticoImagenService.analizarImagen(request);
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Subir y analizar archivo de imagen dental (Multipart)", description = "Sube un archivo de radiografía o fotografía dental y ejecuta el análisis de diagnóstico asistido por IA.")
+    @Operation(summary = "Cargar archivo y analizar radiografía panorámica", description = "Con S3 privado configurado, almacena temporalmente el archivo y comparte con DR. ANNIE una URL HTTPS firmada. Si S3 no está configurado, se puede enviar una imagenUrl HTTPS accesible.")
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AnalisisImagenResponse> upload(
-            @RequestParam("archivo") MultipartFile archivo,
+            @RequestParam(value = "archivo", required = false) MultipartFile archivo,
             @RequestParam("tipoImagen") TipoImagenDental tipoImagen,
             @RequestParam(value = "pacienteId", required = false) Long pacienteId,
             @RequestParam(value = "historiaClinicaId", required = false) Long historiaClinicaId,
             @RequestParam(value = "observaciones", required = false) String observaciones,
-            @RequestParam(value = "guardarEnHistoria", defaultValue = "false") boolean guardarEnHistoria
+            @RequestParam(value = "guardarEnHistoria", defaultValue = "false") boolean guardarEnHistoria,
+            @RequestParam(value = "imagenUrl", required = false) String imagenUrl
     ) {
-        AnalisisImagenResponse response = diagnosticoImagenService.analizarArchivo(
-                archivo,
-                tipoImagen,
-                pacienteId,
-                historiaClinicaId,
-                observaciones,
-                guardarEnHistoria
-        );
+        AnalisisImagenResponse response = imagenUrl == null || imagenUrl.isBlank()
+                ? diagnosticoImagenService.analizarArchivo(archivo, tipoImagen, pacienteId, historiaClinicaId, observaciones, guardarEnHistoria)
+                : diagnosticoImagenService.analizarArchivo(archivo, tipoImagen, pacienteId, historiaClinicaId, observaciones, guardarEnHistoria, imagenUrl);
         return ResponseEntity.ok(response);
     }
 
@@ -91,6 +120,11 @@ public class DiagnosticoImagenController {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> handleAnalysisUnavailable(IllegalStateException e) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

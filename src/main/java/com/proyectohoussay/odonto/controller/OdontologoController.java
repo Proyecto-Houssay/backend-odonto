@@ -1,7 +1,9 @@
 package com.proyectohoussay.odonto.controller;
 
 import com.proyectohoussay.odonto.model.Odontologo;
+import com.proyectohoussay.odonto.model.DisponibilidadHoraria;
 import com.proyectohoussay.odonto.service.OdontologoService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -23,6 +25,7 @@ public class OdontologoController {
     }
 
     @GetMapping
+    @Operation(summary = "Listar odontólogos")
     public List<Odontologo> listarOdontologos() {
         return odontologoService.listarOdontologos();
     }
@@ -30,6 +33,41 @@ public class OdontologoController {
     @GetMapping("/{id}")
     public ResponseEntity<Odontologo> obtenerOdontologo(@PathVariable Long id) {
         return ResponseEntity.ok(odontologoService.obtenerOdontologo(id));
+    }
+
+    @GetMapping("/especialidad/{especialidadId}")
+    @Operation(summary = "Filtrar odontólogos por especialidad")
+    public List<Odontologo> listarPorEspecialidad(@PathVariable Long especialidadId) {
+        return odontologoService.listarPorEspecialidad(especialidadId);
+    }
+
+    @GetMapping("/{id}/disponibilidad")
+    @Operation(summary = "Consultar disponibilidad semanal de un odontólogo")
+    public List<DisponibilidadHoraria> obtenerDisponibilidad(@PathVariable Long id) {
+        return odontologoService.obtenerDisponibilidad(id);
+    }
+
+    @PutMapping("/{id}/disponibilidad")
+    @Operation(summary = "Actualizar disponibilidad semanal de un odontólogo")
+    public ResponseEntity<?> actualizarDisponibilidad(@PathVariable Long id,
+                                                       @Valid @RequestBody List<DisponibilidadHoraria> disponibilidad) {
+        try {
+            return ResponseEntity.ok(odontologoService.actualizarDisponibilidad(id, disponibilidad));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{id}/especialidades")
+    @Operation(summary = "Actualizar las especialidades de un odontólogo")
+    public ResponseEntity<?> actualizarEspecialidades(@PathVariable Long id, @RequestBody List<Long> ids) {
+        try {
+            return ResponseEntity.ok(odontologoService.actualizarEspecialidades(id, ids));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @GetMapping("/matricula/{matricula}")
