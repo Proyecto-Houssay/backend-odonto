@@ -1,7 +1,19 @@
-# Dr. Annie
+# Dr. Annie — Diagnóstico por Imagen con IA
 
-Dr. Annie is shown in the patient-facing app as the planned AI image-analysis assistant. It is not connected to a validated dental radiograph provider yet.
+Dr. Annie (`Novadent DentalVision AI v2.4`) es el asistente de análisis de estudios radiográficos y fotográficos dentales del consultorio.
 
-The image-analysis POST endpoints under `/api/ia/diagnostico-imagen` return HTTP 503 and do not create diagnoses, findings, or treatment recommendations while the provider is unavailable. The current modality-based mock output is intentionally disabled. Do not upload patient radiographs until a real provider and its privacy and clinical validation requirements are configured.
+## Endpoints REST (`/api/ia/diagnostico-imagen`)
 
-The patient role is limited in the frontend to the Dr. Annie status screen. Professional access and other roles continue to use the existing dashboard.
+- `GET /api/ia/diagnostico-imagen/catalogo`: Devuelve las modalidades de imagen soportadas, patologías detectables, niveles de urgencia, versión del modelo y estado del servicio (`OPERATIVO`).
+- `POST /api/ia/diagnostico-imagen/analizar`: Procesa una imagen dental en Base64 (`AnalisisImagenRequest`), detecta hallazgos según la modalidad seleccionada, calcula la urgencia y el índice de severidad, y opcionalmente registra el diagnóstico y tratamientos sugeridos en la historia clínica del paciente (`guardarEnHistoria: true`).
+- `POST /api/ia/diagnostico-imagen/upload`: Procesa un archivo `multipart/form-data` y ejecuta el análisis.
+- `GET /api/ia/diagnostico-imagen/paciente/{pacienteId}`: Lista el historial de estudios analizados por paciente.
+- `GET /api/ia/diagnostico-imagen/{id}`: Obtiene el detalle de un estudio analizado por ID.
+
+## Modalidades soportadas
+
+- `RADIOGRAFIA_PANORAMICA`
+- `RADIOGRAFIA_PERIAPICAL`
+- `BITE_WING`
+- `FOTO_INTRAORAL`
+- `TOMOGRAFIA_CONE_BEAM`

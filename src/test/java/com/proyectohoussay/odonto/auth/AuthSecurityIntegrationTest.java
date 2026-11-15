@@ -348,6 +348,25 @@ class AuthSecurityIntegrationTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void drAnnieAiDiagnosisEndpointsAreAccessibleToPatientsAndStaffWhenAuthenticated() throws Exception {
+        mockMvc.perform(get("/api/ia/diagnostico-imagen/catalogo"))
+                .andExpect(status().isUnauthorized());
+
+        String patientToken = loginAndGetToken("patient");
+        mockMvc.perform(get("/api/ia/diagnostico-imagen/catalogo")
+                        .header("Authorization", bearer(patientToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estadoServicio").value("OPERATIVO"));
+
+        mockMvc.perform(post("/api/ia/diagnostico-imagen/analizar")
+                        .header("Authorization", bearer(patientToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tipoImagen\":\"RADIOGRAFIA_PANORAMICA\",\"guardarEnHistoria\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipoImagen").value("RADIOGRAFIA_PANORAMICA"));
+    }
+
     private void saveUser(String username, String email, String role, boolean active) {
         Usuario user = new Usuario(username, username, "Test", email,
                 passwordEncoder.encode(PASSWORD), role, active);
