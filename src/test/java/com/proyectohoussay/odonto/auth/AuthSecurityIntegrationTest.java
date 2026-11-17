@@ -298,6 +298,16 @@ class AuthSecurityIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(knowledgeRequest))
                 .andExpect(status().isForbidden());
 
+        String receptionToken = loginAndGetToken("reception");
+        mockMvc.perform(post("/api/chatbot/ask")
+                        .header("Authorization", bearer(receptionToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(chatRequest))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/chatbot/knowledge")
+                        .header("Authorization", bearer(receptionToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(knowledgeRequest))
+                .andExpect(status().isForbidden());
+
         String dentistToken = loginAndGetToken("dentist");
         mockMvc.perform(post("/api/chatbot/ask")
                         .header("Authorization", bearer(dentistToken))

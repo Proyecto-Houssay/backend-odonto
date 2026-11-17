@@ -13,6 +13,7 @@ import com.proyectohoussay.odonto.model.Odontologo;
 import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.model.Usuario;
 import com.proyectohoussay.odonto.repository.OdontologoRepository;
+import com.proyectohoussay.odonto.repository.TurnoRepository;
 import com.proyectohoussay.odonto.repository.UsuarioRepository;
 import com.proyectohoussay.odonto.service.TurnoService;
 import org.springframework.http.HttpStatus;
@@ -69,13 +70,16 @@ public class ChatbotAgendaService {
     private final OdontologoRepository odontologoRepository;
     private final TurnoService turnoService;
     private final UsuarioRepository usuarioRepository;
+    private final TurnoRepository turnoRepository;
 
     public ChatbotAgendaService(OdontologoRepository odontologoRepository,
                                 TurnoService turnoService,
-                                UsuarioRepository usuarioRepository) {
+                                UsuarioRepository usuarioRepository,
+                                TurnoRepository turnoRepository) {
         this.odontologoRepository = odontologoRepository;
         this.turnoService = turnoService;
         this.usuarioRepository = usuarioRepository;
+        this.turnoRepository = turnoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -253,6 +257,10 @@ public class ChatbotAgendaService {
         List<DoctorDisponibleDto> doctores = listarDoctoresDisponibles();
         EstadoUsuario estadoUsuario = evaluarEstadoUsuario(userId, role);
         List<String> acciones = accionesParaRol(role);
+
+        if (userId != null && !estadoUsuario.esStaff() && esConsultaTurnosPropios(mensaje)) {
+            return responderMisTurnos(userId, acciones);
+        }
 
         if (doctores.isEmpty()) {
             AgendaAsistenteDto agendaVacia = new AgendaAsistenteDto(
@@ -627,6 +635,82 @@ public class ChatbotAgendaService {
             }
         }
         return Optional.empty();
+    }
+
+    private boolean esConsultaTurnosPropios(String mensaje) {
+        String norm = normalizar(mensaje);
+        if (norm.contains("disponib") || norm.contains("libre")) {
+            return false;
+        }
+        return norm.matches(".*\\b(que|cuales|tengo|hay|consultar|ver|mostrar|mis?)\\b.*\\b(turnos?|citas?)\\b.*")
+                || norm.matches(".*\\b(cuando|cual|que)\\b.*\\b(mi|mis)\\b.*\\b(turnos?|citas?)\\b.*")
+                || norm.matches(".*\\b(turnos?|citas?)\\b.*\\b(tengo|asignad[oa]s?|registrad[oa]s?|sacad[oa]s?|programad[oa]s?|mio|mios)\\b.*")
+                || norm.matches(".*\\bproximo\\b.*\\b(turno|cita)\\b.*");
+    }
+
+    private ChatResponse responderMisTurnos(Long userId, List<String> acciones) {
+        Optional<Usuario> usuarioOpt = usuarioRepository.findById(userId);
+        if (usuarioOpt.isEmpty() || usuarioOpt.get().getPaciente() == null) {
+            return ChatResponse.conAcciones(
+                    "Todavía no tenés una ficha de paciente vinculada a tu cuenta. Completá tus datos en el portal para consultar tus turnos registrados.",
+                    "turno",
+                    acciones
+            );
+        }
+
+        Long pacienteId = usuarioOpt.get().getPaciente().getId();
+        List<Turno> turnosPaciente = turnoRepository.findByPacienteIdOrderByFechaAscHoraAscIdAsc(pacienteId);
+        if (turnosPaciente == null || turnosPaciente.isEmpty()) {
+            return ChatResponse.conAcciones(
+                    "No tenés turnos registrados en tu ficha clínica. Podés solicitar un nuevo turno desde la sección Mis turnos o consultar los horarios disponibles aquí.",
+                    "turno",
+                    acciones
+            );
+        }
+
+        LocalDate hoy = LocalDate.now();
+        LocalTime ahora = LocalTime.now();
+        List<Turno> activos = turnosPaciente.stream()
+                .filter(t -> t.getEstado() == null || !"CANCELADO".equalsIgnoreCase(t.getEstado()))
+                .toList();
+        List<Turno> futuros = activos.stream()
+                .filter(t -> t.getFecha().isAfter(hoy) || (t.getFecha().isEqual(hoy) && !t.getHora().isBefore(ahora)))
+                .toList();
+
+        StringBuilder sb = new StringBuilder();
+        if (!futuros.isEmpty()) {
+            Turno prox = futuros.get(0);
+            String profesional = prox.getOdontologo() != null
+                    ? "Dr./Dra. " + prox.getOdontologo().getNombre() + " " + prox.getOdontologo().getApellido()
+                    : "Profesional asignado";
+            sb.append("Tu próximo turno registrado es el ").append(etiquetaFecha(prox.getFecha()))
+                    .append(" a las ").append(prox.getHora().format(HORA_CORTA)).append(" hs (")
+                    .append(prox.getMotivo() != null ? prox.getMotivo() : "Consulta clínica")
+                    .append("), con ").append(profesional).append(" [").append(prox.getEstado()).append("].");
+            if (futuros.size() > 1) {
+                sb.append("\n\nOtros turnos futuros registrados:\n");
+                for (int i = 1; i < futuros.size(); i++) {
+                    Turno t = futuros.get(i);
+                    String doc = t.getOdontologo() != null ? t.getOdontologo().getApellido() : "Profesional";
+                    sb.append("• ").append(etiquetaFecha(t.getFecha())).append(" ").append(t.getHora().format(HORA_CORTA))
+                            .append(" hs — ").append(t.getMotivo()).append(" (Dr./Dra. ").append(doc).append(" · ").append(t.getEstado()).append(")\n");
+                }
+            }
+        } else {
+            List<Turno> recientes = new ArrayList<>(turnosPaciente);
+            recientes.sort(Comparator.comparing(Turno::getFecha).thenComparing(Turno::getHora).reversed());
+            Turno ultimo = recientes.get(0);
+            String profesional = ultimo.getOdontologo() != null
+                    ? "Dr./Dra. " + ultimo.getOdontologo().getNombre() + " " + ultimo.getOdontologo().getApellido()
+                    : "Profesional asignado";
+            sb.append("En tu ficha clínica registrás tu turno del ").append(etiquetaFecha(ultimo.getFecha()))
+                    .append(" a las ").append(ultimo.getHora().format(HORA_CORTA)).append(" hs (")
+                    .append(ultimo.getMotivo() != null ? ultimo.getMotivo() : "Consulta clínica")
+                    .append(") con ").append(profesional).append(" [Estado: ").append(ultimo.getEstado()).append("].\n\n")
+                    .append("Actualmente no registrás turnos futuros posteriores a esa fecha. Podés solicitar un nuevo turno seleccionando un horario abajo o desde la sección Mis turnos.");
+        }
+
+        return ChatResponse.conAcciones(sb.toString(), "turno", acciones);
     }
 
     private static boolean tieneVerboReserva(String texto) {
