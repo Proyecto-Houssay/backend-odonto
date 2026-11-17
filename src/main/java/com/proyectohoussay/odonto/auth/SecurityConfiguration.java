@@ -85,16 +85,12 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/auth/change-password").authenticated()
                         .requestMatchers("/api/chatbot/knowledge", "/api/chatbot/knowledge/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
-                        .requestMatchers(HttpMethod.POST, "/api/chatbot/ask")
-                        .hasAnyRole(
-                                UserRole.PACIENTE.name(),
-                                UserRole.ADMINISTRADOR.name())
-                        .requestMatchers(
-                                "/swagger-ui.html",
-                                "/swagger-ui/**",
-                                "/v3/api-docs",
-                                "/v3/api-docs/**"
-                        ).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/chatbot/ask", "/api/chatbot/turnos/reservar")
+                        .hasAnyRole(UserRole.PACIENTE.name(), UserRole.ADMINISTRADOR.name(), UserRole.RECEPCIONISTA.name())
+                        .requestMatchers(HttpMethod.GET, "/api/chatbot/doctores", "/api/chatbot/turnos/disponibles")
+                        .hasAnyRole(UserRole.PACIENTE.name(), UserRole.ADMINISTRADOR.name(), UserRole.RECEPCIONISTA.name())
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**")
+                        .permitAll()
                         .requestMatchers("/api/usuarios/**", "/api/reports/**", "/api/finanzas/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers("/api/admin/vinculos-paciente/**").hasRole(UserRole.ADMINISTRADOR.name())
@@ -124,6 +120,12 @@ public class SecurityConfiguration {
                                 UserRole.ADMINISTRADOR.name(),
                                 UserRole.ODONTOLOGO.name(),
                                 UserRole.RECEPCIONISTA.name())
+                        .requestMatchers("/api/ia/diagnostico-imagen/**", "/api/ia/**")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name(),
+                                UserRole.PACIENTE.name())
                         .requestMatchers(
                                 "/api/odontograma",
                                 "/api/odontograma/**",

@@ -128,6 +128,17 @@ public class TurnoController {
         }
     }
 
+    @PutMapping("/{id}/estado")
+    public ResponseEntity<?> cambiarEstadoTurno(@PathVariable Long id, @RequestBody java.util.Map<String, String> payload) {
+        try {
+            String estado = payload != null ? payload.get("estado") : null;
+            Turno actualizado = turnoService.cambiarEstadoTurno(id, estado);
+            return ResponseEntity.ok(TurnoResponse.de(actualizado, "Estado del turno actualizado correctamente"));
+        } catch (TurnoNoEncontradoException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> cancelarTurno(@PathVariable Long id) {
         try {

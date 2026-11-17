@@ -298,6 +298,16 @@ class AuthSecurityIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(knowledgeRequest))
                 .andExpect(status().isForbidden());
 
+        String receptionToken = loginAndGetToken("reception");
+        mockMvc.perform(post("/api/chatbot/ask")
+                        .header("Authorization", bearer(receptionToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(chatRequest))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/chatbot/knowledge")
+                        .header("Authorization", bearer(receptionToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(knowledgeRequest))
+                .andExpect(status().isForbidden());
+
         String dentistToken = loginAndGetToken("dentist");
         mockMvc.perform(post("/api/chatbot/ask")
                         .header("Authorization", bearer(dentistToken))
@@ -346,6 +356,25 @@ class AuthSecurityIntegrationTest {
         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content(loginJson("dentist", newPassword)))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void drAnnieAiDiagnosisEndpointsAreAccessibleToPatientsAndStaffWhenAuthenticated() throws Exception {
+        mockMvc.perform(get("/api/ia/diagnostico-imagen/catalogo"))
+                .andExpect(status().isUnauthorized());
+
+        String patientToken = loginAndGetToken("patient");
+        mockMvc.perform(get("/api/ia/diagnostico-imagen/catalogo")
+                        .header("Authorization", bearer(patientToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estadoServicio").value("OPERATIVO"));
+
+        mockMvc.perform(post("/api/ia/diagnostico-imagen/analizar")
+                        .header("Authorization", bearer(patientToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tipoImagen\":\"RADIOGRAFIA_PANORAMICA\",\"guardarEnHistoria\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipoImagen").value("RADIOGRAFIA_PANORAMICA"));
     }
 
     private void saveUser(String username, String email, String role, boolean active) {
