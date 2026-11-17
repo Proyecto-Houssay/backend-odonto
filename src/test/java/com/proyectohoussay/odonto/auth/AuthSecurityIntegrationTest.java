@@ -277,7 +277,7 @@ class AuthSecurityIntegrationTest {
     }
 
     @Test
-    void chatbotAllowsPatientsAndAdministratorsButRejectsAnonymousStaffAndNonAdminKnowledgeChanges() throws Exception {
+    void chatbotAllowsPatientsAndStaffButRejectsAnonymousAndNonAdminKnowledgeChanges() throws Exception {
         when(chatbotService.procesarMensaje(any(ChatRequest.class)))
                 .thenReturn(ChatResponse.simple("Respuesta respaldada por fuentes.", "consulta_general"));
         String chatRequest = "{\"mensaje\":\"¿Qué horarios tienen?\"}";
@@ -302,6 +302,22 @@ class AuthSecurityIntegrationTest {
         mockMvc.perform(post("/api/chatbot/ask")
                         .header("Authorization", bearer(dentistToken))
                         .contentType(MediaType.APPLICATION_JSON).content(chatRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.respuesta").value("Respuesta respaldada por fuentes."));
+        mockMvc.perform(post("/api/chatbot/knowledge")
+                        .header("Authorization", bearer(dentistToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(knowledgeRequest))
+                .andExpect(status().isForbidden());
+
+        String receptionistToken = loginAndGetToken("reception");
+        mockMvc.perform(post("/api/chatbot/ask")
+                        .header("Authorization", bearer(receptionistToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(chatRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.respuesta").value("Respuesta respaldada por fuentes."));
+        mockMvc.perform(post("/api/chatbot/knowledge")
+                        .header("Authorization", bearer(receptionistToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(knowledgeRequest))
                 .andExpect(status().isForbidden());
 
         String administratorToken = loginAndGetToken("admin");
