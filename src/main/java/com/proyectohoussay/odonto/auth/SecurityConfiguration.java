@@ -131,7 +131,8 @@ public class SecurityConfiguration {
                                 "/api/historias/**",
                                 "/api/diagnosticos/**",
                                 "/api/tratamientos/**",
-                                "/api/ia/**")
+                                "/api/ia/**",
+                                "/api/ai/**")
                         .hasAnyRole(
                                 UserRole.ADMINISTRADOR.name(),
                                 UserRole.ODONTOLOGO.name())

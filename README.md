@@ -91,7 +91,7 @@ La guía [Swagger → MySQL](docs/swagger-mysql-workflow.md) incluye un ejemplo 
 | **Historias clínicas** | `GET/POST /api/historias-clinicas`, `GET/PUT /api/historias-clinicas/{id}`, `GET /api/historias-clinicas/{id}/detalle`, `GET /api/historias-clinicas/paciente/{pacienteId}`, `POST /api/historias-clinicas/{id}/diagnosticos` | Una historia por paciente existente; consulta opcional `?pacienteId=` y detalle con diagnósticos y tratamientos. |
 | **Diagnósticos** | `GET/POST /api/diagnosticos`, `GET/PUT /api/diagnosticos/{id}`, `GET /api/diagnosticos/{id}/detalle`, `GET /api/diagnosticos/historia/{historiaClinicaId}`, `POST /api/diagnosticos/{id}/tratamientos`, `PATCH /api/diagnosticos/tratamientos/{id}/estado` | Diagnósticos asociados a una historia existente, detalle con tratamientos y actualización de planes de tratamiento. Estados: `PENDIENTE`, `EN_CURSO`, `COMPLETADO`, `CANCELADO`. |
 | **Tratamientos** | `GET/POST /api/tratamientos`, `GET/PUT /api/tratamientos/{id}` | Asociados a un diagnóstico existente; consulta opcional `?diagnosticoId=`. Estados: `PENDIENTE`, `EN_CURSO`, `COMPLETADO`, `CANCELADO`. |
-| **Dr. Annie / Diagnóstico por Imagen con IA** | `POST /api/ia/diagnostico-imagen/analizar`, `POST /api/ia/diagnostico-imagen/upload` | En preparación. Los POST responden HTTP 503 hasta configurar y validar un proveedor real; no generan hallazgos ni guardan diagnósticos. |
+| **Dra. Ziegler · Gemini** | `GET /api/ai/status`, `POST /api/ai/analizar` | Orientación informativa sobre una imagen JPG, PNG o WebP; requiere `GEMINI_API_KEY`. Incluye referencias de costo del nomenclador; no prescribe brackets ni guarda imágenes o resultados en la historia clínica. |
 | **Odontólogos** | `GET /api/odontologos`, `GET /api/odontologos/{id}`, `GET /api/odontologos/matricula/{matricula}`, `POST /api/odontologos`, `PUT /api/odontologos/{id}`, `DELETE /api/odontologos/{id}` | Gestión de staff profesional y matrícula única. |
 | **Especialidades** | `GET /api/especialidades`, `GET /api/especialidades/{id}`, `POST /api/especialidades`, `DELETE /api/especialidades/{id}` | Catálogo de especialidades odontológicas. |
 | **Turnos** | `GET /api/turnos`, `GET /api/turnos/{id}`, `GET /api/turnos/fecha/{fecha}`, `GET /api/turnos/odontologo/{odontologoId}`, `GET /api/turnos/paciente/{pacienteId}`, `GET /api/turnos/disponibilidad`, `GET /api/turnos/disponibilidad/fecha/{fecha}?odontologoId={id}`, `POST /api/turnos`, `PUT /api/turnos/{id}`, `DELETE /api/turnos/{id}` | Agenda, asignación, disponibilidad puntual y franjas libres estimadas. |
@@ -248,7 +248,7 @@ Para `POST /api/turnos` y `PUT /api/turnos/{id}`, el paciente y el odontólogo d
 
 ### Diagnóstico por Imagen con IA
 
-Dr. Annie es el nombre previsto para el asistente. El proveedor clínico aún no está conectado: los endpoints de análisis devuelven HTTP 503 y no procesan ni guardan imágenes, hallazgos, diagnósticos o tratamientos. No subir radiografías hasta que haya un proveedor real con uso clínico y tratamiento de datos validados. Ver [`docs/dr-annie.md`](docs/dr-annie.md).
+La página **Dra. Ziegler · Gemini** llama a `POST /api/ai/analizar` con una imagen JPG, PNG o WebP (máximo 20 MB). Configurá `GEMINI_API_KEY` solo en el entorno del backend; la clave nunca va en el frontend. Al iniciar el análisis, la imagen se transmite a Google Gemini. La respuesta puede describir observaciones visibles y alternativas generales para conversar, pero no determina qué brackets necesita una persona. Los precios aparecen aparte y se leen del nomenclador versionado de la clínica; el ortodoncista confirma tratamiento, cobertura y cotización individual. La imagen y el resultado no se guardan en la historia clínica.
 
 ## Estructura del proyecto
 
@@ -290,4 +290,3 @@ docs/
 - [Backlog: Gestión de Personal](docs/gestion-personal-backlog.md)
 - [`docs/backend-scaffold.md`](docs/backend-scaffold.md)
 - [`docs/braian-dashboard-integration.md`](docs/braian-dashboard-integration.md)
-- [`docs/dr-annie.md`](docs/dr-annie.md)
