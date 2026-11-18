@@ -113,6 +113,8 @@ public class SecurityConfiguration {
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/api/teletriaje/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name(), UserRole.PACIENTE.name())
+                        .requestMatchers("/api/ai/**")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
                         .anyRequest().hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(),
                                 UserRole.RECEPCIONISTA.name()))
                 .oauth2ResourceServer(resourceServer -> resourceServer

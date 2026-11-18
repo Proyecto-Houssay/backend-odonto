@@ -16,14 +16,13 @@
 - **¿Necesito turno para urgencias?** No, las urgencias se atienden por orden de llegada, pero es recomendable llamar antes para confirmar disponibilidad.
 
 ## Obras Sociales y Medios de Pago
-- **¿Qué obras sociales aceptan?** Trabajamos con OSDE, Swiss Medical, Galeno, Medicus, IOMA, PAMI y Accord Salud.
-- **¿Aceptan prepagas?** Sí, trabajamos con las principales prepagas del país.
-- **¿Puedo pagar particular?** Sí, aceptamos pagos en efectivo, débito, crédito (hasta 6 cuotas sin interés) y transferencia bancaria.
-- **¿Dan factura?** Sí, emitimos factura A o B según corresponda.
+- **¿Qué obras sociales y prepagas atienden?** La cartilla vigente debe confirmarse directamente con la clínica; el arancel recibido no incluye información de convenios.
+- **¿Qué documentación se necesita?** Confirmá con la clínica qué documentación y credencial requiere tu cobertura.
+- **¿Puedo atenderme de forma particular?** Consultá con la clínica los medios de pago disponibles.
 
 ## Primera Consulta
 - **¿Qué debo traer a la primera consulta?** DNI, credencial de obra social (si tenés), radiografías previas si las tenés, y una lista de medicamentos que estés tomando.
-- **¿La primera consulta tiene costo?** Con obra social, la primera consulta está bonificada. Particular: $15.000.
+- **¿La primera consulta tiene costo?** El arancel de referencia del nomenclador recibido para examen, diagnóstico, fichado y plan de tratamiento (código 01.01) es $45.941,00. El texto fuente no indica vigencia; confirmá el valor actual y si corresponde a tu consulta con la clínica.
 - **¿Me van a hacer radiografías?** Dependiendo del caso, el odontólogo puede solicitar radiografías panorámicas o periapicales para un diagnóstico completo.
 
 ## Tratamientos
