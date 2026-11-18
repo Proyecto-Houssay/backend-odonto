@@ -16,16 +16,13 @@
 - **¿Necesito turno para urgencias?** No, las urgencias se atienden por orden de llegada, pero es recomendable llamar antes para confirmar disponibilidad.
 
 ## Obras Sociales y Medios de Pago
-- **¿Qué obras sociales y prepagas atienden?** Trabajamos con OSDE (todos los planes: 210, 310, 410, 450, 510), Swiss Medical, Galeno (Planes Azul, Plata y Oro), Medicus, IOMA, PAMI, Accord Salud y Sancor Salud.
-- **¿Qué coberturas incluyen?** La consulta general y diagnóstico inicial están 100% bonificadas para afiliados con credencial activa. Limpiezas (profilaxis), operatoria dental, extracciones simples y urgencias cuentan con cobertura según cartilla y plan.
-- **¿Qué documentación se necesita?** Debés presentar tu DNI y credencial de la obra social o prepaga (física o digital desde la aplicación oficial).
-- **Tratamientos de alta complejidad:** En prótesis, implantes y ortodoncia brindamos copagos reducidos y financiación en cuotas.
-- **¿Puedo atenderme de forma particular?** Sí, aceptamos pacientes particulares con pago en efectivo, tarjeta de débito, crédito (hasta 6 cuotas sin interés) y transferencia.
-- **Facturación y reintegros:** Emitimos facturas oficiales A y B para presentar ante obras sociales con sistema de reintegro.
+- **¿Qué obras sociales y prepagas atienden?** La cartilla vigente debe confirmarse directamente con la clínica; el arancel recibido no incluye información de convenios.
+- **¿Qué documentación se necesita?** Confirmá con la clínica qué documentación y credencial requiere tu cobertura.
+- **¿Puedo atenderme de forma particular?** Consultá con la clínica los medios de pago disponibles.
 
 ## Primera Consulta
 - **¿Qué debo traer a la primera consulta?** DNI, credencial de obra social (si tenés), radiografías previas si las tenés, y una lista de medicamentos que estés tomando.
-- **¿La primera consulta tiene costo?** Con obra social, la primera consulta está bonificada. Particular: $15.000.
+- **¿La primera consulta tiene costo?** El arancel de referencia del nomenclador recibido para examen, diagnóstico, fichado y plan de tratamiento (código 01.01) es $45.941,00. El texto fuente no indica vigencia; confirmá el valor actual y si corresponde a tu consulta con la clínica.
 - **¿Me van a hacer radiografías?** Dependiendo del caso, el odontólogo puede solicitar radiografías panorámicas o periapicales para un diagnóstico completo.
 
 ## Tratamientos
