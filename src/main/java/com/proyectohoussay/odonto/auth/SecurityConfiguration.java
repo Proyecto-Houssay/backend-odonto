@@ -83,6 +83,8 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/odontograma", "/api/odontograma/**", "/api/historias-clinicas/**", "/api/historias/**", "/api/diagnosticos/**",
                                 "/api/tratamientos/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
+                        .requestMatchers("/api/ai/**")
+                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
