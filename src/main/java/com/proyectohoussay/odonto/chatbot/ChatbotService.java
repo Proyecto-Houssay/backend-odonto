@@ -192,7 +192,9 @@ public class ChatbotService {
                     score += 20;
                 }
             } else if ("obras_sociales".equals(intencion)) {
-                if (source.contains("obras-sociales") || sectionTitle.contains("obras sociales") || sectionTitle.contains("cobertura")) {
+                if (source.contains("obras-sociales") || sectionTitle.contains("obras sociales")
+                        || sectionTitle.contains("cobertura") || sectionTitle.contains("medios de pago")
+                        || sectionTitle.contains("financiacion")) {
                     score += 15;
                 }
             }
@@ -285,14 +287,16 @@ public class ChatbotService {
 
         // Precios y costos
         if (containsAny(lower, "precio", "costo", "cuánto sale", "cuanto sale",
-                "cuánto cuesta", "cuanto cuesta", "valor", "tarifa", "copago")) {
+                "cuánto cuesta", "cuanto cuesta", "valor", "tarifa", "copago", "arancel", "aranceles")) {
             return "precio";
         }
 
-        // Obras sociales y prepagas (coberturas y convenios)
+        // Obras sociales, prepagas y medios de pago
         if (containsAny(lower, "obra social", "obras sociales", "prepaga", "prepagas",
                 "cobertura", "coberturas", "convenio", "convenios", "cartilla",
-                "osde", "swiss", "galeno", "medicus", "ioma", "pami", "accord", "sancor", "reintegro", "reintegros")) {
+                "osde", "swiss", "galeno", "medicus", "medife", "medifé", "apross", "ioma", "pami", "accord", "sancor", "reintegro", "reintegros",
+                "medio de pago", "medios de pago", "forma de pago", "formas de pago",
+                "tarjeta", "tarjetas", "transferencia", "cuota", "cuotas", "mercado pago", "mercadopago", "efectivo")) {
             return "obras_sociales";
         }
 

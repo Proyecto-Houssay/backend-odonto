@@ -45,6 +45,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     boolean existsByPacienteId(Long pacienteId);
 
+    Optional<Usuario> findByPacienteId(Long pacienteId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from Usuario u where u.id = :id")
     Optional<Usuario> findLockedById(@Param("id") Long id);

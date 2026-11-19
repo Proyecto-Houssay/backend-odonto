@@ -126,11 +126,20 @@ public class SecurityConfiguration {
                                 UserRole.ADMINISTRADOR.name(),
                                 UserRole.ODONTOLOGO.name(),
                                 UserRole.RECEPCIONISTA.name())
-                        .requestMatchers("/api/ia/diagnostico-imagen/**", "/api/ia/**")
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/ia/diagnostico-imagen/catalogo")
                         .hasAnyRole(
                                 UserRole.ADMINISTRADOR.name(),
                                 UserRole.ODONTOLOGO.name(),
-                                UserRole.RECEPCIONISTA.name(),
+                                UserRole.PACIENTE.name())
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/ia/diagnostico-imagen/analizar",
+                                "/api/ia/diagnostico-imagen/upload")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
                                 UserRole.PACIENTE.name())
                         .requestMatchers(
                                 "/api/odontograma",

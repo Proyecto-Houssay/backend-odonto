@@ -1,8 +1,11 @@
 package com.proyectohoussay.odonto.patient;
 
 import com.proyectohoussay.odonto.auth.UserRole;
+import com.proyectohoussay.odonto.model.MensajeUsuario;
 import com.proyectohoussay.odonto.model.Usuario;
+import com.proyectohoussay.odonto.repository.MensajeUsuarioRepository;
 import com.proyectohoussay.odonto.repository.UsuarioRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,12 +18,21 @@ public class ReporteDentalService {
     private final ReporteDentalRepository reportes;
     private final PacienteCuentaService cuentas;
     private final UsuarioRepository usuarios;
+    private final MensajeUsuarioRepository mensajes;
 
     public ReporteDentalService(ReporteDentalRepository reportes, PacienteCuentaService cuentas,
                                 UsuarioRepository usuarios) {
+        this(reportes, cuentas, usuarios, null);
+    }
+
+    @Autowired
+    public ReporteDentalService(ReporteDentalRepository reportes, PacienteCuentaService cuentas,
+                                UsuarioRepository usuarios,
+                                @Autowired(required = false) MensajeUsuarioRepository mensajes) {
         this.reportes = reportes;
         this.cuentas = cuentas;
         this.usuarios = usuarios;
+        this.mensajes = mensajes;
     }
 
     @Transactional
@@ -77,6 +89,33 @@ public class ReporteDentalService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reporte no encontrado"));
         if (reporte.getRevisadoEn() != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "El reporte ya fue revisado");
         reporte.revisar(revision.trim(), profesionalId);
+
+        if (mensajes != null && reporte.getPaciente() != null && reporte.getPaciente().getId() != null) {
+            usuarios.findByPacienteId(reporte.getPaciente().getId()).ifPresent(cuentaPaciente -> {
+                String nombreRemitente = ((profesional.getNombre() != null ? profesional.getNombre() : "")
+                        + " " + (profesional.getApellido() != null ? profesional.getApellido() : "")).trim();
+                if (nombreRemitente.isBlank()) {
+                    nombreRemitente = profesional.getUsername() != null ? profesional.getUsername() : "Odontología NovaDent";
+                } else {
+                    nombreRemitente = "Dr./Dra. " + nombreRemitente;
+                }
+                String asunto = "Revisión clínica de tu reporte dental (Pieza " + reporte.getPieza() + ")";
+                String resumenRevision = revision.trim();
+                if (resumenRevision.length() > 750) {
+                    resumenRevision = resumenRevision.substring(0, 750) + "...";
+                }
+                String contenido = "El profesional revisó tu reporte dental de la pieza " + reporte.getPieza()
+                        + ":\n\"" + resumenRevision + "\"\nPodés consultar el detalle completo en la sección Mi seguimiento.";
+                mensajes.save(new MensajeUsuario(
+                        cuentaPaciente.getId(),
+                        profesional.getId(),
+                        nombreRemitente,
+                        asunto,
+                        contenido
+                ));
+            });
+        }
+
         return reporte;
     }
 }
