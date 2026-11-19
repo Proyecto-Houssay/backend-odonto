@@ -82,7 +82,8 @@ public class SecurityConfiguration {
                                 "/api/health"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/chatbot/config", "/api/chatbot/status").permitAll()
-                        .requestMatchers("/api/auth/change-password").authenticated()
+                        .requestMatchers("/api/auth/change-password", "/api/auth/me").authenticated()
+                        .requestMatchers("/api/mi-cuenta", "/api/mi-cuenta/**").authenticated()
                         .requestMatchers("/api/chatbot/knowledge", "/api/chatbot/knowledge/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers(HttpMethod.POST, "/api/chatbot/ask", "/api/chatbot/turnos/reservar")
@@ -91,12 +92,17 @@ public class SecurityConfiguration {
                         .hasAnyRole(UserRole.PACIENTE.name(), UserRole.ADMINISTRADOR.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**")
                         .permitAll()
-                        .requestMatchers("/api/usuarios/**", "/api/reports/**", "/api/finanzas/**")
+                        .requestMatchers("/api/usuarios/**", "/api/reports/**", "/api/finanzas/**", "/api/personal", "/api/personal/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers("/api/admin/vinculos-paciente/**").hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers("/api/portal-paciente/**").hasRole(UserRole.PACIENTE.name())
                         .requestMatchers("/api/seguimiento/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
+                        .requestMatchers("/api/directorio", "/api/directorio/**")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name())
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/odontologos/**",
