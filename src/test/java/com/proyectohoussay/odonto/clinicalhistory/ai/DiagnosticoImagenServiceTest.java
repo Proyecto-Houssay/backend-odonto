@@ -216,4 +216,34 @@ class DiagnosticoImagenServiceTest {
         assertEquals(4, catalogo.nivelesUrgencia().size());
         assertEquals("OPERATIVO", catalogo.estadoServicio());
     }
+
+    @Test
+    @DisplayName("should enrich findings with specific FDI tooth and pathology mentioned in clinical observations and auto-create HistoriaClinica")
+    void shouldEnrichWithClinicalObservationsAndAutoCreateHistoria() {
+        when(historiaClinicaRepository.findByPacienteId(77L)).thenReturn(Optional.empty());
+        when(historiaClinicaRepository.save(any(HistoriaClinica.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(diagnosticoRepository.save(any(Diagnostico.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(diagnosticoImagenRepository.save(any(DiagnosticoImagen.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        AnalisisImagenRequest request = new AnalisisImagenRequest(
+                TipoImagenDental.FOTO_INTRAORAL,
+                null,
+                77L,
+                null,
+                "Paciente consulta por golpe y fractura en diente 11 con dolor intenso",
+                true,
+                "foto_diente_11.jpg"
+        );
+
+        AnalisisImagenResponse response = service.analizarImagen(request);
+
+        assertNotNull(response);
+        assertTrue(response.hallazgos().stream()
+                .anyMatch(h -> h.piezaDental().contains("11") && h.patologia() == PatologiaDental.FRACTURA_RADICULAR));
+        verify(historiaClinicaRepository).save(any(HistoriaClinica.class));
+        verify(diagnosticoRepository).save(any(Diagnostico.class));
+    }
 }

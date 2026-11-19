@@ -133,6 +133,15 @@ public class TurnoService {
         turnoRepository.save(turno);
     }
 
+    public Turno cambiarEstadoTurno(Long id, String nuevoEstado) {
+        Turno turno = obtenerTurno(id);
+        String estadoNormalizado = (nuevoEstado == null || nuevoEstado.isBlank())
+                ? "PENDIENTE"
+                : nuevoEstado.trim().toUpperCase();
+        turno.setEstado(estadoNormalizado);
+        return turnoRepository.save(turno);
+    }
+
     private Turno construirTurno(TurnoRequest request) {
         Paciente paciente = pacienteRepository.findById(request.pacienteId())
                 .orElseThrow(() -> new IllegalArgumentException("El paciente indicado no existe."));
@@ -151,6 +160,8 @@ public class TurnoService {
     }
 
     private boolean estaCancelado(String estado) {
-        return estado != null && ESTADO_CANCELADO.equalsIgnoreCase(estado);
+        if (estado == null) return false;
+        String upper = estado.trim().toUpperCase();
+        return ESTADO_CANCELADO.equals(upper) || "RECHAZADO".equals(upper);
     }
 }

@@ -38,11 +38,15 @@ public class SecurityConfiguration {
         try {
             secret = Base64.getDecoder().decode(encodedSecret);
         } catch (IllegalArgumentException exception) {
-            throw new IllegalStateException("JWT_SECRET_BASE64 must contain a valid Base64-encoded secret.", exception);
+            throw new IllegalStateException(
+                    "JWT_SECRET_BASE64 must contain a valid Base64-encoded secret.", exception);
         }
+
         if (secret.length < 32) {
-            throw new IllegalStateException("JWT_SECRET_BASE64 must decode to at least 32 bytes for HS256.");
+            throw new IllegalStateException(
+                    "JWT_SECRET_BASE64 must decode to at least 32 bytes for HS256.");
         }
+
         return new SecretKeySpec(secret, "HmacSHA256");
     }
 
@@ -63,15 +67,22 @@ public class SecurityConfiguration {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .requestCache(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/password-reset/request",
-                                "/api/auth/password-reset/confirm", "/api/health").permitAll()
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/password-reset/request",
+                                "/api/auth/password-reset/confirm",
+                                "/api/health"
+                        ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/chatbot/config", "/api/chatbot/status").permitAll()
+                        .requestMatchers("/api/auth/change-password").authenticated()
                         .requestMatchers("/api/chatbot/knowledge", "/api/chatbot/knowledge/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers(HttpMethod.POST, "/api/chatbot/ask", "/api/chatbot/turnos/reservar")
@@ -88,37 +99,98 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/portal-paciente/**").hasRole(UserRole.PACIENTE.name())
                         .requestMatchers("/api/seguimiento/**")
                         .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
-                        .requestMatchers(HttpMethod.GET, "/api/odontologos/**", "/api/especialidades/**")
-                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/odontologos/**",
+                                "/api/especialidades/**")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/api/odontologos/**", "/api/especialidades/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers("/api/pacientes/**", "/api/turnos/**")
-                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
-                        .requestMatchers(HttpMethod.GET, "/api/odontograma", "/api/odontograma/**")
-                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
-                        .requestMatchers("/api/odontograma", "/api/odontograma/**", "/api/historias-clinicas/**", "/api/historias/**", "/api/diagnosticos/**",
-                                "/api/tratamientos/**", "/api/ia/**")
-                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
-                        .requestMatchers(HttpMethod.PUT, "/api/teletriaje/solicitudes/*/prioridad")
-                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
-                        .requestMatchers(HttpMethod.POST, "/api/teletriaje/citas/*/revocar")
-                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
-                        .requestMatchers(HttpMethod.GET, "/api/teletriaje/citas/agenda")
-                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
-                        .requestMatchers(HttpMethod.GET, "/api/teletriaje/solicitudes")
-                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
-                        .requestMatchers(HttpMethod.POST, "/api/teletriaje/solicitudes/*/reservar")
-                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
-                        .requestMatchers(HttpMethod.POST, "/api/teletriaje/reservas")
-                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name())
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/odontograma",
+                                "/api/odontograma/**")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name())
+                        .requestMatchers("/api/ia/diagnostico-imagen/**", "/api/ia/**")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name(),
+                                UserRole.PACIENTE.name())
+                        .requestMatchers(
+                                "/api/odontograma",
+                                "/api/odontograma/**",
+                                "/api/historias-clinicas/**",
+                                "/api/historias/**",
+                                "/api/diagnosticos/**",
+                                "/api/tratamientos/**",
+                                "/api/ia/**",
+                                "/api/ai/**")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name())
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/teletriaje/solicitudes/*/prioridad")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name())
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/teletriaje/citas/*/revocar")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name())
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/teletriaje/citas/agenda")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name())
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/teletriaje/solicitudes")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name())
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/teletriaje/solicitudes/*/reservar")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name())
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/teletriaje/reservas")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/api/teletriaje/**")
-                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name(), UserRole.PACIENTE.name())
-                        .requestMatchers("/api/ai/**")
-                        .hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name())
-                        .anyRequest().hasAnyRole(UserRole.ADMINISTRADOR.name(), UserRole.ODONTOLOGO.name(),
-                                UserRole.RECEPCIONISTA.name()))
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
+                                UserRole.RECEPCIONISTA.name(),
+                                UserRole.PACIENTE.name())
+                        .anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer
-                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(
+                                jwtAuthenticationConverter())));
+
         return http.build();
     }
 
@@ -129,22 +201,26 @@ public class SecurityConfiguration {
         return converter;
     }
 
-    @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        configuration.setExposedHeaders(List.of("Authorization"));
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
-
     private Collection<GrantedAuthority> authoritiesFromRoleClaim(Jwt jwt) {
         return UserRole.from(jwt.getClaimAsString("role"))
                 .<Collection<GrantedAuthority>>map(role -> List.of(
                         new SimpleGrantedAuthority("ROLE_" + role.name())))
                 .orElseGet(List::of);
+    }
+
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedMethods(
+                List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setExposedHeaders(List.of("Authorization"));
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+
+        return source;
     }
 }
