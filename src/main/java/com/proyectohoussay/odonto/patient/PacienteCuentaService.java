@@ -3,8 +3,10 @@ package com.proyectohoussay.odonto.patient;
 import com.proyectohoussay.odonto.auth.UserRole;
 import com.proyectohoussay.odonto.model.Usuario;
 import com.proyectohoussay.odonto.repository.UsuarioRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.jpa.JpaObjectRetrievalFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,9 +23,10 @@ public class PacienteCuentaService {
         this.pacientes = pacientes;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PacienteResponse propio(Long userId) {
-        Paciente paciente = cuentaPaciente(userId).getPaciente();
+        Usuario cuenta = cuentaPaciente(userId);
+        Paciente paciente = obtenerPacienteValido(cuenta);
         if (paciente == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Completá tu ficha de paciente");
         return PacienteResponse.de(paciente);
     }
@@ -33,7 +36,9 @@ public class PacienteCuentaService {
         Usuario cuenta = usuarios.findLockedById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "La cuenta no existe"));
         validarCuentaPaciente(cuenta);
-        if (cuenta.getPaciente() != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "La cuenta ya tiene una ficha de paciente");
+        if (obtenerPacienteValido(cuenta) != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La cuenta ya tiene una ficha de paciente");
+        }
         String dniNormalizado = dni.trim();
         if (pacientes.existsByDni(dniNormalizado)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -63,7 +68,7 @@ public class PacienteCuentaService {
         if (UserRole.from(cuenta.getRol()).orElse(null) != UserRole.PACIENTE || !cuenta.isActivo()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cuenta debe ser de un paciente activo");
         }
-        if (cuenta.getPaciente() != null || usuarios.existsByPacienteId(pacienteId)) {
+        if (obtenerPacienteValido(cuenta) != null || usuarios.existsByPacienteId(pacienteId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cuenta o la ficha ya están vinculadas");
         }
         Paciente paciente = pacientes.findById(pacienteId)
@@ -87,11 +92,27 @@ public class PacienteCuentaService {
         return PacienteResponse.de(pacientes.save(paciente));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Paciente pacientePropio(Long userId) {
-        Paciente paciente = cuentaPaciente(userId).getPaciente();
+        Usuario cuenta = cuentaPaciente(userId);
+        Paciente paciente = obtenerPacienteValido(cuenta);
         if (paciente == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "Completá tu ficha antes de cargar un reporte");
         return paciente;
+    }
+
+    private Paciente obtenerPacienteValido(Usuario cuenta) {
+        Paciente paciente = cuenta.getPaciente();
+        if (paciente == null) {
+            return null;
+        }
+        try {
+            paciente.getNombre();
+            return paciente;
+        } catch (EntityNotFoundException | JpaObjectRetrievalFailureException exception) {
+            cuenta.setPaciente(null);
+            usuarios.saveAndFlush(cuenta);
+            return null;
+        }
     }
 
     private Usuario cuentaPaciente(Long userId) {

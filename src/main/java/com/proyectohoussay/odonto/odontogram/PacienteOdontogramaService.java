@@ -16,7 +16,7 @@ public class PacienteOdontogramaService {
         this.odontogramas = odontogramas;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PacienteOdontogramaResponse propio(Long userId) {
         Long pacienteId = cuentas.pacientePropio(userId).getId();
         return odontogramas.findFirstByPacienteIdOrderByCreadoEnDescIdDesc(pacienteId)

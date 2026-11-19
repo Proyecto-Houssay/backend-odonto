@@ -37,12 +37,12 @@ public class ReporteDentalService {
         return reportes.save(new ReporteDental(paciente, pieza, dolor, sintomas.trim(), foto, foto != null && consentimientoFoto));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ReporteDental> propios(Long userId) {
         return reportes.findByPacienteIdOrderByCreadoEnDesc(cuentas.pacientePropio(userId).getId());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ReporteDental propio(Long userId, Long id) {
         Long pacienteId = cuentas.pacientePropio(userId).getId();
         ReporteDental reporte = reportes.findById(id)

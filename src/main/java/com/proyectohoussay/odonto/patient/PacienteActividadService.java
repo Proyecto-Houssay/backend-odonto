@@ -20,14 +20,14 @@ public class PacienteActividadService {
         this.tratamientos = tratamientos;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<TurnoPropioResponse> turnosPropios(Long userId) {
         Long pacienteId = cuentas.pacientePropio(userId).getId();
         return turnos.findByPacienteIdOrderByFechaAscHoraAscIdAsc(pacienteId).stream()
                 .map(TurnoPropioResponse::de).toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<TratamientoPropioResponse> tratamientosPropios(Long userId) {
         Long pacienteId = cuentas.pacientePropio(userId).getId();
         return tratamientos.findByPacienteIdNewestFirst(pacienteId).stream()

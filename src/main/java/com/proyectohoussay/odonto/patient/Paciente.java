@@ -1,21 +1,20 @@
 package com.proyectohoussay.odonto.patient;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Embedded;
-import jakarta.persistence.ElementCollection;
-import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Column;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -27,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "pacientes")
+@Table(name = "paciente")
 public class Paciente {
 
     @Id
@@ -64,8 +63,8 @@ public class Paciente {
     @Column(name = "plan_cobertura", length = 100)
     private String planCobertura;
 
-    @Column(nullable = false)
-    private boolean particular = true;
+    @Column(nullable = true)
+    private Boolean particular = true;
 
     @Embedded
     private ContactoEmergencia contactoEmergencia;
@@ -76,10 +75,10 @@ public class Paciente {
     @Column(name = "alerta", nullable = false, length = 200)
     private List<String> alertasMedicas = new ArrayList<>();
 
-    @Column(name = "creado_en", nullable = false, updatable = false)
+    @Column(name = "creado_en", nullable = true, updatable = false)
     private LocalDateTime creadoEn;
 
-    @Column(name = "actualizado_en", nullable = false)
+    @Column(name = "actualizado_en", nullable = true)
     private LocalDateTime actualizadoEn;
 
     public Paciente() {
@@ -147,7 +146,7 @@ public class Paciente {
     public void setNumeroAfiliado(String numeroAfiliado) { this.numeroAfiliado = numeroAfiliado; }
     public String getPlanCobertura() { return planCobertura; }
     public void setPlanCobertura(String planCobertura) { this.planCobertura = planCobertura; }
-    public boolean isParticular() { return particular; }
+    public boolean isParticular() { return particular == null || particular; }
     public void setParticular(boolean particular) { this.particular = particular; }
     public ContactoEmergencia getContactoEmergencia() { return contactoEmergencia; }
     public void setContactoEmergencia(ContactoEmergencia contactoEmergencia) { this.contactoEmergencia = contactoEmergencia; }
@@ -163,8 +162,16 @@ public class Paciente {
         LocalDateTime ahora = LocalDateTime.now();
         creadoEn = ahora;
         actualizadoEn = ahora;
+        if (particular == null) {
+            particular = true;
+        }
     }
 
     @PreUpdate
-    void alActualizar() { actualizadoEn = LocalDateTime.now(); }
+    void alActualizar() {
+        actualizadoEn = LocalDateTime.now();
+        if (particular == null) {
+            particular = true;
+        }
+    }
 }
