@@ -32,10 +32,7 @@ public class DirectorioService {
     public List<DirectorioItemDto> buscar(String termino, String tipo) {
         if (termino == null || termino.isBlank()) throw new IllegalArgumentException("El término de búsqueda es obligatorio.");
         String query = termino.trim().toLowerCase(Locale.ROOT);
-        String filtroTipo = tipo == null || tipo.isBlank() ? null : tipo.trim().toUpperCase(Locale.ROOT);
-        if (filtroTipo != null && !List.of("PERSONAL", "MEDICO", "PACIENTE").contains(filtroTipo)) {
-            throw new IllegalArgumentException("El tipo debe ser PERSONAL, MEDICO o PACIENTE.");
-        }
+        String filtroTipo = normalizarFiltroTipo(tipo);
 
         List<DirectorioItemDto> items = new ArrayList<>();
         if (filtroTipo == null || "PERSONAL".equals(filtroTipo)) {
@@ -48,6 +45,32 @@ public class DirectorioService {
             pacienteRepository.findAll().stream().map(this::de).filter(item -> coincide(item, query)).forEach(items::add);
         }
         return items;
+    }
+
+    @Transactional(readOnly = true)
+    public List<DirectorioItemDto> listar(String tipo) {
+        String filtroTipo = normalizarFiltroTipo(tipo);
+        List<DirectorioItemDto> items = new ArrayList<>();
+        if (filtroTipo == null || "PERSONAL".equals(filtroTipo)) {
+            personalRepository.findAll().stream().map(this::de).forEach(items::add);
+        }
+        if (filtroTipo == null || "MEDICO".equals(filtroTipo)) {
+            odontologoRepository.findAll().stream().map(this::de).forEach(items::add);
+        }
+        if (filtroTipo == null || "PACIENTE".equals(filtroTipo)) {
+            pacienteRepository.findAll().stream().map(this::de).forEach(items::add);
+        }
+        return items;
+    }
+
+    private String normalizarFiltroTipo(String tipo) {
+        String filtroTipo = tipo == null || tipo.isBlank() || "TODOS".equalsIgnoreCase(tipo.trim())
+                ? null
+                : tipo.trim().toUpperCase(Locale.ROOT);
+        if (filtroTipo != null && !List.of("PERSONAL", "MEDICO", "PACIENTE").contains(filtroTipo)) {
+            throw new IllegalArgumentException("El tipo debe ser PERSONAL, MEDICO o PACIENTE.");
+        }
+        return filtroTipo;
     }
 
     private DirectorioItemDto de(Personal p) {

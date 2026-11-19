@@ -56,6 +56,14 @@ public class Usuario {
     private boolean activo = true;
     private String telefono;
 
+    @Size(max = 120, message = "El nombre para mostrar no puede superar los 120 caracteres.")
+    @Column(name = "nombre_mostrar", length = 120)
+    private String nombreMostrar;
+
+    @Lob
+    @Column(name = "foto_base64", columnDefinition = "LONGTEXT")
+    private String fotoBase64;
+
     @JsonIgnore
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "paciente_id", unique = true)
@@ -155,6 +163,22 @@ public class Usuario {
 
     public void setTelefono(String telefono) {
         this.telefono = telefono;
+    }
+
+    public String getNombreMostrar() {
+        return nombreMostrar;
+    }
+
+    public void setNombreMostrar(String nombreMostrar) {
+        this.nombreMostrar = nombreMostrar;
+    }
+
+    public String getFotoBase64() {
+        return fotoBase64;
+    }
+
+    public void setFotoBase64(String fotoBase64) {
+        this.fotoBase64 = fotoBase64;
     }
 
     public String getUsername() {

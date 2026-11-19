@@ -23,9 +23,15 @@ public class DirectorioController {
 
     @GetMapping("/buscar")
     @Operation(summary = "Buscar en el directorio institucional")
-    public ResponseEntity<?> buscar(@RequestParam String termino, @RequestParam(required = false) String tipo) {
+    public ResponseEntity<?> buscar(
+            @RequestParam(required = false) String termino,
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(required = false) String tipo) {
         try {
-            List<DirectorioItemDto> items = directorioService.buscar(termino, tipo);
+            String effectiveQuery = (termino != null && !termino.isBlank()) ? termino : q;
+            List<DirectorioItemDto> items = (effectiveQuery == null || effectiveQuery.isBlank())
+                    ? directorioService.listar(tipo)
+                    : directorioService.buscar(effectiveQuery, tipo);
             return ResponseEntity.ok(items);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
