@@ -248,7 +248,7 @@ public class ChatbotService {
             case "saludo" -> RESPUESTA_SALUDO;
             case "turno", "doctores" -> "Ahora no puedo confirmar los horarios ni la disponibilidad porque no hay una fuente vigente aprobada. Consultá tus turnos registrados o comunicate con recepción.";
             case "obras_sociales" -> "En NovaDent atendemos con las principales obras sociales y prepagas: OSDE, Swiss Medical, Galeno, Medicus, IOMA, PAMI, Accord Salud y Sancor Salud. Presentá tu credencial vigente y DNI al concurrir al consultorio.";
-            case "odontograma" -> "Este asistente no puede evaluar síntomas ni diagnosticar. Registrá lo que observás y consultá con un odontólogo para una evaluación profesional.";
+            case "odontograma" -> "Este asistente no puede evaluar síntomas ni diagnosticar afecciones dentales. Para tu seguridad, evitá automedicarte o aplicar temperaturas extremas. Te recomendamos registrar lo que observás en tu cuenta o solicitar un turno con nuestro equipo profesional para una evaluación adecuada.";
             default -> SIN_EVIDENCIA;
         };
     }
@@ -364,7 +364,7 @@ public class ChatbotService {
         return switch (intencion) {
             case "saludo" -> List.of("/mis-turnos", "/mi-odontograma", "/");
             case "turno", "doctores", "obras_sociales", "precio" -> List.of("/mis-turnos");
-            case "odontograma" -> List.of("/mi-odontograma", "/");
+            case "odontograma" -> List.of("/mis-turnos", "/mi-odontograma", "/");
             default -> List.of();
         };
     }
