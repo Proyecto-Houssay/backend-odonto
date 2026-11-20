@@ -1,38 +1,27 @@
-# Preguntas Frecuentes — Clínica Dental Novadent
+# Preguntas frecuentes de recepción y pacientes — Clínica NovaDent
+Version: 2026.2
 
-## Información General
-- **Nombre:** Clínica Dental Novadent — Proyecto Houssay
-- **Horarios de atención:** Lunes a viernes de 8:00 a 20:00 hs. Sábados de 9:00 a 14:00 hs.
-- **Urgencias:** Se atienden urgencias dentales de lunes a sábado en horario de atención. Fuera de horario, comunicarse al teléfono de guardia.
-- **Dirección:** Av. Houssay 1234, Buenos Aires, Argentina.
-- **Teléfono:** (011) 4555-1234
-- **Email:** contacto@novadent.com.ar
+## ¿Qué obras sociales y prepagas atienden?
+Clínica NovaDent atiende por convenio directo a **OSDE** (210, 310, 410, 450, 510), **Swiss Medical**, **Galeno** (Azul, Plata, Oro), **Medifé**, **Jerárquicos Salud**, **Apross**, **IOMA** y **PAMI** (con autorización previa según prestación), además de **atención particular** y emisión de factura electrónica para reintegros.
 
-## Turnos
-- **¿Cómo saco turno?** Podés sacar turno por teléfono, por email o a través de este chat. Solo necesitamos tu nombre, DNI y el motivo de la consulta.
-- **¿Puedo cancelar un turno?** Sí, podés cancelar con al menos 24 horas de anticipación sin cargo.
-- **¿Qué pasa si no hay turnos disponibles?** Te agregamos a nuestra lista de espera y te contactamos apenas se libere un turno.
-- **¿Cuánto dura una consulta?** Las consultas generales duran entre 30 y 45 minutos. Los tratamientos más complejos pueden requerir más tiempo.
-- **¿Necesito turno para urgencias?** No, las urgencias se atienden por orden de llegada, pero es recomendable llamar antes para confirmar disponibilidad.
+## ¿Cuáles son los medios de pago y formas de financiación?
+Aceptamos **efectivo**, **transferencia bancaria**, **Mercado Pago / código QR**, **tarjeta de débito** y **tarjetas de crédito** (Visa, Mastercard, American Express) con financiación en **3 y 6 cuotas** para tratamientos odontológicos y ortodoncia. Emitimos factura electrónica oficial.
 
-## Obras Sociales y Medios de Pago
-- **¿Qué obras sociales y prepagas atienden?** La cartilla vigente debe confirmarse directamente con la clínica; el arancel recibido no incluye información de convenios.
-- **¿Qué documentación se necesita?** Confirmá con la clínica qué documentación y credencial requiere tu cobertura.
-- **¿Puedo atenderme de forma particular?** Consultá con la clínica los medios de pago disponibles.
+## ¿Cuáles son los horarios de atención de la clínica?
+Atendemos de **lunes a viernes de 08:00 a 20:00 hs** en horario corrido y los **sábados de 09:00 a 14:00 hs**. Las urgencias odontológicas se priorizan mediante el módulo de **Teletriaje**.
 
-## Primera Consulta
-- **¿Qué debo traer a la primera consulta?** DNI, credencial de obra social (si tenés), radiografías previas si las tenés, y una lista de medicamentos que estés tomando.
-- **¿La primera consulta tiene costo?** El arancel de referencia del nomenclador recibido para examen, diagnóstico, fichado y plan de tratamiento (código 01.01) es $45.941,00. El texto fuente no indica vigencia; confirmá el valor actual y si corresponde a tu consulta con la clínica.
-- **¿Me van a hacer radiografías?** Dependiendo del caso, el odontólogo puede solicitar radiografías panorámicas o periapicales para un diagnóstico completo.
+## ¿Qué documentación debe presentar el paciente en recepción?
+1. **DNI físico o digital** vigente.
+2. **Credencial de obra social o prepaga** (física o desde la app oficial) vigente.
+3. En caso de tratamientos que requieran autorización u orden de derivación o radiografías previas, presentarlas al momento del check-in.
 
-## Tratamientos
-- **¿Qué tratamientos realizan?** Ofrecemos: limpieza dental, blanqueamiento, ortodoncia (brackets y alineadores), implantes, endodoncia (tratamiento de conducto), cirugía de muelas de juicio, prótesis dentales, carillas de porcelana, y odontopediatría.
-- **¿Duele el tratamiento de conducto?** No, se realiza con anestesia local. Es posible sentir molestia leve los primeros días post-tratamiento.
-- **¿Cuánto dura un blanqueamiento?** La sesión en consultorio dura aproximadamente 1 hora. Los resultados duran entre 1 y 3 años según los cuidados.
-- **¿Desde qué edad pueden atender a niños?** Atendemos desde los 3 años con nuestro equipo de odontopediatría.
+## ¿Cómo se gestionan los turnos, cancelaciones y urgencias?
+Los turnos se reservan desde la sección **Turnos** (o **Mis turnos** en el portal del paciente) y también desde este **Asistente IA** indicando el profesional o solicitando ver horarios disponibles. Las cancelaciones o reprogramaciones se solicitan con al menos 24 horas de anticipación.
 
-## Emergencias Dentales
-- **Me duele mucho una muela, ¿qué hago?** Podés tomar un analgésico (ibuprofeno 400mg) y aplicar frío en la zona externamente. Agendá un turno de urgencia lo antes posible. NO te automediques con antibióticos.
-- **Se me cayó un empaste/restauración:** Guardá la pieza si es posible, evitá masticar de ese lado y pedí turno urgente.
-- **Se me quebró un diente:** Buscá los fragmentos, enjuagá con agua y vení de urgencia. Si hay sangrado, presioná con gasa.
-- **Tengo la cara hinchada por una muela:** Esto puede ser un absceso dental. Necesitás atención urgente. Aplicá frío externo y vení a la clínica de inmediato.
+## ¿Cuáles son los aranceles particulares de referencia?
+Segun el nomenclador vigente de referencia:
+- **Consulta, diagnóstico y plan de tratamiento (`01.01`)**: **$45.941,00 ARS**.
+- **Limpieza dental / tartrectomía y profilaxis (`05.01`)**: **$52.000,00 ARS**.
+- **Restauración dental simple (`02.01`)**: **$68.500,00 ARS**.
+- **Endodoncia / tratamiento de conducto (`03.01`)**: **$125.000,00 ARS**.
+El presupuesto definitivo siempre se registra en el **Odontograma clínico** con consentimiento y firma del paciente.

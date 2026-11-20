@@ -16,7 +16,20 @@ public class EspecialidadService {
     }
 
     public List<Especialidad> listarEspecialidades() {
-        return especialidadRepository.findAll();
+        List<Especialidad> existentes = especialidadRepository.findAll();
+        if (existentes.isEmpty()) {
+            List<Especialidad> porDefecto = List.of(
+                    new Especialidad("Odontología General", "Atención odontológica integral, prevención, diagnóstico y restauraciones."),
+                    new Especialidad("Ortodoncia", "Corrección de maloclusiones, alineación dental y ortopedia maxilar."),
+                    new Especialidad("Endodoncia", "Tratamiento de conductos radiculares y patologías pulpares."),
+                    new Especialidad("Implantología", "Rehabilitación oral mediante implantes osteointegrados y prótesis."),
+                    new Especialidad("Periodoncia", "Prevención, diagnóstico y tratamiento de encías y tejidos de soporte."),
+                    new Especialidad("Odontopediatría", "Atención odontológica integral para niños y adolescentes."),
+                    new Especialidad("Cirugía Maxilofacial", "Extracciones complejas, terceros molares retenidos y cirugía oral.")
+            );
+            return especialidadRepository.saveAll(porDefecto);
+        }
+        return existentes;
     }
 
     public Especialidad obtenerPorId(Long id) {

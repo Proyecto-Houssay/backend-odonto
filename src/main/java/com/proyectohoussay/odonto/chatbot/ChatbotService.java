@@ -192,7 +192,9 @@ public class ChatbotService {
                     score += 20;
                 }
             } else if ("obras_sociales".equals(intencion)) {
-                if (source.contains("obras-sociales") || sectionTitle.contains("obras sociales") || sectionTitle.contains("cobertura")) {
+                if (source.contains("obras-sociales") || sectionTitle.contains("obras sociales")
+                        || sectionTitle.contains("cobertura") || sectionTitle.contains("medios de pago")
+                        || sectionTitle.contains("financiacion")) {
                     score += 15;
                 }
             }
@@ -246,7 +248,7 @@ public class ChatbotService {
             case "saludo" -> RESPUESTA_SALUDO;
             case "turno", "doctores" -> "Ahora no puedo confirmar los horarios ni la disponibilidad porque no hay una fuente vigente aprobada. Consultá tus turnos registrados o comunicate con recepción.";
             case "obras_sociales" -> "En NovaDent atendemos con las principales obras sociales y prepagas: OSDE, Swiss Medical, Galeno, Medicus, IOMA, PAMI, Accord Salud y Sancor Salud. Presentá tu credencial vigente y DNI al concurrir al consultorio.";
-            case "odontograma" -> "Este asistente no puede evaluar síntomas ni diagnosticar. Registrá lo que observás y consultá con un odontólogo para una evaluación profesional.";
+            case "odontograma" -> "Este asistente no puede evaluar síntomas ni diagnosticar afecciones dentales. Para tu seguridad, evitá automedicarte o aplicar temperaturas extremas. Te recomendamos registrar lo que observás en tu cuenta o solicitar un turno con nuestro equipo profesional para una evaluación adecuada.";
             default -> SIN_EVIDENCIA;
         };
     }
@@ -285,14 +287,16 @@ public class ChatbotService {
 
         // Precios y costos
         if (containsAny(lower, "precio", "costo", "cuánto sale", "cuanto sale",
-                "cuánto cuesta", "cuanto cuesta", "valor", "tarifa", "copago")) {
+                "cuánto cuesta", "cuanto cuesta", "valor", "tarifa", "copago", "arancel", "aranceles")) {
             return "precio";
         }
 
-        // Obras sociales y prepagas (coberturas y convenios)
+        // Obras sociales, prepagas y medios de pago
         if (containsAny(lower, "obra social", "obras sociales", "prepaga", "prepagas",
                 "cobertura", "coberturas", "convenio", "convenios", "cartilla",
-                "osde", "swiss", "galeno", "medicus", "ioma", "pami", "accord", "sancor", "reintegro", "reintegros")) {
+                "osde", "swiss", "galeno", "medicus", "medife", "medifé", "apross", "ioma", "pami", "accord", "sancor", "reintegro", "reintegros",
+                "medio de pago", "medios de pago", "forma de pago", "formas de pago",
+                "tarjeta", "tarjetas", "transferencia", "cuota", "cuotas", "mercado pago", "mercadopago", "efectivo")) {
             return "obras_sociales";
         }
 
@@ -360,7 +364,7 @@ public class ChatbotService {
         return switch (intencion) {
             case "saludo" -> List.of("/mis-turnos", "/mi-odontograma", "/");
             case "turno", "doctores", "obras_sociales", "precio" -> List.of("/mis-turnos");
-            case "odontograma" -> List.of("/mi-odontograma", "/");
+            case "odontograma" -> List.of("/mis-turnos", "/mi-odontograma", "/");
             default -> List.of();
         };
     }

@@ -1,11 +1,18 @@
 package com.proyectohoussay.odonto.service;
 
+import com.proyectohoussay.odonto.dto.OdontologoAltaCompletaRequest;
+import com.proyectohoussay.odonto.model.Especialidad;
 import com.proyectohoussay.odonto.model.Odontologo;
 import com.proyectohoussay.odonto.model.DisponibilidadHoraria;
 import com.proyectohoussay.odonto.model.EstadoProfesional;
+import com.proyectohoussay.odonto.model.Usuario;
 import com.proyectohoussay.odonto.repository.EspecialidadRepository;
 import com.proyectohoussay.odonto.repository.OdontologoRepository;
+import com.proyectohoussay.odonto.repository.UsuarioRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,10 +25,22 @@ public class OdontologoService {
 
     private final OdontologoRepository odontologoRepository;
     private final EspecialidadRepository especialidadRepository;
+    private UsuarioRepository usuarioRepository;
+    private PasswordEncoder passwordEncoder;
 
     public OdontologoService(OdontologoRepository odontologoRepository, EspecialidadRepository especialidadRepository) {
         this.odontologoRepository = odontologoRepository;
         this.especialidadRepository = especialidadRepository;
+    }
+
+    @Autowired(required = false)
+    public void setUsuarioRepository(UsuarioRepository usuarioRepository) {
+        this.usuarioRepository = usuarioRepository;
+    }
+
+    @Autowired(required = false)
+    public void setPasswordEncoder(PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
     }
 
     public List<Odontologo> listarOdontologos() {
@@ -50,6 +69,87 @@ public class OdontologoService {
         if (odontologoRepository.existsByMatricula(odontologo.getMatricula())) {
             throw new IllegalStateException("Ya existe un odontólogo registrado con la matrícula: " + odontologo.getMatricula());
         }
+        return odontologoRepository.save(odontologo);
+    }
+
+    @Transactional
+    public Odontologo crearOdontologoAltaCompleta(OdontologoAltaCompletaRequest request) {
+        if (request.nombre() == null || request.nombre().isBlank()) {
+            throw new IllegalArgumentException("El nombre del odontólogo es obligatorio.");
+        }
+        if (request.apellido() == null || request.apellido().isBlank()) {
+            throw new IllegalArgumentException("El apellido del odontólogo es obligatorio.");
+        }
+        validarMatricula(request.matricula());
+        String matricula = request.matricula().trim();
+        if (odontologoRepository.existsByMatricula(matricula)) {
+            throw new IllegalStateException("Ya existe un odontólogo registrado con la matrícula: " + matricula);
+        }
+
+        Especialidad especialidad;
+        if (request.nuevaEspecialidadNombre() != null && !request.nuevaEspecialidadNombre().isBlank()) {
+            String nombreEsp = request.nuevaEspecialidadNombre().trim();
+            especialidad = especialidadRepository.findAll().stream()
+                    .filter(e -> e.getNombre() != null && e.getNombre().equalsIgnoreCase(nombreEsp))
+                    .findFirst()
+                    .orElseGet(() -> especialidadRepository.save(new Especialidad(
+                            nombreEsp,
+                            request.nuevaEspecialidadDescripcion() != null && !request.nuevaEspecialidadDescripcion().isBlank()
+                                    ? request.nuevaEspecialidadDescripcion().trim()
+                                    : "Especialidad clínica en " + nombreEsp)));
+        } else if (request.especialidadId() != null) {
+            especialidad = especialidadRepository.findById(request.especialidadId())
+                    .orElseThrow(() -> new IllegalArgumentException("La especialidad indicada no existe."));
+        } else {
+            throw new IllegalArgumentException("El odontólogo debe tener una especialidad asociada.");
+        }
+
+        Odontologo odontologo = new Odontologo(
+                request.nombre().trim(),
+                request.apellido().trim(),
+                matricula,
+                request.email() != null && !request.email().isBlank() ? request.email().trim() : null,
+                request.telefono() != null && !request.telefono().isBlank() ? request.telefono().trim() : null,
+                especialidad
+        );
+        boolean activo = request.activo() == null || request.activo();
+        odontologo.setActivo(activo);
+        odontologo.setEstadoProfesional(activo ? EstadoProfesional.ACTIVO : EstadoProfesional.INACTIVO);
+        if (request.consultorio() != null && !request.consultorio().isBlank()) {
+            odontologo.setConsultorio(request.consultorio().trim());
+        }
+
+        if (Boolean.TRUE.equals(request.crearCuentaUsuario()) && usuarioRepository != null && passwordEncoder != null) {
+            String username = request.username() != null ? request.username().trim() : "";
+            String password = request.password() != null ? request.password() : "";
+            if (username.isBlank()) {
+                throw new IllegalArgumentException("El nombre de usuario es obligatorio para crear la cuenta de acceso.");
+            }
+            if (password.length() < 6) {
+                throw new IllegalArgumentException("La contraseña debe tener al menos 6 caracteres.");
+            }
+            if (usuarioRepository.existsByUsernameIgnoreCase(username)) {
+                throw new IllegalStateException("Ya existe una cuenta de usuario con el username: " + username);
+            }
+            String userEmail = odontologo.getEmail() != null && !odontologo.getEmail().isBlank()
+                    ? odontologo.getEmail()
+                    : username.toLowerCase() + "@novadent.local";
+            if (usuarioRepository.existsByEmailIgnoreCase(userEmail)) {
+                throw new IllegalStateException("Ya existe una cuenta de usuario con el correo: " + userEmail);
+            }
+            Usuario cuenta = new Usuario();
+            cuenta.setUsername(username);
+            cuenta.setNombre(odontologo.getNombre());
+            cuenta.setApellido(odontologo.getApellido());
+            cuenta.setNombreMostrar("Dr./Dra. " + odontologo.getNombre() + " " + odontologo.getApellido());
+            cuenta.setEmail(userEmail);
+            cuenta.setPassword(passwordEncoder.encode(password));
+            cuenta.setRol("ODONTOLOGO");
+            cuenta.setActivo(true);
+            Usuario guardada = usuarioRepository.save(cuenta);
+            odontologo.setUsuarioId(guardada.getId());
+        }
+
         return odontologoRepository.save(odontologo);
     }
 

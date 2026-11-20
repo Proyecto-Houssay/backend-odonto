@@ -1,5 +1,6 @@
 package com.proyectohoussay.odonto.controller;
 
+import com.proyectohoussay.odonto.dto.OdontologoAltaCompletaRequest;
 import com.proyectohoussay.odonto.model.Odontologo;
 import com.proyectohoussay.odonto.model.DisponibilidadHoraria;
 import com.proyectohoussay.odonto.service.OdontologoService;
@@ -81,6 +82,19 @@ public class OdontologoController {
     public ResponseEntity<?> crearOdontologo(@Valid @RequestBody Odontologo odontologo) {
         try {
             Odontologo nuevo = odontologoService.crearOdontologo(odontologo);
+            return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/alta-completa")
+    @Operation(summary = "Registrar odontólogo con especialidad nueva/existente y cuenta de usuario opcional")
+    public ResponseEntity<?> crearOdontologoAltaCompleta(@RequestBody OdontologoAltaCompletaRequest request) {
+        try {
+            Odontologo nuevo = odontologoService.crearOdontologoAltaCompleta(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());

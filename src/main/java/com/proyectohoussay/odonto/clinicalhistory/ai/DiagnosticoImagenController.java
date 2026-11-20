@@ -7,7 +7,10 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,7 +44,10 @@ public class DiagnosticoImagenController {
 
     @Operation(summary = "Analizar imagen dental en formato Base64", description = "Procesa una radiografía o foto dental en Base64, detecta patologías con IA y sugiere tratamientos.")
     @PostMapping("/analizar")
-    public ResponseEntity<AnalisisImagenResponse> analizar(@Valid @RequestBody AnalisisImagenRequest request) {
+    public ResponseEntity<AnalisisImagenResponse> analizar(
+            @Valid @RequestBody AnalisisImagenRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        validarPermisosClinicos(jwt, request.pacienteId(), request.historiaClinicaId(), request.guardarEnHistoria());
         AnalisisImagenResponse response = diagnosticoImagenService.analizarImagen(request);
         return ResponseEntity.ok(response);
     }
@@ -54,8 +60,10 @@ public class DiagnosticoImagenController {
             @RequestParam(value = "pacienteId", required = false) Long pacienteId,
             @RequestParam(value = "historiaClinicaId", required = false) Long historiaClinicaId,
             @RequestParam(value = "observaciones", required = false) String observaciones,
-            @RequestParam(value = "guardarEnHistoria", defaultValue = "false") boolean guardarEnHistoria
+            @RequestParam(value = "guardarEnHistoria", defaultValue = "false") boolean guardarEnHistoria,
+            @AuthenticationPrincipal Jwt jwt
     ) {
+        validarPermisosClinicos(jwt, pacienteId, historiaClinicaId, guardarEnHistoria);
         AnalisisImagenResponse response = diagnosticoImagenService.analizarArchivo(
                 archivo,
                 tipoImagen,
@@ -65,6 +73,21 @@ public class DiagnosticoImagenController {
                 guardarEnHistoria
         );
         return ResponseEntity.ok(response);
+    }
+
+    private void validarPermisosClinicos(Jwt jwt, Long pacienteId, Long historiaClinicaId, boolean guardarEnHistoria) {
+        if (jwt == null) {
+            return;
+        }
+        String role = jwt.getClaimAsString("role");
+        if ("PACIENTE".equalsIgnoreCase(role) || "RECEPCIONISTA".equalsIgnoreCase(role)) {
+            if (guardarEnHistoria || historiaClinicaId != null || pacienteId != null) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "No tenés permisos para asociar o guardar estudios en historias clínicas de pacientes."
+                );
+            }
+        }
     }
 
     @Operation(summary = "Obtener historial de análisis de IA por paciente", description = "Recupera la lista cronológica de estudios diagnósticos por IA realizados a un paciente.")

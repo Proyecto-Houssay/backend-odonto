@@ -77,27 +77,35 @@ public class ReportController {
 
     @GetMapping("/atenciones")
     public ResponseEntity<AtencionesReportDto> obtenerReporteAtenciones(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
-        return ResponseEntity.ok(reportService.obtenerReporteAtenciones(desde, hasta));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        LocalDate inicio = desde != null ? desde : LocalDate.now().withDayOfYear(1);
+        LocalDate fin = hasta != null ? hasta : LocalDate.now().withMonth(12).withDayOfMonth(31);
+        return ResponseEntity.ok(reportService.obtenerReporteAtenciones(inicio, fin));
     }
 
     @GetMapping("/anual")
-    public ResponseEntity<AnualReportDto> obtenerReporteAnual(@RequestParam int anio) {
-        return ResponseEntity.ok(reportService.obtenerReporteAnual(anio));
+    public ResponseEntity<AnualReportDto> obtenerReporteAnual(
+            @RequestParam(required = false) Integer anio) {
+        int targetYear = anio != null ? anio : LocalDate.now().getYear();
+        return ResponseEntity.ok(reportService.obtenerReporteAnual(targetYear));
     }
 
     @GetMapping("/ganancias")
     public ResponseEntity<Map<String, Object>> obtenerReporteGanancias(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
-        return ResponseEntity.ok(reportService.obtenerReporteGanancias(desde, hasta));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        LocalDate inicio = desde != null ? desde : LocalDate.now().withDayOfYear(1);
+        LocalDate fin = hasta != null ? hasta : LocalDate.now().withMonth(12).withDayOfMonth(31);
+        return ResponseEntity.ok(reportService.obtenerReporteGanancias(inicio, fin));
     }
 
     @GetMapping("/cobros")
     public ResponseEntity<List<MovimientoFinancieroDto>> obtenerCobros(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
-        return ResponseEntity.ok(reportService.obtenerCobros(desde, hasta));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        LocalDate inicio = desde != null ? desde : LocalDate.now().withDayOfYear(1);
+        LocalDate fin = hasta != null ? hasta : LocalDate.now().withMonth(12).withDayOfMonth(31);
+        return ResponseEntity.ok(reportService.obtenerCobros(inicio, fin));
     }
 }

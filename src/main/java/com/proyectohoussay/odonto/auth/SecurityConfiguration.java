@@ -87,9 +87,11 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/chatbot/knowledge", "/api/chatbot/knowledge/**")
                         .hasRole(UserRole.ADMINISTRADOR.name())
                         .requestMatchers(HttpMethod.POST, "/api/chatbot/ask", "/api/chatbot/turnos/reservar")
-                        .hasAnyRole(UserRole.PACIENTE.name(), UserRole.ADMINISTRADOR.name(), UserRole.RECEPCIONISTA.name())
+                        .hasAnyRole(UserRole.PACIENTE.name(), UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers(HttpMethod.GET, "/api/chatbot/doctores", "/api/chatbot/turnos/disponibles")
-                        .hasAnyRole(UserRole.PACIENTE.name(), UserRole.ADMINISTRADOR.name(), UserRole.RECEPCIONISTA.name())
+                        .hasAnyRole(UserRole.PACIENTE.name(), UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(), UserRole.RECEPCIONISTA.name())
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers("/api/usuarios/**", "/api/reports/**", "/api/finanzas/**", "/api/personal", "/api/personal/**")
@@ -126,11 +128,20 @@ public class SecurityConfiguration {
                                 UserRole.ADMINISTRADOR.name(),
                                 UserRole.ODONTOLOGO.name(),
                                 UserRole.RECEPCIONISTA.name())
-                        .requestMatchers("/api/ia/diagnostico-imagen/**", "/api/ia/**")
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/ia/diagnostico-imagen/catalogo")
                         .hasAnyRole(
                                 UserRole.ADMINISTRADOR.name(),
                                 UserRole.ODONTOLOGO.name(),
-                                UserRole.RECEPCIONISTA.name(),
+                                UserRole.PACIENTE.name())
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/ia/diagnostico-imagen/analizar",
+                                "/api/ia/diagnostico-imagen/upload")
+                        .hasAnyRole(
+                                UserRole.ADMINISTRADOR.name(),
+                                UserRole.ODONTOLOGO.name(),
                                 UserRole.PACIENTE.name())
                         .requestMatchers(
                                 "/api/odontograma",

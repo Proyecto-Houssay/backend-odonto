@@ -47,15 +47,15 @@ public class Odontologo {
     private String consultorio;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado_profesional", nullable = false, length = 20)
+    @Column(name = "estado_profesional", nullable = true, length = 20)
     private EstadoProfesional estadoProfesional = EstadoProfesional.ACTIVO;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "odontologo_disponibilidades", joinColumns = @JoinColumn(name = "odontologo_id"))
     @Valid
     private List<DisponibilidadHoraria> disponibilidades = new ArrayList<>();
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "odontologo_especialidades",
             joinColumns = @JoinColumn(name = "odontologo_id"),
             inverseJoinColumns = @JoinColumn(name = "especialidad_id"))
@@ -171,10 +171,14 @@ public class Odontologo {
 
     public String getConsultorio() { return consultorio; }
     public void setConsultorio(String consultorio) { this.consultorio = consultorio; }
-    public EstadoProfesional getEstadoProfesional() { return estadoProfesional; }
+    public EstadoProfesional getEstadoProfesional() {
+        return estadoProfesional == null
+                ? (activo ? EstadoProfesional.ACTIVO : EstadoProfesional.INACTIVO)
+                : estadoProfesional;
+    }
     public void setEstadoProfesional(EstadoProfesional estadoProfesional) {
-        this.estadoProfesional = estadoProfesional;
-        this.activo = estadoProfesional == EstadoProfesional.ACTIVO;
+        this.estadoProfesional = estadoProfesional != null ? estadoProfesional : EstadoProfesional.ACTIVO;
+        this.activo = this.estadoProfesional == EstadoProfesional.ACTIVO;
     }
     public List<DisponibilidadHoraria> getDisponibilidades() { return disponibilidades; }
     public void setDisponibilidades(List<DisponibilidadHoraria> disponibilidades) {

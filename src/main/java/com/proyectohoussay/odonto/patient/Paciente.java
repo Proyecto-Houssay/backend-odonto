@@ -69,7 +69,7 @@ public class Paciente {
     @Embedded
     private ContactoEmergencia contactoEmergencia;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "paciente_alertas_medicas", joinColumns = @JoinColumn(name = "paciente_id"))
     @OrderColumn(name = "orden")
     @Column(name = "alerta", nullable = false, length = 200)

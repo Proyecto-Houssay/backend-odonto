@@ -219,6 +219,7 @@ class ChatbotAgendaIntegrationTest {
                 .andExpect(status().isUnauthorized());
 
         mvc.perform(get("/api/chatbot/doctores").header("Authorization", staffDentist))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
     }
 }
