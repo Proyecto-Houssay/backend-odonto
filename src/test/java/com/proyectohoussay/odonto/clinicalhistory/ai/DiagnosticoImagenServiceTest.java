@@ -5,6 +5,9 @@ import com.proyectohoussay.odonto.clinicalhistory.Diagnostico;
 import com.proyectohoussay.odonto.clinicalhistory.DiagnosticoRepository;
 import com.proyectohoussay.odonto.clinicalhistory.HistoriaClinica;
 import com.proyectohoussay.odonto.clinicalhistory.HistoriaClinicaRepository;
+import com.proyectohoussay.odonto.patient.Paciente;
+import com.proyectohoussay.odonto.patient.ReporteDental;
+import com.proyectohoussay.odonto.patient.ReporteDentalRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -41,6 +45,9 @@ class DiagnosticoImagenServiceTest {
     @Mock
     private DiagnosticoRepository diagnosticoRepository;
 
+    @Mock
+    private ReporteDentalRepository reporteDentalRepository;
+
     private ObjectMapper objectMapper;
     private DiagnosticoImagenService service;
 
@@ -51,7 +58,10 @@ class DiagnosticoImagenServiceTest {
                 diagnosticoImagenRepository,
                 historiaClinicaRepository,
                 diagnosticoRepository,
-                objectMapper
+                objectMapper,
+                reporteDentalRepository,
+                "",
+                "gemini-3-flash-preview"
         );
     }
 
@@ -243,7 +253,36 @@ class DiagnosticoImagenServiceTest {
         assertNotNull(response);
         assertTrue(response.hallazgos().stream()
                 .anyMatch(h -> h.piezaDental().contains("11") && h.patologia() == PatologiaDental.FRACTURA_RADICULAR));
+        assertEquals(1, response.hallazgos().size());
         verify(historiaClinicaRepository).save(any(HistoriaClinica.class));
         verify(diagnosticoRepository).save(any(Diagnostico.class));
+    }
+
+    @Test
+    @DisplayName("should correlate diagnosis with patient's latest ReporteDental without injecting unrelated teeth")
+    void shouldCorrelateWithPatientReporteDental() {
+        when(diagnosticoImagenRepository.save(any(DiagnosticoImagen.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        Paciente paciente = mock(Paciente.class);
+        ReporteDental reporte = new ReporteDental(paciente, 24, 8, "Dolor intenso al masticar en premolar superior", null, false);
+        when(reporteDentalRepository.findByPacienteIdOrderByCreadoEnDesc(88L)).thenReturn(List.of(reporte));
+
+        AnalisisImagenRequest request = new AnalisisImagenRequest(
+                TipoImagenDental.RADIOGRAFIA_PANORAMICA,
+                null,
+                88L,
+                null,
+                null,
+                false,
+                "estudio.png"
+        );
+
+        AnalisisImagenResponse response = service.analizarImagen(request);
+
+        assertNotNull(response);
+        assertEquals(1, response.hallazgos().size());
+        assertTrue(response.hallazgos().get(0).piezaDental().contains("24"));
+        assertEquals(SeveridadHallazgo.SEVERA, response.hallazgos().get(0).severidad());
+        assertTrue(response.observacionesIA().contains("Pieza 24"));
     }
 }

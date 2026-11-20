@@ -29,16 +29,27 @@ public class ReporteDental {
     private String revisionProfesional;
     private Long revisadoPorId;
     private Instant revisadoEn;
+    @Column(name = "odontologo_id", updatable = false)
+    private Long odontologoId;
+    @Column(name = "odontologo_nombre", length = 160, updatable = false)
+    private String odontologoNombre;
 
     protected ReporteDental() { }
 
     public ReporteDental(Paciente paciente, int pieza, int dolor, String sintomas, String fotoBase64, boolean consentimientoFoto) {
+        this(paciente, pieza, dolor, sintomas, fotoBase64, consentimientoFoto, null, null);
+    }
+
+    public ReporteDental(Paciente paciente, int pieza, int dolor, String sintomas, String fotoBase64,
+                         boolean consentimientoFoto, Long odontologoId, String odontologoNombre) {
         this.paciente = paciente;
         this.pieza = pieza;
         this.dolor = dolor;
         this.sintomas = sintomas;
         this.fotoBase64 = fotoBase64;
         this.consentimientoFoto = consentimientoFoto;
+        this.odontologoId = odontologoId;
+        this.odontologoNombre = odontologoNombre;
         this.creadoEn = Instant.now().truncatedTo(ChronoUnit.MICROS);
     }
 
@@ -60,4 +71,6 @@ public class ReporteDental {
     public String getRevisionProfesional() { return revisionProfesional; }
     public Long getRevisadoPorId() { return revisadoPorId; }
     public Instant getRevisadoEn() { return revisadoEn; }
+    public Long getOdontologoId() { return odontologoId; }
+    public String getOdontologoNombre() { return odontologoNombre; }
 }

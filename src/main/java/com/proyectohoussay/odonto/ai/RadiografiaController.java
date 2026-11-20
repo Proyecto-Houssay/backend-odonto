@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -275,6 +276,108 @@ public class RadiografiaController {
         }
         return stage;
     }
+
+    @PostMapping(value = "/verificar-dni", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> verificarDni(@RequestBody DniVerifyRequest req) {
+        if (req == null || req.dniImagenBase64() == null || req.dniImagenBase64().isBlank()
+                || req.camaraImagenBase64() == null || req.camaraImagenBase64().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "disponible", false,
+                    "coincide", false,
+                    "motivo", "Faltan las imágenes del documento o de la cámara."
+            ));
+        }
+        if (!hasExternalApiKey()) {
+            return ResponseEntity.ok(Map.of("disponible", false));
+        }
+
+        String prompt = """
+                Sos un verificador biométrico y documental de recepción clínica.
+                Imagen 1: fotografía de un documento (DNI) o retrato de referencia.
+                Imagen 2: captura en vivo de la cámara web del paciente.
+                Analizá ambas imágenes juntas y devolvé ÚNICAMENTE un JSON válido (sin markdown ni texto extra) con estas claves exactas:
+                - "coincide": boolean (true si el rostro de la Imagen 2 corresponde a la misma persona que el retrato de la Imagen 1)
+                - "similitudPct": entero de 0 a 99 estimando la similitud facial
+                - "dniDetectado": string con solo los dígitos del número de documento si es legible en la Imagen 1 (o "" si no se ve)
+                - "nombreDetectado": string con nombre y apellido si es legible en la Imagen 1 (o "" si no se ve)
+                - "motivo": string breve en español explicando el resultado de la comparación.
+                """;
+
+        try {
+            ObjectNode requestBody = objectMapper.createObjectNode();
+            ArrayNode contents = requestBody.putArray("contents");
+            ArrayNode parts = contents.addObject().putArray("parts");
+            parts.addObject().put("text", prompt);
+            addInlineImage(parts, req.dniImagenBase64());
+            addInlineImage(parts, req.camaraImagenBase64());
+            requestBody.putObject("generationConfig").put("temperature", 0.1);
+
+            String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent";
+            String responseBody = restClient.post().uri(URI.create(endpoint))
+                    .header("x-goog-api-key", apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(requestBody)
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode payload = objectMapper.readTree(responseBody == null ? "{}" : responseBody);
+            StringBuilder raw = new StringBuilder();
+            JsonNode responseParts = payload.path("candidates").path(0).path("content").path("parts");
+            if (responseParts.isArray()) {
+                for (JsonNode part : responseParts) {
+                    if (part.hasNonNull("text")) {
+                        raw.append(part.get("text").asText());
+                    }
+                }
+            }
+            String cleaned = raw.toString().trim()
+                    .replaceAll("^```json\\s*", "")
+                    .replaceAll("^```\\s*", "")
+                    .replaceAll("\\s*```$", "")
+                    .trim();
+            int start = cleaned.indexOf('{');
+            int end = cleaned.lastIndexOf('}');
+            if (start < 0 || end <= start) {
+                return ResponseEntity.ok(Map.of("disponible", false));
+            }
+            JsonNode parsed = objectMapper.readTree(cleaned.substring(start, end + 1));
+            boolean coincide = parsed.path("coincide").asBoolean(false);
+            int similitud = Math.max(0, Math.min(99, parsed.path("similitudPct").asInt(coincide ? 85 : 25)));
+            String dniDetectado = parsed.path("dniDetectado").asText("").replaceAll("\\D", "");
+            String nombreDetectado = parsed.path("nombreDetectado").asText("").trim();
+            String motivo = parsed.path("motivo").asText("Verificación completada.");
+
+            return ResponseEntity.ok(Map.of(
+                    "disponible", true,
+                    "coincide", coincide,
+                    "similitudPct", similitud,
+                    "dniDetectado", dniDetectado,
+                    "nombreDetectado", nombreDetectado,
+                    "motivo", motivo,
+                    "modelo", model
+            ));
+        } catch (RestClientException | IOException ex) {
+            return ResponseEntity.ok(Map.of("disponible", false));
+        }
+    }
+
+    private void addInlineImage(ArrayNode parts, String base64OrDataUri) {
+        String mime = "image/jpeg";
+        String data = base64OrDataUri.trim();
+        if (data.startsWith("data:") && data.contains(",")) {
+            int semi = data.indexOf(';');
+            int comma = data.indexOf(',');
+            if (semi > 5 && semi < comma) {
+                mime = data.substring(5, semi);
+            }
+            data = data.substring(comma + 1);
+        }
+        ObjectNode image = parts.addObject().putObject("inline_data");
+        image.put("mime_type", mime);
+        image.put("data", data);
+    }
+
+    public record DniVerifyRequest(String dniImagenBase64, String camaraImagenBase64) { }
 
     public record AnalysisResponse(String diagnosticoSugerido, String modeloUtilizado,
                                    String fechaAnalisis,

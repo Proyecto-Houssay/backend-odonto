@@ -2,8 +2,10 @@ package com.proyectohoussay.odonto.patient;
 
 import com.proyectohoussay.odonto.auth.UserRole;
 import com.proyectohoussay.odonto.model.MensajeUsuario;
+import com.proyectohoussay.odonto.model.Odontologo;
 import com.proyectohoussay.odonto.model.Usuario;
 import com.proyectohoussay.odonto.repository.MensajeUsuarioRepository;
+import com.proyectohoussay.odonto.repository.OdontologoRepository;
 import com.proyectohoussay.odonto.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -19,25 +21,34 @@ public class ReporteDentalService {
     private final PacienteCuentaService cuentas;
     private final UsuarioRepository usuarios;
     private final MensajeUsuarioRepository mensajes;
+    private final OdontologoRepository odontologos;
 
     public ReporteDentalService(ReporteDentalRepository reportes, PacienteCuentaService cuentas,
                                 UsuarioRepository usuarios) {
-        this(reportes, cuentas, usuarios, null);
+        this(reportes, cuentas, usuarios, null, null);
     }
 
     @Autowired
     public ReporteDentalService(ReporteDentalRepository reportes, PacienteCuentaService cuentas,
                                 UsuarioRepository usuarios,
-                                @Autowired(required = false) MensajeUsuarioRepository mensajes) {
+                                @Autowired(required = false) MensajeUsuarioRepository mensajes,
+                                @Autowired(required = false) OdontologoRepository odontologos) {
         this.reportes = reportes;
         this.cuentas = cuentas;
         this.usuarios = usuarios;
         this.mensajes = mensajes;
+        this.odontologos = odontologos;
     }
 
     @Transactional
     public ReporteDental crear(Long userId, int pieza, int dolor, String sintomas,
                                String fotoBase64, boolean consentimientoFoto) {
+        return crear(userId, pieza, dolor, sintomas, fotoBase64, consentimientoFoto, null);
+    }
+
+    @Transactional
+    public ReporteDental crear(Long userId, int pieza, int dolor, String sintomas,
+                               String fotoBase64, boolean consentimientoFoto, Long odontologoId) {
         if (pieza / 10 < 1 || pieza / 10 > 4 || pieza % 10 < 1 || pieza % 10 > 8) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Número FDI de pieza inválido");
         }
@@ -46,7 +57,35 @@ public class ReporteDentalService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debés consentir el almacenamiento de la foto");
         }
         String foto = FotoClinica.normalizar(fotoBase64);
-        return reportes.save(new ReporteDental(paciente, pieza, dolor, sintomas.trim(), foto, foto != null && consentimientoFoto));
+
+        Long targetOdontologoId = null;
+        String targetOdontologoNombre = null;
+        Odontologo destinatario = null;
+        if (odontologoId != null && odontologos != null) {
+            destinatario = odontologos.findById(odontologoId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "El odontólogo seleccionado no existe"));
+            targetOdontologoId = destinatario.getId();
+            targetOdontologoNombre = "Dr./Dra. " + destinatario.getNombre() + " " + destinatario.getApellido();
+        }
+
+        ReporteDental saved = reportes.save(new ReporteDental(
+                paciente, pieza, dolor, sintomas.trim(), foto,
+                foto != null && consentimientoFoto,
+                targetOdontologoId, targetOdontologoNombre));
+
+        if (destinatario != null && destinatario.getUsuarioId() != null && mensajes != null) {
+            String nombrePaciente = paciente.getNombre() + " " + paciente.getApellido();
+            mensajes.save(new MensajeUsuario(
+                    destinatario.getUsuarioId(),
+                    userId,
+                    nombrePaciente,
+                    "Nuevo reporte dental de paciente (Pieza " + pieza + ")",
+                    "El paciente " + nombrePaciente + " te dirigió un reporte de la pieza " + pieza
+                            + " (dolor " + dolor + "/10): \"" + sintomas.trim()
+                            + "\". Podés revisarlo desde el módulo Seguimiento."
+            ));
+        }
+        return saved;
     }
 
     @Transactional
