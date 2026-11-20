@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.proyectohoussay.odonto.patient.Paciente;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.regex.Pattern;
@@ -48,11 +50,24 @@ public class Usuario {
 
     @NotBlank(message = "El rol es obligatorio.")
     @Size(max = 30)
-    @jakarta.validation.constraints.Pattern(regexp = "(?i)ADMINISTRADOR|ODONTOLOGO|RECEPCIONISTA", message = "El rol no es válido.")
+    @jakarta.validation.constraints.Pattern(regexp = "(?i)ADMINISTRADOR|ODONTOLOGO|RECEPCIONISTA|PACIENTE", message = "El rol no es válido.")
     @Column(nullable = false, length = 30)
     private String rol;
     private boolean activo = true;
     private String telefono;
+
+    @Size(max = 120, message = "El nombre para mostrar no puede superar los 120 caracteres.")
+    @Column(name = "nombre_mostrar", length = 120)
+    private String nombreMostrar;
+
+    @Lob
+    @Column(name = "foto_base64", columnDefinition = "LONGTEXT")
+    private String fotoBase64;
+
+    @JsonIgnore
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "paciente_id", unique = true)
+    private Paciente paciente;
 
     public Usuario() {
     }
@@ -137,8 +152,33 @@ public class Usuario {
         return telefono;
     }
 
+    @JsonIgnore
+    public Paciente getPaciente() {
+        return paciente;
+    }
+
+    public void setPaciente(Paciente paciente) {
+        this.paciente = paciente;
+    }
+
     public void setTelefono(String telefono) {
         this.telefono = telefono;
+    }
+
+    public String getNombreMostrar() {
+        return nombreMostrar;
+    }
+
+    public void setNombreMostrar(String nombreMostrar) {
+        this.nombreMostrar = nombreMostrar;
+    }
+
+    public String getFotoBase64() {
+        return fotoBase64;
+    }
+
+    public void setFotoBase64(String fotoBase64) {
+        this.fotoBase64 = fotoBase64;
     }
 
     public String getUsername() {

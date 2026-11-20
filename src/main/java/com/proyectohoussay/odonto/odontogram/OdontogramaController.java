@@ -1,6 +1,7 @@
 package com.proyectohoussay.odonto.odontogram;
 
 import com.proyectohoussay.odonto.patient.PacienteNoEncontradoException;
+import com.proyectohoussay.odonto.auth.UserRole;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -12,7 +13,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import java.net.URI;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/odontograma")
@@ -31,7 +34,13 @@ public class OdontogramaController {
         var snapshot = service.crear(request, creator);
         return ResponseEntity.created(URI.create("/api/odontograma/" + snapshot.id())).body(snapshot);
     }
-    @GetMapping("/{id}") public OdontogramaResponse obtener(@PathVariable Long id) { return service.obtener(id); }
+    @GetMapping("/{id}")
+    public OdontogramaResponse obtener(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        OdontogramaResponse response = service.obtener(id);
+        return UserRole.from(jwt.getClaimAsString("role"))
+                .filter(role -> role == UserRole.ADMINISTRADOR || role == UserRole.ODONTOLOGO)
+                .isPresent() ? response : response.sinFirma();
+    }
     @GetMapping public List<OdontogramaResumen> listar(@RequestParam Long pacienteId) { return service.listar(pacienteId); }
 
     @ExceptionHandler(PacienteNoEncontradoException.class)
@@ -42,6 +51,16 @@ public class OdontogramaController {
     }
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<String> invalidFields(MethodArgumentNotValidException exception) {
-        return ResponseEntity.badRequest().body("Revise los campos obligatorios, los dientes y el consentimiento de la solicitud");
+        String details = exception.getBindingResult().getAllErrors().stream()
+                .map(error -> {
+                    String message = error.getDefaultMessage() == null ? "valor inválido" : error.getDefaultMessage();
+                    return error instanceof org.springframework.validation.FieldError fieldError
+                            ? fieldError.getField() + ": " + message
+                            : message;
+                })
+                .sorted(Comparator.naturalOrder())
+                .collect(Collectors.joining("; "));
+        if (details.isBlank()) details = "Revise los campos de la solicitud";
+        return ResponseEntity.badRequest().body(details);
     }
 }

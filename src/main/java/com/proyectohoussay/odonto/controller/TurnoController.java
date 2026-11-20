@@ -3,6 +3,7 @@ package com.proyectohoussay.odonto.controller;
 import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.dto.TurnoRequest;
 import com.proyectohoussay.odonto.dto.TurnoResponse;
+import com.proyectohoussay.odonto.dto.DisponibilidadAgendaResponse;
 import com.proyectohoussay.odonto.exception.TurnoNoEncontradoException;
 import com.proyectohoussay.odonto.service.TurnoService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -88,6 +89,18 @@ public class TurnoController {
         return ResponseEntity.ok(disponible);
     }
 
+    @GetMapping("/disponibilidad/fecha/{fecha}")
+    public ResponseEntity<?> listarHorariosDisponibles(
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam Long odontologoId) {
+        try {
+            DisponibilidadAgendaResponse horarios = turnoService.listarHorariosDisponibles(odontologoId, fecha);
+            return ResponseEntity.ok(horarios);
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
     @PostMapping
     public ResponseEntity<?> crearTurno(@Valid @RequestBody TurnoRequest turno) {
         try {
@@ -112,6 +125,17 @@ public class TurnoController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{id}/estado")
+    public ResponseEntity<?> cambiarEstadoTurno(@PathVariable Long id, @RequestBody java.util.Map<String, String> payload) {
+        try {
+            String estado = payload != null ? payload.get("estado") : null;
+            Turno actualizado = turnoService.cambiarEstadoTurno(id, estado);
+            return ResponseEntity.ok(TurnoResponse.de(actualizado, "Estado del turno actualizado correctamente"));
+        } catch (TurnoNoEncontradoException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
 

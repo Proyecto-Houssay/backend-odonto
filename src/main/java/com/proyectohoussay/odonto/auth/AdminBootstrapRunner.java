@@ -40,6 +40,8 @@ public class AdminBootstrapRunner implements ApplicationRunner {
         String username = requiredEnvironmentValue("BOOTSTRAP_ADMIN_USERNAME").trim().toLowerCase(Locale.ROOT);
         String email = requiredEnvironmentValue("BOOTSTRAP_ADMIN_EMAIL").trim().toLowerCase(Locale.ROOT);
         String rawPassword = requiredEnvironmentValue("BOOTSTRAP_ADMIN_PASSWORD");
+        String firstName = environment.getProperty("BOOTSTRAP_ADMIN_FIRST_NAME", "Administrator").trim();
+        String lastName = environment.getProperty("BOOTSTRAP_ADMIN_LAST_NAME", "Novadent").trim();
         if (username.length() > 50 || email.length() > 254 || !email.contains("@")) {
             throw new IllegalStateException("Bootstrap administrator username or email is invalid.");
         }
@@ -50,7 +52,7 @@ public class AdminBootstrapRunner implements ApplicationRunner {
             throw new IllegalStateException("Bootstrap administrator username or email is already in use.");
         }
 
-        Usuario administrator = new Usuario(username, "Administrator", "Novadent", email,
+        Usuario administrator = new Usuario(username, firstName, lastName, email,
                 passwordEncoder.encode(rawPassword), UserRole.ADMINISTRADOR.name(), true);
         usuarioRepository.save(administrator);
     }

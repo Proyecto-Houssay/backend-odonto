@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import java.util.Optional;
 import com.proyectohoussay.odonto.clinicalhistory.HistoriaClinicaRepository;
 import com.proyectohoussay.odonto.repository.TurnoRepository;
+import com.proyectohoussay.odonto.repository.UsuarioRepository;
 import com.proyectohoussay.odonto.odontogram.OdontogramaRepository;
 
 import java.time.LocalDate;
@@ -36,6 +37,12 @@ class PacienteServiceTest {
 
     @Mock
     private OdontogramaRepository odontogramaRepository;
+
+    @Mock
+    private UsuarioRepository usuarioRepository;
+
+    @Mock
+    private ReporteDentalRepository reporteDentalRepository;
 
     @InjectMocks
     private PacienteService pacienteService;

@@ -2,6 +2,7 @@ package com.proyectohoussay.odonto.service;
 
 import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.dto.TurnoRequest;
+import com.proyectohoussay.odonto.dto.DisponibilidadAgendaResponse;
 import com.proyectohoussay.odonto.exception.TurnoNoEncontradoException;
 import com.proyectohoussay.odonto.model.Odontologo;
 import com.proyectohoussay.odonto.patient.Paciente;
@@ -56,6 +57,49 @@ public class TurnoService {
         return !turnoRepository.existeTurnoActivoEnHorario(odontologoId, fecha, hora, null);
     }
 
+    public DisponibilidadAgendaResponse listarHorariosDisponibles(Long odontologoId, LocalDate fecha) {
+        Odontologo odontologo = odontologoRepository.findById(odontologoId)
+                .orElseThrow(() -> new IllegalArgumentException("El odontólogo indicado no existe."));
+
+        if (!odontologo.isActivo() || fecha.isBefore(LocalDate.now())) {
+            return new DisponibilidadAgendaResponse(odontologoId, fecha, List.of());
+        }
+
+        // Horario institucional vigente: lunes-viernes 08:00-20:00, sábados 09:00-14:00.
+        // No hay franjas individuales persistidas por profesional; la reserva vuelve a validar el slot.
+        LocalTime inicio;
+        LocalTime fin;
+        switch (fecha.getDayOfWeek()) {
+            case SATURDAY -> { inicio = LocalTime.of(9, 0); fin = LocalTime.of(14, 0); }
+            case SUNDAY -> { return new DisponibilidadAgendaResponse(odontologoId, fecha, List.of()); }
+            default -> { inicio = LocalTime.of(8, 0); fin = LocalTime.of(20, 0); }
+        }
+
+        List<LocalTime> ocupados = turnoRepository.findByFechaAndOdontologoId(fecha, odontologoId).stream()
+                .filter(turno -> !estaCancelado(turno.getEstado()))
+                .map(Turno::getHora)
+                .toList();
+
+        LocalTime primerHorario = inicio;
+        if (fecha.equals(LocalDate.now())) {
+            LocalTime proximaFranja = LocalTime.now().withSecond(0).withNano(0);
+            int minutos = proximaFranja.getMinute();
+            proximaFranja = proximaFranja.withMinute(minutos < 30 ? 30 : 0);
+            if (minutos >= 30) proximaFranja = proximaFranja.plusHours(1);
+            if (proximaFranja.isAfter(primerHorario)) primerHorario = proximaFranja;
+        }
+
+        List<LocalTime> disponibles = new java.util.ArrayList<>();
+        for (LocalTime slot = primerHorario; slot.isBefore(fin); slot = slot.plusMinutes(30)) {
+            LocalTime slotInicio = slot;
+            LocalTime slotFin = slot.plusMinutes(30);
+            boolean solapado = ocupados.stream().anyMatch(ocupado ->
+                    ocupado.isBefore(slotFin) && ocupado.plusMinutes(30).isAfter(slotInicio));
+            if (slotFin.compareTo(fin) <= 0 && !solapado) disponibles.add(slot);
+        }
+        return new DisponibilidadAgendaResponse(odontologoId, fecha, List.copyOf(disponibles));
+    }
+
     public Turno crearTurno(TurnoRequest request) {
         validarFechaNoPasada(request.fecha());
         Turno turno = construirTurno(request);
@@ -89,6 +133,15 @@ public class TurnoService {
         turnoRepository.save(turno);
     }
 
+    public Turno cambiarEstadoTurno(Long id, String nuevoEstado) {
+        Turno turno = obtenerTurno(id);
+        String estadoNormalizado = (nuevoEstado == null || nuevoEstado.isBlank())
+                ? "PENDIENTE"
+                : nuevoEstado.trim().toUpperCase();
+        turno.setEstado(estadoNormalizado);
+        return turnoRepository.save(turno);
+    }
+
     private Turno construirTurno(TurnoRequest request) {
         Paciente paciente = pacienteRepository.findById(request.pacienteId())
                 .orElseThrow(() -> new IllegalArgumentException("El paciente indicado no existe."));
@@ -107,6 +160,8 @@ public class TurnoService {
     }
 
     private boolean estaCancelado(String estado) {
-        return estado != null && ESTADO_CANCELADO.equalsIgnoreCase(estado);
+        if (estado == null) return false;
+        String upper = estado.trim().toUpperCase();
+        return ESTADO_CANCELADO.equals(upper) || "RECHAZADO".equals(upper);
     }
 }

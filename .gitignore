@@ -1,6 +1,7 @@
 HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar
+.mvn/repository/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
@@ -36,3 +37,6 @@ build/
 
 # Local demo credentials; use .env.example as a template.
 .env
+.vercel
+.env*
+/data/knowledge/
