@@ -78,7 +78,9 @@ class ChatbotServiceTest {
         "¿Hay disponibilidad de citas para mañana?",
         "¿Qué turnos tienen disponibles?",
         "Necesito cancelar mi turno de las 15 hs",
-        "Hola, buenas tardes, ¿qué días atienden?"
+        "Hola, buenas tardes, ¿qué días atienden?",
+        "Quiero asignar un turno",
+        "Quiero sacar un turno con mi obra social"
     })
     void clasificarIntencion_deberiaDetectarTurnos(String mensaje) {
         String intencion = chatbotService.clasificarIntencion(mensaje);

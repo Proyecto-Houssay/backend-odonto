@@ -9,13 +9,18 @@ import com.proyectohoussay.odonto.chatbot.dto.ReservaChatbotResponse;
 import com.proyectohoussay.odonto.chatbot.dto.TurnoSlotDto;
 import com.proyectohoussay.odonto.dto.DisponibilidadAgendaResponse;
 import com.proyectohoussay.odonto.dto.TurnoRequest;
+import com.proyectohoussay.odonto.model.Especialidad;
+import com.proyectohoussay.odonto.model.EstadoProfesional;
 import com.proyectohoussay.odonto.model.Odontologo;
 import com.proyectohoussay.odonto.model.Turno;
 import com.proyectohoussay.odonto.model.Usuario;
+import com.proyectohoussay.odonto.repository.EspecialidadRepository;
 import com.proyectohoussay.odonto.repository.OdontologoRepository;
 import com.proyectohoussay.odonto.repository.TurnoRepository;
 import com.proyectohoussay.odonto.repository.UsuarioRepository;
+import com.proyectohoussay.odonto.service.OdontologoService;
 import com.proyectohoussay.odonto.service.TurnoService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,6 +76,8 @@ public class ChatbotAgendaService {
     private final TurnoService turnoService;
     private final UsuarioRepository usuarioRepository;
     private final TurnoRepository turnoRepository;
+    private OdontologoService odontologoService;
+    private EspecialidadRepository especialidadRepository;
 
     public ChatbotAgendaService(OdontologoRepository odontologoRepository,
                                 TurnoService turnoService,
@@ -82,8 +89,19 @@ public class ChatbotAgendaService {
         this.turnoRepository = turnoRepository;
     }
 
-    @Transactional(readOnly = true)
+    @Autowired(required = false)
+    public void setOdontologoService(OdontologoService odontologoService) {
+        this.odontologoService = odontologoService;
+    }
+
+    @Autowired(required = false)
+    public void setEspecialidadRepository(EspecialidadRepository especialidadRepository) {
+        this.especialidadRepository = especialidadRepository;
+    }
+
+    @Transactional
     public List<DoctorDisponibleDto> listarDoctoresDisponibles() {
+        sincronizarOdontologosSiEsNecesario();
         return odontologoRepository.findAll().stream()
                 .filter(Odontologo::isActivo)
                 .sorted(Comparator.comparing(Odontologo::getApellido, String.CASE_INSENSITIVE_ORDER)
@@ -92,7 +110,49 @@ public class ChatbotAgendaService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
+    private void sincronizarOdontologosSiEsNecesario() {
+        if (odontologoService != null) {
+            odontologoService.sincronizarUsuariosOdontologosYSemillaPorDefecto();
+            return;
+        }
+        if (odontologoRepository == null || especialidadRepository == null) {
+            return;
+        }
+        if (usuarioRepository != null) {
+            List<Usuario> usuarios = usuarioRepository.findAll();
+            if (usuarios != null) {
+                for (Usuario u : usuarios) {
+                    if (u != null && u.isActivo() && UserRole.ODONTOLOGO.name().equalsIgnoreCase(u.getRol())) {
+                        Optional<Odontologo> existente = u.getId() != null ? odontologoRepository.findByUsuarioId(u.getId()) : Optional.empty();
+                        if ((existente == null || existente.isEmpty()) && u.getEmail() != null && !u.getEmail().isBlank()) {
+                            existente = odontologoRepository.findByEmailIgnoreCase(u.getEmail().trim());
+                        }
+                        if (existente == null || existente.isEmpty()) {
+                            Especialidad esp = especialidadRepository.findByNombre("Odontología General")
+                                    .orElseGet(() -> especialidadRepository.save(new Especialidad("Odontología General", "Atención primaria odontológica")));
+                            String mat = u.getId() != null ? "MP-USR-" + u.getId() : "MP-USR-0";
+                            if (!odontologoRepository.existsByMatricula(mat)) {
+                                Odontologo nuevo = new Odontologo(
+                                        u.getNombre() != null && !u.getNombre().isBlank() ? u.getNombre() : "Profesional",
+                                        u.getApellido() != null && !u.getApellido().isBlank() ? u.getApellido() : "Odontólogo",
+                                        mat,
+                                        u.getEmail(),
+                                        u.getTelefono(),
+                                        esp
+                                );
+                                nuevo.setUsuarioId(u.getId());
+                                nuevo.setActivo(true);
+                                nuevo.setEstadoProfesional(EstadoProfesional.ACTIVO);
+                                odontologoRepository.save(nuevo);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Transactional
     public List<TurnoSlotDto> buscarTurnosDisponibles(Long odontologoId, LocalDate fechaBase, int diasABuscar, int limiteTotal) {
         LocalDate inicio = (fechaBase == null || fechaBase.isBefore(LocalDate.now()))
                 ? LocalDate.now()
@@ -192,7 +252,7 @@ public class ChatbotAgendaService {
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ChatResponse responderConsultaDoctores(Long userId, String role) {
         List<DoctorDisponibleDto> doctores = listarDoctoresDisponibles();
         EstadoUsuario estadoUsuario = evaluarEstadoUsuario(userId, role);
@@ -715,7 +775,7 @@ public class ChatbotAgendaService {
 
     private static boolean tieneVerboReserva(String texto) {
         String normalizado = normalizar(texto);
-        return Pattern.compile("\\b(sacar|sacame|reservar|reservame|agendar|agendame|confirmar|anotame)\\b")
+        return Pattern.compile("\\b(sacar|sacame|reservar|reservame|agendar|agendame|confirmar|anotame|asignar|asigname|dar|otorgar)\\b")
                 .matcher(normalizado).find();
     }
 

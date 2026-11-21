@@ -5,6 +5,7 @@ import com.proyectohoussay.odonto.repository.UsuarioRepository;
 import com.proyectohoussay.odonto.exception.UsuarioDuplicadoException;
 import com.proyectohoussay.odonto.dto.UsuarioUpdateRequest;
 import com.proyectohoussay.odonto.auth.UserRole;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
@@ -16,9 +17,15 @@ import java.util.Optional;
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
+    private OdontologoService odontologoService;
 
     public UsuarioService(UsuarioRepository usuarioRepository) {
         this.usuarioRepository = usuarioRepository;
+    }
+
+    @Autowired(required = false)
+    public void setOdontologoService(OdontologoService odontologoService) {
+        this.odontologoService = odontologoService;
     }
 
     public List<Usuario> listarUsuarios() {
@@ -40,7 +47,11 @@ public class UsuarioService {
         usuario.setRol(normalizeRole(usuario.getRol()));
         validarUnicidad(usuario.getUsername(), usuario.getEmail(), null);
         try {
-            return usuarioRepository.save(usuario);
+            Usuario guardado = usuarioRepository.save(usuario);
+            if (odontologoService != null && guardado != null && UserRole.ODONTOLOGO.name().equalsIgnoreCase(guardado.getRol())) {
+                odontologoService.sincronizarConUsuario(guardado);
+            }
+            return guardado;
         } catch (DataIntegrityViolationException exception) {
             throw new UsuarioDuplicadoException("El nombre de usuario o el email ya se encuentran registrados.");
         }
@@ -60,7 +71,11 @@ public class UsuarioService {
         usuario.setActivo(usuarioDetails.activo());
         usuario.setTelefono(usuarioDetails.telefono());
         try {
-            return usuarioRepository.save(usuario);
+            Usuario guardado = usuarioRepository.save(usuario);
+            if (odontologoService != null && guardado != null && UserRole.ODONTOLOGO.name().equalsIgnoreCase(guardado.getRol())) {
+                odontologoService.sincronizarConUsuario(guardado);
+            }
+            return guardado;
         } catch (DataIntegrityViolationException exception) {
             throw new UsuarioDuplicadoException("El nombre de usuario o el email ya se encuentran registrados.");
         }

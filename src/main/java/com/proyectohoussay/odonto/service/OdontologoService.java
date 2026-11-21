@@ -1,5 +1,6 @@
 package com.proyectohoussay.odonto.service;
 
+import com.proyectohoussay.odonto.auth.UserRole;
 import com.proyectohoussay.odonto.dto.OdontologoAltaCompletaRequest;
 import com.proyectohoussay.odonto.model.Especialidad;
 import com.proyectohoussay.odonto.model.Odontologo;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -43,8 +45,151 @@ public class OdontologoService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @Transactional
     public List<Odontologo> listarOdontologos() {
+        sincronizarUsuariosOdontologosYSemillaPorDefecto();
         return odontologoRepository.findAll();
+    }
+
+    @Transactional
+    public void sincronizarUsuariosOdontologosYSemillaPorDefecto() {
+        if (odontologoRepository == null || especialidadRepository == null) {
+            return;
+        }
+        if (usuarioRepository != null) {
+            List<Usuario> usuarios = usuarioRepository.findAll();
+            if (usuarios != null) {
+                for (Usuario u : usuarios) {
+                    if (u != null && u.isActivo() && UserRole.ODONTOLOGO.name().equalsIgnoreCase(u.getRol())) {
+                        sincronizarConUsuario(u);
+                    }
+                }
+            }
+        }
+        asegurarOdontologosPorDefecto();
+    }
+
+    @Transactional
+    public void sincronizarConUsuario(Usuario usuario) {
+        if (usuario == null || odontologoRepository == null || especialidadRepository == null) {
+            return;
+        }
+        boolean esOdontologo = UserRole.ODONTOLOGO.name().equalsIgnoreCase(usuario.getRol());
+        Optional<Odontologo> existente = Optional.empty();
+        if (usuario.getId() != null) {
+            existente = odontologoRepository.findByUsuarioId(usuario.getId());
+        }
+        if ((existente == null || existente.isEmpty()) && usuario.getEmail() != null && !usuario.getEmail().isBlank()) {
+            existente = odontologoRepository.findByEmailIgnoreCase(usuario.getEmail().trim());
+        }
+
+        if (existente != null && existente.isPresent()) {
+            Odontologo doc = existente.get();
+            boolean changed = false;
+            if (doc.getUsuarioId() == null && usuario.getId() != null) {
+                doc.setUsuarioId(usuario.getId());
+                changed = true;
+            }
+            if (esOdontologo && usuario.isActivo() && !doc.isActivo()) {
+                doc.setActivo(true);
+                doc.setEstadoProfesional(EstadoProfesional.ACTIVO);
+                changed = true;
+            }
+            if (changed) {
+                odontologoRepository.save(doc);
+            }
+            return;
+        }
+
+        if (!esOdontologo || !usuario.isActivo()) {
+            return;
+        }
+
+        Especialidad espGeneral = obtenerOCrearEspecialidad("Odontología General", "Atención primaria odontológica y prevención");
+        String matriculaBase = usuario.getId() != null
+                ? "MP-USR-" + usuario.getId()
+                : "MP-USR-" + Math.abs((usuario.getUsername() != null ? usuario.getUsername() : "DOC").hashCode() % 100000);
+        String matricula = matriculaBase;
+        int suffix = 1;
+        while (odontologoRepository.existsByMatricula(matricula)) {
+            matricula = matriculaBase + "-" + (suffix++);
+        }
+
+        String nombre = usuario.getNombre() != null && !usuario.getNombre().isBlank()
+                ? usuario.getNombre().trim()
+                : "Profesional";
+        String apellido = usuario.getApellido() != null && !usuario.getApellido().isBlank()
+                ? usuario.getApellido().trim()
+                : "Odontólogo";
+
+        Odontologo nuevo = new Odontologo(
+                nombre,
+                apellido,
+                matricula,
+                usuario.getEmail(),
+                usuario.getTelefono(),
+                espGeneral
+        );
+        nuevo.setUsuarioId(usuario.getId());
+        nuevo.setActivo(true);
+        nuevo.setEstadoProfesional(EstadoProfesional.ACTIVO);
+        odontologoRepository.save(nuevo);
+    }
+
+    private void asegurarOdontologosPorDefecto() {
+        List<Odontologo> actuales = odontologoRepository.findAll();
+        if (actuales != null && !actuales.isEmpty()) {
+            return;
+        }
+        if (odontologoRepository.count() > 0) {
+            return;
+        }
+
+        Especialidad espGeneral = obtenerOCrearEspecialidad("Odontología General", "Atención odontológica integral y preventiva");
+        Especialidad espOrtodoncia = obtenerOCrearEspecialidad("Ortodoncia", "Corrección y alineación dental");
+        Especialidad espProtesis = obtenerOCrearEspecialidad("Prótesis", "Rehabilitación protésica dental");
+
+        crearOdontologoPorDefectoSiNoExiste("Martino", "Costigliolo", "MN-45340", "martino.costigliolo@novadent.local", "1145001001", espGeneral, List.of());
+        crearOdontologoPorDefectoSiNoExiste("Lucas", "Perez", "MN-48921", "lucas.perez@novadent.local", "1145001002", espOrtodoncia, List.of());
+        crearOdontologoPorDefectoSiNoExiste("Jose", "Peralta", "MP-0987", "jose.peralta@novadent.local", "1145001003", espGeneral, espProtesis != null ? List.of(espProtesis) : List.of());
+    }
+
+    private void crearOdontologoPorDefectoSiNoExiste(String nombre, String apellido, String matricula, String email,
+                                                      String telefono, Especialidad especialidad, List<Especialidad> adicionales) {
+        if (especialidad == null || odontologoRepository.existsByMatricula(matricula)) {
+            return;
+        }
+        Odontologo doc = new Odontologo(nombre, apellido, matricula, email, telefono, especialidad);
+        doc.setActivo(true);
+        doc.setEstadoProfesional(EstadoProfesional.ACTIVO);
+        if (adicionales != null && !adicionales.isEmpty()) {
+            doc.setEspecialidadesAdicionales(adicionales);
+        }
+        if (usuarioRepository != null) {
+            Optional<Usuario> userOpt = usuarioRepository.findByEmailIgnoreCase(email);
+            if (userOpt != null && userOpt.isPresent()) {
+                doc.setUsuarioId(userOpt.get().getId());
+            }
+        }
+        odontologoRepository.save(doc);
+    }
+
+    private Especialidad obtenerOCrearEspecialidad(String nombre, String descripcion) {
+        Optional<Especialidad> porNombre = especialidadRepository.findByNombre(nombre);
+        if (porNombre != null && porNombre.isPresent()) {
+            return porNombre.get();
+        }
+        List<Especialidad> todas = especialidadRepository.findAll();
+        if (todas != null) {
+            for (Especialidad e : todas) {
+                if (e != null && e.getNombre() != null && e.getNombre().equalsIgnoreCase(nombre)) {
+                    return e;
+                }
+            }
+        }
+        Especialidad creada = new Especialidad(nombre, descripcion);
+        Especialidad guardada = especialidadRepository.save(creada);
+        return guardada != null ? guardada : creada;
     }
 
     public List<Odontologo> listarPorEspecialidad(Long especialidadId) {

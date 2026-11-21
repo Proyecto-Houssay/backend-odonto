@@ -285,6 +285,19 @@ public class ChatbotService {
         String lower = mensaje.toLowerCase(Locale.ROOT);
         String normalized = normalizar(mensaje);
 
+        boolean mencionaDoctor = containsAny(normalized,
+                "doctor", "doctora", "doctores", "doctoras",
+                "odontologo", "odontologa", "odontologos", "odontologas",
+                "dentista", "dentistas", "profesional", "profesionales", "medico", "medicos");
+        boolean mencionaTurnoExplicito = containsAny(normalized,
+                "turno", "cita", "agendar", "reservar", "reservame", "sacar", "sacame",
+                "anotame", "horario", "cancelar turno", "cambiar turno",
+                "asignar", "asigname", "dar turno", "otorgar");
+
+        if (mencionaTurnoExplicito) {
+            return "turno";
+        }
+
         // Precios y costos
         if (containsAny(lower, "precio", "costo", "cuánto sale", "cuanto sale",
                 "cuánto cuesta", "cuanto cuesta", "valor", "tarifa", "copago", "arancel", "aranceles")) {
@@ -300,20 +313,12 @@ public class ChatbotService {
             return "obras_sociales";
         }
 
-        boolean mencionaDoctor = containsAny(normalized,
-                "doctor", "doctora", "doctores", "doctoras",
-                "odontologo", "odontologa", "odontologos", "odontologas",
-                "dentista", "dentistas", "profesional", "profesionales", "medico", "medicos");
-        boolean mencionaTurnoExplicito = containsAny(normalized,
-                "turno", "cita", "agendar", "reservar", "reservame", "sacar", "sacame",
-                "anotame", "horario", "cancelar turno", "cambiar turno");
-
-        if (mencionaDoctor && !mencionaTurnoExplicito) {
+        if (mencionaDoctor) {
             return "doctores";
         }
 
         // Turnos y disponibilidad
-        if (mencionaTurnoExplicito || containsAny(lower, "disponib", "atienden", "abren", "días de atención")
+        if (containsAny(lower, "disponib", "atienden", "abren", "días de atención")
                 || containsAny(normalized, "dias de atencion")) {
             return "turno";
         }

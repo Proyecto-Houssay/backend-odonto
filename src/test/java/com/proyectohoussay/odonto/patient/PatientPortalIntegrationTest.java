@@ -144,6 +144,45 @@ class PatientPortalIntegrationTest {
     }
 
     @Test
+    void autoLinksExistingUnlinkedPatientByEmailOrDniAndRejectsDniLinkedToAnotherUser() throws Exception {
+        Paciente byEmail = new Paciente();
+        byEmail.setNombre("Sofia");
+        byEmail.setApellido("Gomez");
+        byEmail.setDni("38999111");
+        byEmail.setEmail("autolink-email@example.com");
+        byEmail.setFechaNacimiento(java.time.LocalDate.of(1998, 4, 15));
+        byEmail = patients.saveAndFlush(byEmail);
+
+        String emailUserToken = bearer("autolink-email", "PACIENTE");
+        mvc.perform(get("/api/portal-paciente/perfil").header("Authorization", emailUserToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(byEmail.getId()))
+                .andExpect(jsonPath("$.dni").value("38999111"));
+
+        Paciente byDni = new Paciente();
+        byDni.setNombre("Lucas");
+        byDni.setApellido("Paz");
+        byDni.setDni("38999222");
+        byDni.setEmail("reception-created@example.com");
+        byDni.setFechaNacimiento(java.time.LocalDate.of(1995, 6, 20));
+        byDni = patients.saveAndFlush(byDni);
+
+        String dniUserToken = bearer("autolink-dni", "PACIENTE");
+        mvc.perform(post("/api/portal-paciente/perfil").header("Authorization", dniUserToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dni\":\"38999222\",\"telefono\":\"1144445555\",\"fechaNacimiento\":\"1995-06-20\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(byDni.getId()))
+                .andExpect(jsonPath("$.dni").value("38999222"));
+
+        String otherUserToken = bearer("autolink-conflict", "PACIENTE");
+        mvc.perform(post("/api/portal-paciente/perfil").header("Authorization", otherUserToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dni\":\"38999222\",\"fechaNacimiento\":\"1995-06-20\"}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void photoRequiresExplicitConsentAndIsReturnedOnlyToOwnerOrClinician() throws Exception {
         String patient = bearer("portal-photo", "PACIENTE");
         String other = bearer("portal-photo-other", "PACIENTE");

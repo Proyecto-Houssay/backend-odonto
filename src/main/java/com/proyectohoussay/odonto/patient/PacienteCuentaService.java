@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 @Service
 public class PacienteCuentaService {
@@ -27,6 +28,9 @@ public class PacienteCuentaService {
     public PacienteResponse propio(Long userId) {
         Usuario cuenta = cuentaPaciente(userId);
         Paciente paciente = obtenerPacienteValido(cuenta);
+        if (paciente == null) {
+            paciente = intentarAutoVincularPorEmail(cuenta);
+        }
         if (paciente == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Completá tu ficha de paciente");
         return PacienteResponse.de(paciente);
     }
@@ -40,6 +44,27 @@ public class PacienteCuentaService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cuenta ya tiene una ficha de paciente");
         }
         String dniNormalizado = dni.trim();
+        Optional<Paciente> existenteOpt = pacientes.findByDni(dniNormalizado);
+        if (existenteOpt != null && existenteOpt.isPresent()) {
+            Paciente existente = existenteOpt.get();
+            Optional<Usuario> vinculadoOpt = usuarios.findByPacienteId(existente.getId());
+            boolean vinculadoAOtraCuenta = vinculadoOpt != null && vinculadoOpt.isPresent()
+                    && !vinculadoOpt.get().getId().equals(cuenta.getId());
+            if (!vinculadoAOtraCuenta && !usuarios.existsByPacienteId(existente.getId())) {
+                if (telefono != null && !telefono.isBlank() && (existente.getTelefono() == null || existente.getTelefono().isBlank())) {
+                    existente.setTelefono(telefono.trim());
+                    pacientes.saveAndFlush(existente);
+                }
+                cuenta.setPaciente(existente);
+                usuarios.saveAndFlush(cuenta);
+                return PacienteResponse.de(existente);
+            }
+            if (vinculadoOpt != null && vinculadoOpt.isPresent() && vinculadoOpt.get().getId().equals(cuenta.getId())) {
+                return PacienteResponse.de(existente);
+            }
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "El DNI ya figura en el sistema. Pedí al administrador que vincule tu cuenta con esa ficha");
+        }
         if (pacientes.existsByDni(dniNormalizado)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "El DNI ya figura en el sistema. Pedí al administrador que vincule tu cuenta con esa ficha");
@@ -96,8 +121,27 @@ public class PacienteCuentaService {
     public Paciente pacientePropio(Long userId) {
         Usuario cuenta = cuentaPaciente(userId);
         Paciente paciente = obtenerPacienteValido(cuenta);
+        if (paciente == null) {
+            paciente = intentarAutoVincularPorEmail(cuenta);
+        }
         if (paciente == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "Completá tu ficha antes de cargar un reporte");
         return paciente;
+    }
+
+    private Paciente intentarAutoVincularPorEmail(Usuario cuenta) {
+        if (cuenta == null || cuenta.getEmail() == null || cuenta.getEmail().isBlank()) {
+            return null;
+        }
+        Optional<Paciente> porEmail = pacientes.findByEmailIgnoreCase(cuenta.getEmail().trim());
+        if (porEmail != null && porEmail.isPresent()) {
+            Paciente p = porEmail.get();
+            if (p.getId() != null && !usuarios.existsByPacienteId(p.getId())) {
+                cuenta.setPaciente(p);
+                usuarios.saveAndFlush(cuenta);
+                return p;
+            }
+        }
+        return null;
     }
 
     private Paciente obtenerPacienteValido(Usuario cuenta) {

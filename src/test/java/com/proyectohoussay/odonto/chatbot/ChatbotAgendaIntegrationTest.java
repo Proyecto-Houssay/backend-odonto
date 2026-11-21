@@ -222,4 +222,17 @@ class ChatbotAgendaIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
     }
+
+    @Test
+    void sincronizaUsuariosOdontologosYSemillaPorDefectoCuandoLaTablaEstaVacia() throws Exception {
+        odontologos.deleteAll();
+        String patient = bearer("chat-seed-patient", "PACIENTE");
+
+        mvc.perform(get("/api/chatbot/doctores").header("Authorization", patient))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[*].nombreCompleto", hasItem("Martino Costigliolo")))
+                .andExpect(jsonPath("$[*].nombreCompleto", hasItem("Lucas Perez")))
+                .andExpect(jsonPath("$[*].nombreCompleto", hasItem("Jose Peralta")));
+    }
 }
