@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AuthServiceTest {
 
     private static final String RAW_PASSWORD = "clave-segura-para-prueba";
-    private static final String USERNAME = "iris";
+    private static final String USERNAME = "admin";
 
     private UsuarioRepository usuarioRepository;
     private PasswordEncoder passwordEncoder;
@@ -31,7 +31,7 @@ class AuthServiceTest {
         usuarioRepository = mock(UsuarioRepository.class);
         passwordEncoder = new BCryptPasswordEncoder();
         authService = new AuthService(usuarioRepository, passwordEncoder);
-        activeUser = new Usuario(USERNAME, "Iris", "De Dominicis", "iris@example.com",
+        activeUser = new Usuario(USERNAME, "Administrador", "Clinica", "admin@novadent.com",
                 passwordEncoder.encode(RAW_PASSWORD), "ADMINISTRADOR", true);
     }
 
@@ -45,7 +45,7 @@ class AuthServiceTest {
 
     @Test
     void authenticatesActiveUserByEmail() {
-        String email = "iris@example.com";
+        String email = "admin@novadent.com";
         when(usuarioRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(email, email)).thenReturn(Optional.of(activeUser));
 
         assertThat(authService.authenticate(email, RAW_PASSWORD)).contains(activeUser);

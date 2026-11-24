@@ -32,8 +32,8 @@ class UsuarioServiceTest {
 
     @Test
     void rejectsDuplicateUsernameBeforeSaving() {
-        Usuario newUser = usuario("iris", "iris@example.com", "password");
-        when(usuarioRepository.existsByUsernameIgnoreCase("iris")).thenReturn(true);
+        Usuario newUser = usuario("admin", "admin@example.com", "password");
+        when(usuarioRepository.existsByUsernameIgnoreCase("admin")).thenReturn(true);
 
         assertThatThrownBy(() -> usuarioService.crearUsuario(newUser))
                 .isInstanceOf(UsuarioDuplicadoException.class)
@@ -44,9 +44,9 @@ class UsuarioServiceTest {
 
     @Test
     void rejectsDuplicateEmailBeforeSaving() {
-        Usuario newUser = usuario("iris", "iris@example.com", "password");
-        when(usuarioRepository.existsByUsernameIgnoreCase("iris")).thenReturn(false);
-        when(usuarioRepository.existsByEmailIgnoreCase("iris@example.com")).thenReturn(true);
+        Usuario newUser = usuario("admin", "admin@example.com", "password");
+        when(usuarioRepository.existsByUsernameIgnoreCase("admin")).thenReturn(false);
+        when(usuarioRepository.existsByEmailIgnoreCase("admin@example.com")).thenReturn(true);
 
         assertThatThrownBy(() -> usuarioService.crearUsuario(newUser))
                 .isInstanceOf(UsuarioDuplicadoException.class)
@@ -57,30 +57,30 @@ class UsuarioServiceTest {
 
     @Test
     void updateProfileCannotChangeOrClearStoredPassword() {
-        Usuario current = usuario("iris", "iris@example.com", STORED_HASH);
+        Usuario current = usuario("admin", "admin@example.com", STORED_HASH);
         current.setId(7L);
         when(usuarioRepository.findById(7L)).thenReturn(Optional.of(current));
-        when(usuarioRepository.existsByUsernameIgnoreCaseAndIdNot("iris_updated", 7L)).thenReturn(false);
+        when(usuarioRepository.existsByUsernameIgnoreCaseAndIdNot("admin_updated", 7L)).thenReturn(false);
         when(usuarioRepository.existsByEmailIgnoreCaseAndIdNot("updated@example.com", 7L)).thenReturn(false);
         when(usuarioRepository.save(current)).thenReturn(current);
 
         UsuarioUpdateRequest request = new UsuarioUpdateRequest(
-                "iris_updated", "Iris", "De Dominicis", "updated@example.com", "ADMINISTRADOR", true, null);
+                "admin_updated", "Administrador", "Clinica", "updated@example.com", "ADMINISTRADOR", true, null);
         Usuario updated = usuarioService.actualizarUsuario(7L, request);
 
         assertThat(updated.getPassword()).isEqualTo(STORED_HASH);
-        assertThat(updated.getUsername()).isEqualTo("iris_updated");
+        assertThat(updated.getUsername()).isEqualTo("admin_updated");
     }
 
     @Test
     void rejectsDuplicateUsernameOnUpdateBeforeSaving() {
-        Usuario current = usuario("iris", "iris@example.com", STORED_HASH);
+        Usuario current = usuario("admin", "admin@example.com", STORED_HASH);
         current.setId(7L);
         when(usuarioRepository.findById(7L)).thenReturn(Optional.of(current));
         when(usuarioRepository.existsByUsernameIgnoreCaseAndIdNot("taken", 7L)).thenReturn(true);
 
         UsuarioUpdateRequest request = new UsuarioUpdateRequest(
-                "taken", "Iris", "De Dominicis", "iris@example.com", "ADMINISTRADOR", true, null);
+                "taken", "Administrador", "Clinica", "admin@example.com", "ADMINISTRADOR", true, null);
 
         assertThatThrownBy(() -> usuarioService.actualizarUsuario(7L, request))
                 .isInstanceOf(UsuarioDuplicadoException.class);
@@ -88,6 +88,6 @@ class UsuarioServiceTest {
     }
 
     private Usuario usuario(String username, String email, String password) {
-        return new Usuario(username, "Iris", "De Dominicis", email, password, "ADMINISTRADOR", true);
+        return new Usuario(username, "Administrador", "Clinica", email, password, "ADMINISTRADOR", true);
     }
 }

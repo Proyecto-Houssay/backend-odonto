@@ -42,35 +42,35 @@ public class UsuarioRepositoryTest {
 
     @Test
     void testGuardarYBuscarUsuarioPorUsernameYPassword() throws Exception {
-        Usuario usuario = new Usuario("iris_admin", "Iris", "De Dominicis", "iris.dedominicis@example.com",
+        Usuario usuario = new Usuario("admin_clinica", "Administrador", "Clinica", "admin.clinica@example.com",
                 "PasswordSegura123!", "ADMINISTRADOR", true);
         usuarioRepository.save(usuario);
 
-        Optional<Usuario> porUsername = usuarioRepository.findByUsername("iris_admin");
+        Optional<Usuario> porUsername = usuarioRepository.findByUsername("admin_clinica");
         assertThat(porUsername).isPresent();
-        assertThat(porUsername.get().getUsername()).isEqualTo("iris_admin");
+        assertThat(porUsername.get().getUsername()).isEqualTo("admin_clinica");
         assertThat(passwordEncoder.matches("PasswordSegura123!", porUsername.get().getPassword())).isTrue();
         assertThat(new ObjectMapper().writeValueAsString(porUsername.get())).doesNotContain("password");
         assertThat(porUsername.get().getRol()).isEqualTo("ADMINISTRADOR");
-        assertThat(porUsername.get().getEmail()).isEqualTo("iris.dedominicis@example.com");
+        assertThat(porUsername.get().getEmail()).isEqualTo("admin.clinica@example.com");
 
-        boolean existeUsername = usuarioRepository.existsByUsername("iris_admin");
+        boolean existeUsername = usuarioRepository.existsByUsername("admin_clinica");
         assertThat(existeUsername).isTrue();
     }
 
     @Test
     void rechazaUsernameDuplicado() {
-        usuarioRepository.saveAndFlush(usuario("iris_admin", "primero@example.com"));
+        usuarioRepository.saveAndFlush(usuario("admin_clinica", "primero@example.com"));
 
-        assertThatThrownBy(() -> usuarioRepository.saveAndFlush(usuario("iris_admin", "segundo@example.com")))
+        assertThatThrownBy(() -> usuarioRepository.saveAndFlush(usuario("admin_clinica", "segundo@example.com")))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
     void rechazaEmailDuplicado() {
-        usuarioRepository.saveAndFlush(usuario("iris_admin", "iris@example.com"));
+        usuarioRepository.saveAndFlush(usuario("admin_clinica", "admin@example.com"));
 
-        assertThatThrownBy(() -> usuarioRepository.saveAndFlush(usuario("otro_usuario", "iris@example.com")))
+        assertThatThrownBy(() -> usuarioRepository.saveAndFlush(usuario("otro_usuario", "admin@example.com")))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
@@ -83,6 +83,6 @@ public class UsuarioRepositoryTest {
     }
 
     private Usuario usuario(String username, String email) {
-        return new Usuario(username, "Iris", "De Dominicis", email, "PasswordSegura123!", "ADMINISTRADOR", true);
+        return new Usuario(username, "Administrador", "Clinica", email, "PasswordSegura123!", "ADMINISTRADOR", true);
     }
 }

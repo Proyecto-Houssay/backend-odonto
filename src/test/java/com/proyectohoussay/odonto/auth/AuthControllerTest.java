@@ -36,14 +36,14 @@ class AuthControllerTest {
 
     @Test
     void loginReturnsBearerTokenRoleAndExpiryWithoutCredentials() throws Exception {
-        Usuario user = new Usuario("iris", "Iris", "De Dominicis", "iris@example.com", "encoded", "ODONTOLOGO", true);
-        given(authService.authenticate("iris", PASSWORD)).willReturn(Optional.of(user));
+        Usuario user = new Usuario("odontologo_demo", "Lucas", "Fernandez", "odontologo@example.com", "encoded", "ODONTOLOGO", true);
+        given(authService.authenticate("odontologo_demo", PASSWORD)).willReturn(Optional.of(user));
         given(jwtTokenService.issueToken(user)).willReturn(new AuthResponse("signed-token", "Bearer", 900, "ODONTOLOGO"));
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"usernameOrEmail":"iris","password":"%s"}
+                                {"usernameOrEmail":"odontologo_demo","password":"%s"}
                                 """.formatted(PASSWORD)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("signed-token"))
@@ -56,12 +56,12 @@ class AuthControllerTest {
 
     @Test
     void wrongOrUnknownCredentialsUseSameSafeResponse() throws Exception {
-        given(authService.authenticate("iris", PASSWORD)).willReturn(Optional.empty());
+        given(authService.authenticate("odontologo_demo", PASSWORD)).willReturn(Optional.empty());
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"usernameOrEmail":"iris","password":"%s"}
+                                {"usernameOrEmail":"odontologo_demo","password":"%s"}
                                 """.formatted(PASSWORD)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Credenciales incorrectas."))

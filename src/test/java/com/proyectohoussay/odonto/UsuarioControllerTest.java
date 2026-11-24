@@ -42,7 +42,7 @@ class UsuarioControllerTest {
         usuarioService = mock(UsuarioService.class);
         mockMvc = MockMvcBuilders.standaloneSetup(new UsuarioController(usuarioService)).build();
         objectMapper = new ObjectMapper();
-        usuario = new Usuario("iris", "Iris", "De Dominicis", "iris@example.com", PASSWORD, "ADMINISTRADOR", true);
+        usuario = new Usuario("admin", "Administrador", "Clinica", "admin@novadent.com", PASSWORD, "ADMINISTRADOR", true);
         usuario.setId(7L);
     }
 
@@ -76,7 +76,7 @@ class UsuarioControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestBody())))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.email").value("iris@example.com"))
+                .andExpect(jsonPath("$.email").value("admin@novadent.com"))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(content().string(not(containsString(PASSWORD))));
     }
@@ -90,7 +90,7 @@ class UsuarioControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequestBody())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("iris"))
+                .andExpect(jsonPath("$.username").value("admin"))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(content().string(not(containsString(PASSWORD))));
     }
@@ -124,10 +124,10 @@ class UsuarioControllerTest {
 
     private Map<String, Object> requestBody() {
         return Map.of(
-                "username", "iris",
-                "nombre", "Iris",
-                "apellido", "De Dominicis",
-                "email", "iris@example.com",
+                "username", "admin",
+                "nombre", "Administrador",
+                "apellido", "Clinica",
+                "email", "admin@novadent.com",
                 "password", PASSWORD,
                 "rol", "ADMINISTRADOR",
                 "activo", true);
@@ -135,10 +135,10 @@ class UsuarioControllerTest {
 
     private Map<String, Object> updateRequestBody() {
         return Map.of(
-                "username", "iris",
-                "nombre", "Iris",
-                "apellido", "De Dominicis",
-                "email", "iris@example.com",
+                "username", "admin",
+                "nombre", "Administrador",
+                "apellido", "Clinica",
+                "email", "admin@novadent.com",
                 "rol", "ADMINISTRADOR",
                 "activo", true);
     }

@@ -290,7 +290,7 @@ docs/
 ## Flujo de integración
 
 - `develop` es la rama de integración continua.
-- Las ramas de trabajo individuales son `Mateo`, `Kevin`, `Braian`, `Josue` e `Iris`.
+- Las ramas de trabajo individuales corresponden a los módulos asignados a cada integrante.
 - Todo Pull Request debe dirigirse a `develop`, compilar limpiamente y aprobar `mvn test` antes de su integración.
 - Mantener commits descriptivos y no publicar secretos ni archivos de entorno.
 

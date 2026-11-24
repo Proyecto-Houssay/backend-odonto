@@ -16,7 +16,7 @@ import java.time.Instant;
 @Service
 public class JwtTokenService {
 
-    public static final Duration TOKEN_TTL = Duration.ofMinutes(15);
+    public static final Duration TOKEN_TTL = Duration.ofHours(24);
 
     private final JwtEncoder jwtEncoder;
     private final Clock clock;
